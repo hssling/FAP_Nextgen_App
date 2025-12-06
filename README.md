@@ -333,6 +333,6 @@ For issues or questions:
 
 **Built with ❤️ for medical students**
 
-**Live Demo**: [Coming Soon on Vercel]
+**Live Demo**: https://fap-nextgen-fr67iaxtl-hsslings-projects.vercel.app/
 
 **GitHub**: https://github.com/hssling/FAP_Nextgen_App
