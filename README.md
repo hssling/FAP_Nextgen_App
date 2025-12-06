@@ -295,8 +295,8 @@ This project is developed for educational purposes as part of the MBBS curriculu
 
 ## 👥 Contributors
 
-- **Developer**: [Your Name]
-- **Institution**: [Your Medical College]
+- **Developer**: Dr Siddalingaiah H S
+- **Institution**: SIMSRH Tumkur
 - **Purpose**: MBBS Family Adoption Programme
 
 ---
@@ -305,7 +305,7 @@ This project is developed for educational purposes as part of the MBBS curriculu
 
 For issues or questions:
 - Create an issue on GitHub
-- Contact: [your-email@example.com]
+- Contact: hssling@yahoo.com
 
 ---
 
