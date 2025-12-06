@@ -1,0 +1,469 @@
+[
+    {
+        "id": "anc_guidelines",
+        "category": "Maternal Health",
+        "title": "Antenatal Care (ANC) Guidelines",
+        "icon": "baby",
+        "sections": [
+            {
+                "heading": "ANC Visit Schedule",
+                "content": [
+                    "1st Trimester: 1 visit (before 12 weeks)",
+                    "2nd Trimester: 2 visits (14-26 weeks)",
+                    "3rd Trimester: 5 visits (28-40 weeks)",
+                    "Total minimum: 8 ANC visits (WHO recommendation)"
+                ]
+            },
+            {
+                "heading": "Essential Services at Each Visit",
+                "content": [
+                    "Weight and BP monitoring",
+                    "Abdominal examination (fundal height)",
+                    "Fetal heart sound (after 20 weeks)",
+                    "Urine test for albumin and sugar",
+                    "Hemoglobin testing",
+                    "IFA tablet supplementation",
+                    "Td immunization (2 doses)",
+                    "Counseling on nutrition, danger signs, birth preparedness"
+                ]
+            },
+            {
+                "heading": "Danger Signs in Pregnancy",
+                "content": [
+                    "Severe headache with blurred vision",
+                    "Vaginal bleeding",
+                    "Convulsions",
+                    "Severe abdominal pain",
+                    "High fever",
+                    "Reduced fetal movements",
+                    "Swelling of face and hands",
+                    "Leaking/gushing of water"
+                ]
+            },
+            {
+                "heading": "Birth Preparedness",
+                "content": [
+                    "Identify delivery facility",
+                    "Arrange transport",
+                    "Save money for delivery",
+                    "Identify blood donor",
+                    "Prepare birth companion",
+                    "Know danger signs"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "immunization_schedule",
+        "category": "Child Health",
+        "title": "Universal Immunization Schedule",
+        "icon": "syringe",
+        "sections": [
+            {
+                "heading": "At Birth",
+                "content": [
+                    "BCG - 0.1ml intradermal (left upper arm)",
+                    "OPV 0 - 2 drops oral",
+                    "Hepatitis B - 0.5ml IM (anterolateral thigh)"
+                ]
+            },
+            {
+                "heading": "6 Weeks",
+                "content": [
+                    "OPV 1 - 2 drops oral",
+                    "Pentavalent 1 - 0.5ml IM (DPT+HepB+Hib)",
+                    "Rotavirus 1 - oral (5 drops)",
+                    "PCV 1 - 0.5ml IM"
+                ]
+            },
+            {
+                "heading": "10 Weeks",
+                "content": [
+                    "OPV 2 - 2 drops oral",
+                    "Pentavalent 2 - 0.5ml IM",
+                    "Rotavirus 2 - oral (5 drops)",
+                    "PCV 2 - 0.5ml IM"
+                ]
+            },
+            {
+                "heading": "14 Weeks",
+                "content": [
+                    "OPV 3 - 2 drops oral",
+                    "Pentavalent 3 - 0.5ml IM",
+                    "Rotavirus 3 - oral (5 drops)",
+                    "PCV 3 - 0.5ml IM",
+                    "IPV - 0.5ml IM"
+                ]
+            },
+            {
+                "heading": "9-12 Months",
+                "content": [
+                    "Measles-Rubella 1 (MR1) - 0.5ml SC",
+                    "JE 1 - 0.5ml SC (endemic areas)",
+                    "Vitamin A - 1ml oral (1 lakh IU)"
+                ]
+            },
+            {
+                "heading": "16-24 Months",
+                "content": [
+                    "DPT Booster 1 - 0.5ml IM",
+                    "OPV Booster - 2 drops oral",
+                    "Measles-Rubella 2 (MR2) - 0.5ml SC",
+                    "JE 2 - 0.5ml SC (endemic areas)"
+                ]
+            },
+            {
+                "heading": "5-6 Years",
+                "content": [
+                    "DPT Booster 2 - 0.5ml IM"
+                ]
+            },
+            {
+                "heading": "10 Years",
+                "content": [
+                    "Td (Tetanus-Diphtheria) - 0.5ml IM"
+                ]
+            },
+            {
+                "heading": "16 Years",
+                "content": [
+                    "Td - 0.5ml IM"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "ncd_screening",
+        "category": "Non-Communicable Diseases",
+        "title": "NCD Screening Guidelines (30+ years)",
+        "icon": "activity",
+        "sections": [
+            {
+                "heading": "Hypertension Screening",
+                "content": [
+                    "Normal: <120/80 mmHg",
+                    "Elevated: 120-129/<80 mmHg",
+                    "Stage 1 HTN: 130-139/80-89 mmHg",
+                    "Stage 2 HTN: ≥140/90 mmHg",
+                    "Action: Refer if ≥140/90 on 2 occasions"
+                ]
+            },
+            {
+                "heading": "Diabetes Screening",
+                "content": [
+                    "Random Blood Sugar >200 mg/dl - Refer",
+                    "Fasting Blood Sugar ≥126 mg/dl - Refer",
+                    "Risk factors: Family history, obesity, age >40",
+                    "Screen annually if high risk"
+                ]
+            },
+            {
+                "heading": "Oral Cancer Screening",
+                "content": [
+                    "Visual inspection of oral cavity",
+                    "Look for: White/red patches, ulcers >2 weeks, lumps",
+                    "Risk factors: Tobacco, betel quid, alcohol",
+                    "Refer suspicious lesions immediately"
+                ]
+            },
+            {
+                "heading": "Breast Cancer Screening",
+                "content": [
+                    "Clinical Breast Examination (CBE) for women 30+",
+                    "Look for: Lumps, skin changes, nipple discharge",
+                    "Teach breast self-examination",
+                    "Refer any suspicious findings"
+                ]
+            },
+            {
+                "heading": "Cervical Cancer Screening",
+                "content": [
+                    "VIA (Visual Inspection with Acetic Acid) for women 30-65",
+                    "Screen every 5 years if negative",
+                    "Refer if VIA positive",
+                    "HPV vaccination for girls 9-14 years"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "imnci_guidelines",
+        "category": "Child Health",
+        "title": "IMNCI - Sick Child Assessment",
+        "icon": "heart",
+        "sections": [
+            {
+                "heading": "Danger Signs (Immediate Referral)",
+                "content": [
+                    "Unable to drink or breastfeed",
+                    "Vomits everything",
+                    "Convulsions",
+                    "Lethargic or unconscious"
+                ]
+            },
+            {
+                "heading": "Cough or Difficult Breathing",
+                "content": [
+                    "Count respiratory rate (1 minute)",
+                    "<2 months: ≥60/min = Fast breathing",
+                    "2-12 months: ≥50/min = Fast breathing",
+                    "1-5 years: ≥40/min = Fast breathing",
+                    "Check for chest indrawing",
+                    "Listen for stridor"
+                ]
+            },
+            {
+                "heading": "Diarrhea Assessment",
+                "content": [
+                    "Duration of diarrhea",
+                    "Blood in stool?",
+                    "Dehydration signs: Sunken eyes, skin pinch >2 sec, restless/irritable",
+                    "Plan A: No dehydration - ORS at home",
+                    "Plan B: Some dehydration - ORS at facility",
+                    "Plan C: Severe dehydration - IV fluids, refer"
+                ]
+            },
+            {
+                "heading": "Fever Assessment",
+                "content": [
+                    "Malaria risk area? - RDT/Blood smear",
+                    "Stiff neck? - Meningitis, refer",
+                    "Measles now or within 3 months?",
+                    "Any ear problem? - Check for ear discharge",
+                    "Temperature >38.5°C - Give paracetamol"
+                ]
+            },
+            {
+                "heading": "Nutrition Assessment",
+                "content": [
+                    "Check for visible severe wasting",
+                    "Check for bilateral pitting edema",
+                    "Measure MUAC (6-59 months)",
+                    "Red (<11.5cm) = SAM, refer",
+                    "Yellow (11.5-12.5cm) = MAM",
+                    "Green (>12.5cm) = Normal"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "family_planning",
+        "category": "Reproductive Health",
+        "title": "Family Planning Methods",
+        "icon": "users",
+        "sections": [
+            {
+                "heading": "Temporary Methods - Spacing",
+                "content": [
+                    "Condoms - 98% effective, STI protection",
+                    "OCPs - 99% effective, daily pill",
+                    "Injectable (DMPA) - 99% effective, 3-monthly",
+                    "IUCD (Cu-T 380A) - 99% effective, 10 years",
+                    "Emergency Contraception - within 72 hours"
+                ]
+            },
+            {
+                "heading": "Permanent Methods - Limiting",
+                "content": [
+                    "Female Sterilization (Tubectomy) - 99.5% effective",
+                    "Male Sterilization (Vasectomy) - 99.9% effective",
+                    "Eligibility: ≥1 living child, age >22 years",
+                    "Counseling on permanence essential"
+                ]
+            },
+            {
+                "heading": "Contraindications - When NOT to Use",
+                "content": [
+                    "OCPs: Pregnancy, breastfeeding <6 weeks, HTN, migraine with aura",
+                    "IUCD: Pregnancy, PID, unexplained vaginal bleeding",
+                    "Injectable: Pregnancy, breast cancer",
+                    "Always check medical eligibility criteria"
+                ]
+            },
+            {
+                "heading": "Counseling Points",
+                "content": [
+                    "Discuss all available methods",
+                    "Explain effectiveness, side effects",
+                    "Ensure informed choice",
+                    "Discuss dual protection (FP + condoms for STI)",
+                    "Provide method chosen or refer",
+                    "Schedule follow-up"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "tb_dots",
+        "category": "Communicable Diseases",
+        "title": "TB-DOTS Guidelines",
+        "icon": "alert-circle",
+        "sections": [
+            {
+                "heading": "TB Symptoms - Screen All",
+                "content": [
+                    "Cough >2 weeks",
+                    "Fever >2 weeks",
+                    "Weight loss",
+                    "Night sweats",
+                    "Blood in sputum",
+                    "Loss of appetite"
+                ]
+            },
+            {
+                "heading": "Diagnosis",
+                "content": [
+                    "Sputum examination (2 samples)",
+                    "Chest X-ray if sputum negative",
+                    "CBNAAT for rapid diagnosis",
+                    "Refer all presumptive TB cases"
+                ]
+            },
+            {
+                "heading": "DOTS Treatment Regimen",
+                "content": [
+                    "New TB: 2HRZE + 4HRE (6 months)",
+                    "H=Isoniazid, R=Rifampicin, Z=Pyrazinamide, E=Ethambutol",
+                    "Intensive Phase: 2 months (daily)",
+                    "Continuation Phase: 4 months (daily)",
+                    "DOT Provider ensures observed treatment"
+                ]
+            },
+            {
+                "heading": "Contact Tracing",
+                "content": [
+                    "Screen all household contacts",
+                    "Children <6 years: TB prophylaxis (6H)",
+                    "Symptomatic contacts: Investigate for TB",
+                    "BCG vaccination for infants"
+                ]
+            },
+            {
+                "heading": "Treatment Monitoring",
+                "content": [
+                    "Sputum at end of 2 months (intensive phase)",
+                    "Sputum at end of 5 months",
+                    "Sputum at end of 6 months (treatment completion)",
+                    "Monitor for side effects: Jaundice, vision changes, numbness"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "mental_health",
+        "category": "Mental Health",
+        "title": "Common Mental Health Issues",
+        "icon": "brain",
+        "sections": [
+            {
+                "heading": "Depression - Screening (PHQ-2)",
+                "content": [
+                    "Over past 2 weeks, how often:",
+                    "1. Little interest or pleasure in doing things?",
+                    "2. Feeling down, depressed, or hopeless?",
+                    "Score ≥3: Screen further with PHQ-9",
+                    "Refer if moderate-severe depression"
+                ]
+            },
+            {
+                "heading": "Anxiety Disorders",
+                "content": [
+                    "Excessive worry, difficult to control",
+                    "Restlessness, fatigue",
+                    "Difficulty concentrating",
+                    "Irritability, muscle tension",
+                    "Sleep disturbance",
+                    "Panic attacks: Sudden intense fear"
+                ]
+            },
+            {
+                "heading": "Alcohol Use Disorder - AUDIT-C",
+                "content": [
+                    "How often do you drink?",
+                    "How many drinks on typical day?",
+                    "How often 6+ drinks on one occasion?",
+                    "Score ≥4 (men) or ≥3 (women): At risk",
+                    "Brief intervention or refer"
+                ]
+            },
+            {
+                "heading": "Suicide Risk Assessment",
+                "content": [
+                    "Ask directly: 'Are you thinking of harming yourself?'",
+                    "Risk factors: Previous attempt, depression, substance abuse",
+                    "Protective factors: Family support, religious beliefs",
+                    "HIGH RISK: Immediate referral to psychiatrist",
+                    "Remove means (pesticides, ropes, medications)"
+                ]
+            },
+            {
+                "heading": "When to Refer",
+                "content": [
+                    "Suicidal ideation or attempt",
+                    "Psychotic symptoms (hallucinations, delusions)",
+                    "Severe depression not responding to treatment",
+                    "Bipolar disorder",
+                    "Substance dependence requiring detox"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "nutrition_guidelines",
+        "category": "Nutrition",
+        "title": "Nutrition Guidelines",
+        "icon": "apple",
+        "sections": [
+            {
+                "heading": "Infant Feeding (0-6 months)",
+                "content": [
+                    "Exclusive breastfeeding for 6 months",
+                    "No water, no other foods",
+                    "Breastfeed on demand (8-12 times/day)",
+                    "Proper attachment and positioning",
+                    "Colostrum is first vaccine"
+                ]
+            },
+            {
+                "heading": "Complementary Feeding (6-24 months)",
+                "content": [
+                    "Start at 6 months with semi-solid foods",
+                    "Continue breastfeeding up to 2 years",
+                    "6-8 months: 2-3 meals/day, mashed foods",
+                    "9-11 months: 3-4 meals/day, chopped foods",
+                    "12-24 months: 3-4 meals/day, family foods",
+                    "Add 1-2 snacks between meals"
+                ]
+            },
+            {
+                "heading": "Anemia Prevention",
+                "content": [
+                    "IFA tablets: Pregnant women (100mg iron + 500mcg folic acid)",
+                    "IFA syrup: Children 6-59 months (twice weekly)",
+                    "Deworming: Children >1 year (6-monthly)",
+                    "Dietary iron: Green leafy vegetables, jaggery, meat",
+                    "Vitamin C enhances iron absorption"
+                ]
+            },
+            {
+                "heading": "Vitamin A Supplementation",
+                "content": [
+                    "9-11 months: 1 lakh IU (1ml)",
+                    "12-59 months: 2 lakh IU (2ml) every 6 months",
+                    "Protects against blindness, infections",
+                    "Given during immunization or Vitamin A rounds"
+                ]
+            },
+            {
+                "heading": "Malnutrition Management",
+                "content": [
+                    "SAM (MUAC <11.5cm): Refer to NRC",
+                    "MAM (MUAC 11.5-12.5cm): Supplementary feeding",
+                    "Monitor weight gain weekly",
+                    "Treat infections, give micronutrients",
+                    "Counsel mother on feeding practices"
+                ]
+            }
+        ]
+    }
+]

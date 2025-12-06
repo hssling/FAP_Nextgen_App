@@ -1,0 +1,925 @@
+[
+    {
+        "form_id": "household_registration_v1",
+        "title": "Household Registration",
+        "fields": [
+            {
+                "key": "head_name",
+                "label": "Head of Household",
+                "type": "text",
+                "required": true
+            },
+            {
+                "key": "address",
+                "label": "Address",
+                "type": "text"
+            },
+            {
+                "key": "village",
+                "label": "Village",
+                "type": "text"
+            },
+            {
+                "key": "ward",
+                "label": "Ward",
+                "type": "text"
+            },
+            {
+                "key": "water_source",
+                "label": "Primary Water Source",
+                "type": "select",
+                "options": [
+                    "piped",
+                    "handpump",
+                    "well",
+                    "surface",
+                    "tanker"
+                ]
+            },
+            {
+                "key": "latrine_type",
+                "label": "Latrine Type",
+                "type": "select",
+                "options": [
+                    "improved",
+                    "unimproved",
+                    "none"
+                ]
+            },
+            {
+                "key": "waste_disposal",
+                "label": "Waste Disposal",
+                "type": "select",
+                "options": [
+                    "segregated",
+                    "mixed",
+                    "open"
+                ]
+            },
+            {
+                "key": "housing_type",
+                "label": "Housing Type",
+                "type": "select",
+                "options": [
+                    "kutcha",
+                    "semi-pucca",
+                    "pucca"
+                ]
+            },
+            {
+                "key": "consent_obtained",
+                "label": "Consent Obtained",
+                "type": "checkbox"
+            }
+        ]
+    },
+    {
+        "form_id": "environment_sanitation_v1",
+        "title": "Environment & Sanitation",
+        "fields": [
+            {
+                "key": "water_quality_rc",
+                "label": "Residual Chlorine (mg/L)",
+                "type": "number"
+            },
+            {
+                "key": "rc_pass",
+                "label": "RC within 0.2–0.5 mg/L",
+                "type": "checkbox"
+            },
+            {
+                "key": "solid_waste",
+                "label": "Solid Waste",
+                "type": "select",
+                "options": [
+                    "segregated",
+                    "mixed",
+                    "open_dump"
+                ]
+            },
+            {
+                "key": "ventilation",
+                "label": "Ventilaton Status",
+                "type": "select",
+                "options": [
+                    "Adequate",
+                    "Inadequate"
+                ]
+            },
+            {
+                "key": "vector_breeding",
+                "label": "Evidence of Vector Breeding",
+                "type": "checkbox"
+            }
+        ]
+    },
+    {
+        "form_id": "health_education_session_v1",
+        "title": "Health Education Session",
+        "fields": [
+            {
+                "key": "topic",
+                "label": "Topic / Focus",
+                "type": "text",
+                "required": true
+            },
+            {
+                "key": "method",
+                "label": "Method",
+                "type": "select",
+                "options": [
+                    "Health talk",
+                    "Demonstration",
+                    "Poster",
+                    "Home visit",
+                    "Group discussion"
+                ]
+            },
+            {
+                "key": "date",
+                "label": "Date",
+                "type": "date"
+            },
+            {
+                "key": "target_group",
+                "label": "Target Group",
+                "type": "text"
+            },
+            {
+                "key": "key_messages",
+                "label": "Key Messages Shared",
+                "type": "textarea"
+            },
+            {
+                "key": "follow_up_plan",
+                "label": "Follow-up Plan",
+                "type": "textarea"
+            }
+        ]
+    },
+    {
+        "form_id": "socio_economic_v1",
+        "title": "Socio-Economic Assessment (Modified Kuppuswamy)",
+        "fields": [
+            {
+                "key": "head_education",
+                "label": "Education of Head",
+                "type": "select",
+                "options": [
+                    "Professional Degree",
+                    "Graduate/Post Graduate",
+                    "Intermediate/Diploma",
+                    "High School",
+                    "Middle School",
+                    "Primary School",
+                    "Illiterate"
+                ]
+            },
+            {
+                "key": "head_occupation",
+                "label": "Occupation of Head",
+                "type": "select",
+                "options": [
+                    "Professional",
+                    "Semi-Professional",
+                    "Clerical/Shop-owner/Farmer",
+                    "Skilled Worker",
+                    "Semi-skilled Worker",
+                    "Unskilled Worker",
+                    "Unemployed"
+                ]
+            },
+            {
+                "key": "monthly_income",
+                "label": "Create Monthly Family Income (INR)",
+                "type": "number"
+            },
+            {
+                "key": "total_members",
+                "label": "Total Family Members",
+                "type": "number"
+            }
+        ]
+    },
+    {
+        "form_id": "nutritional_assessment_v1",
+        "title": "Nutritional Assessment",
+        "fields": [
+            {
+                "key": "dietary_habit",
+                "label": "Dietary Habit",
+                "type": "select",
+                "options": [
+                    "Vegetarian",
+                    "Non-Vegetarian",
+                    "Eggetarian",
+                    "Vegan"
+                ]
+            },
+            {
+                "key": "meals_per_day",
+                "label": "Number of meals per day",
+                "type": "number"
+            },
+            {
+                "key": "cereal_intake",
+                "label": "Cereal Intake (bowls/day)",
+                "type": "number"
+            },
+            {
+                "key": "pulse_intake",
+                "label": "Pulse/Dal Intake (bowls/day)",
+                "type": "number"
+            },
+            {
+                "key": "vegetable_freq",
+                "label": "Green Leafy Veg Frequency",
+                "type": "select",
+                "options": [
+                    "Daily",
+                    "3-4 times/week",
+                    "Weekly",
+                    "Rarely"
+                ]
+            },
+            {
+                "key": "milk_intake",
+                "label": "Milk/Curd Intake (ml/day)",
+                "type": "number"
+            },
+            {
+                "key": "oil_intake",
+                "label": "Oil/Fat Intake (spoons/day)",
+                "type": "number"
+            },
+            {
+                "key": "sugar_intake",
+                "label": "Sugar/Jaggery Intake (spoons/day)",
+                "type": "number"
+            },
+            {
+                "key": "dietary_diversity_score",
+                "label": "Dietary Diversity Score (out of 10)",
+                "type": "number"
+            }
+        ]
+    },
+    {
+        "form_id": "psychological_screening_v1",
+        "title": "Psychological & Mental Health Screening",
+        "fields": [
+            {
+                "key": "sleep_quality",
+                "label": "Sleep Quality",
+                "type": "select",
+                "options": [
+                    "Good",
+                    "Fair",
+                    "Poor",
+                    "Disturbed"
+                ]
+            },
+            {
+                "key": "stress_level",
+                "label": "Perceived Stress Level",
+                "type": "select",
+                "options": [
+                    "Low",
+                    "Moderate",
+                    "High",
+                    "Very High"
+                ]
+            },
+            {
+                "key": "mood",
+                "label": "General Mood (Last 2 weeks)",
+                "type": "select",
+                "options": [
+                    "Happy/Calm",
+                    "Anxious",
+                    "Depressed/Low",
+                    "Irritable"
+                ]
+            },
+            {
+                "key": "substance_use",
+                "label": "History of Substance Use",
+                "type": "checkbox"
+            },
+            {
+                "key": "family_conflict",
+                "label": "Any Recent Family Conflicts?",
+                "type": "textarea"
+            }
+        ]
+    },
+    {
+        "form_id": "cultural_assessment_v1",
+        "title": "Cultural & Social Environment",
+        "fields": [
+            {
+                "key": "religion",
+                "label": "Religion",
+                "type": "text"
+            },
+            {
+                "key": "caste",
+                "label": "Caste/Category",
+                "type": "select",
+                "options": [
+                    "General",
+                    "OBC",
+                    "SC",
+                    "ST",
+                    "Other"
+                ]
+            },
+            {
+                "key": "decision_maker",
+                "label": "Primary Decision Maker in Family",
+                "type": "text"
+            },
+            {
+                "key": "health_beliefs",
+                "label": "Traditional Health Beliefs/Taboos",
+                "type": "textarea"
+            },
+            {
+                "key": "social_participation",
+                "label": "Participation in Community Events",
+                "type": "select",
+                "options": [
+                    "Active",
+                    "Occasional",
+                    "Rare",
+                    "Never"
+                ]
+            }
+        ]
+    },
+    {
+        "form_id": "village_profile_v1",
+        "title": "Village / Community Profile",
+        "fields": [
+            {
+                "key": "village_name",
+                "label": "Name of Village / Ward",
+                "type": "text",
+                "required": true
+            },
+            {
+                "key": "population_total",
+                "label": "Total Population",
+                "type": "number"
+            },
+            {
+                "key": "total_households",
+                "label": "Total Households",
+                "type": "number"
+            },
+            {
+                "key": "population_male",
+                "label": "Male Population",
+                "type": "number"
+            },
+            {
+                "key": "population_female",
+                "label": "Female Population",
+                "type": "number"
+            },
+            {
+                "key": "population_under5",
+                "label": "Children Under 5 Years",
+                "type": "number"
+            },
+            {
+                "key": "population_adolescent",
+                "label": "Adolescents (10-19 years)",
+                "type": "number"
+            },
+            {
+                "key": "population_elderly",
+                "label": "Elderly (60+ years)",
+                "type": "number"
+            },
+            {
+                "key": "pregnant_women",
+                "label": "Currently Pregnant Women",
+                "type": "number"
+            },
+            {
+                "key": "lactating_mothers",
+                "label": "Lactating Mothers",
+                "type": "number"
+            },
+            {
+                "key": "distance_phc",
+                "label": "Distance to nearest PHC (km)",
+                "type": "number"
+            },
+            {
+                "key": "distance_chc",
+                "label": "Distance to nearest CHC (km)",
+                "type": "number"
+            },
+            {
+                "key": "asha_workers",
+                "label": "Number of ASHA Workers",
+                "type": "number"
+            },
+            {
+                "key": "anm_staff",
+                "label": "Number of ANM Staff",
+                "type": "number"
+            },
+            {
+                "key": "anganwadi_centers",
+                "label": "Number of Anganwadi Centers",
+                "type": "number"
+            },
+            {
+                "key": "anganwadi_workers",
+                "label": "Number of Anganwadi Workers",
+                "type": "number"
+            },
+            {
+                "key": "health_volunteers",
+                "label": "Community Health Volunteers",
+                "type": "number"
+            },
+            {
+                "key": "water_sources",
+                "label": "Common Water Sources",
+                "type": "textarea"
+            },
+            {
+                "key": "sanitation_status",
+                "label": "General Sanitation Status",
+                "type": "select",
+                "options": [
+                    "Good",
+                    "Average",
+                    "Poor"
+                ]
+            },
+            {
+                "key": "odf_status",
+                "label": "Open Defecation Free (ODF) Status",
+                "type": "select",
+                "options": [
+                    "ODF Certified",
+                    "ODF Plus",
+                    "Partially ODF",
+                    "Not ODF"
+                ]
+            },
+            {
+                "key": "health_resources",
+                "label": "Available Health Resources (Sub-center, Anganwadi, ASHA)",
+                "type": "textarea"
+            },
+            {
+                "key": "cold_chain_facility",
+                "label": "Cold Chain Facility Available?",
+                "type": "checkbox"
+            },
+            {
+                "key": "vaccine_storage",
+                "label": "Vaccine Storage Capacity (liters)",
+                "type": "number"
+            },
+            {
+                "key": "immunization_sessions_monthly",
+                "label": "Planned Immunization Sessions per Month",
+                "type": "number"
+            },
+            {
+                "key": "vhnd_frequency",
+                "label": "VHND (Village Health & Nutrition Day) Frequency",
+                "type": "select",
+                "options": [
+                    "Weekly",
+                    "Fortnightly",
+                    "Monthly",
+                    "Irregular"
+                ]
+            },
+            {
+                "key": "fp_methods_available",
+                "label": "Family Planning Methods Available",
+                "type": "textarea",
+                "placeholder": "e.g., Condoms, OCPs, IUCDs, Injectable, Sterilization"
+            },
+            {
+                "key": "fp_acceptors_current",
+                "label": "Current FP Acceptors (Approx.)",
+                "type": "number"
+            },
+            {
+                "key": "anc_coverage_percent",
+                "label": "ANC Coverage (%)",
+                "type": "number"
+            },
+            {
+                "key": "institutional_delivery_percent",
+                "label": "Institutional Delivery Rate (%)",
+                "type": "number"
+            },
+            {
+                "key": "immunization_coverage_percent",
+                "label": "Full Immunization Coverage (%)",
+                "type": "number"
+            },
+            {
+                "key": "high_risk_areas",
+                "label": "High Risk Areas / Pockets",
+                "type": "textarea",
+                "placeholder": "Areas with poor access, disease outbreaks, malnutrition clusters"
+            },
+            {
+                "key": "endemic_diseases",
+                "label": "Endemic Diseases",
+                "type": "textarea",
+                "placeholder": "e.g., Malaria, Dengue, TB, Leprosy"
+            },
+            {
+                "key": "ncd_burden",
+                "label": "NCD Burden (HTN, DM cases approx.)",
+                "type": "textarea"
+            },
+            {
+                "key": "annual_vaccine_requirement",
+                "label": "Annual Vaccine Requirement Estimate",
+                "type": "textarea",
+                "placeholder": "BCG, DPT, OPV, Measles, etc. with quantities"
+            },
+            {
+                "key": "annual_fp_requirement",
+                "label": "Annual FP Commodities Requirement",
+                "type": "textarea",
+                "placeholder": "Condoms, OCPs, IUCDs - estimated quantities"
+            },
+            {
+                "key": "iec_materials_needed",
+                "label": "IEC Materials Needed",
+                "type": "textarea",
+                "placeholder": "Posters, pamphlets, flip charts on specific topics"
+            },
+            {
+                "key": "major_health_problems",
+                "label": "Major Health Problems Identified",
+                "type": "textarea"
+            },
+            {
+                "key": "health_needs_perceived",
+                "label": "Community's Perceived Health Needs",
+                "type": "textarea",
+                "placeholder": "What do the people say they need?"
+            },
+            {
+                "key": "health_gaps_observed",
+                "label": "Student's Observed Health Gaps",
+                "type": "textarea",
+                "placeholder": "Gaps in service delivery, infrastructure, or awareness"
+            },
+            {
+                "key": "action_plan",
+                "label": "Proposed Action Plan for Next Year",
+                "type": "textarea",
+                "placeholder": "Interventions, campaigns, training sessions planned"
+            }
+        ]
+    },
+    {
+        "form_id": "antenatal_care_v1",
+        "title": "ANC Assessment (PMSMA Guidelines)",
+        "fields": [
+            {
+                "key": "lmp",
+                "label": "LMP Date",
+                "type": "date",
+                "required": true
+            },
+            {
+                "key": "edd",
+                "label": "Expected Date of Delivery",
+                "type": "date"
+            },
+            {
+                "key": "parity",
+                "label": "Parity (G P L A)",
+                "type": "text",
+                "placeholder": "e.g., G2 P1 L1 A0"
+            },
+            {
+                "key": "trimester",
+                "label": "Current Trimester",
+                "type": "select",
+                "options": [
+                    "First",
+                    "Second",
+                    "Third"
+                ]
+            },
+            {
+                "key": "anc_visits",
+                "label": "Number of ANC Visits done",
+                "type": "number"
+            },
+            {
+                "key": "td_dose",
+                "label": "Td Doses Received",
+                "type": "select",
+                "options": [
+                    "None",
+                    "Td-1",
+                    "Td-2/Booster"
+                ]
+            },
+            {
+                "key": "ifa_compliance",
+                "label": "Consuming IFA Tablets regularly?",
+                "type": "select",
+                "options": [
+                    "Yes",
+                    "No",
+                    "Irregular"
+                ]
+            },
+            {
+                "key": "haemoglobin",
+                "label": "Haemoglobin (Hb) g/dL",
+                "type": "number"
+            },
+            {
+                "key": "bp",
+                "label": "Blood Pressure (mmHg)",
+                "type": "text",
+                "placeholder": "e.g., 120/80"
+            },
+            {
+                "key": "urine_test",
+                "label": "Urine Albumin/Sugar",
+                "type": "select",
+                "options": [
+                    "Nil",
+                    "Trace",
+                    "Positive",
+                    "Not Done"
+                ]
+            },
+            {
+                "key": "high_risk_status",
+                "label": "Is High Risk Pregnancy (HRP)?",
+                "type": "checkbox"
+            },
+            {
+                "key": "high_risk_reason",
+                "label": "Reason for HRP (if applicable)",
+                "type": "textarea",
+                "placeholder": "Severe Anemia, PIH, Diabetes, C-Section Hx, etc."
+            }
+        ]
+    },
+    {
+        "form_id": "individual_health_needs_v1",
+        "title": "Individual Health Needs Assessment",
+        "fields": [
+            {
+                "key": "assessment_date",
+                "label": "Date of Assessment",
+                "type": "date",
+                "required": true
+            },
+            {
+                "key": "medical_needs",
+                "label": "Medical / Clinical Needs",
+                "type": "textarea",
+                "placeholder": "Need for referral, medication, surgery, etc."
+            },
+            {
+                "key": "social_needs",
+                "label": "Social / Rehab Needs",
+                "type": "textarea",
+                "placeholder": "Pension, disability certificate, assistive device"
+            },
+            {
+                "key": "financial_needs",
+                "label": "Financial Needs for Health",
+                "type": "textarea",
+                "placeholder": "Insurance coverage, OOP expenditure support"
+            },
+            {
+                "key": "action_plan",
+                "label": "Proposed Action Plan",
+                "type": "textarea"
+            }
+        ]
+    },
+    {
+        "form_id": "under_5_assessment_v1",
+        "title": "Under-5 Child Assessment",
+        "fields": [
+            {
+                "key": "immunization_status",
+                "label": "Immunization Status (as per NIS)",
+                "type": "select",
+                "options": [
+                    "Up-to-date",
+                    "Partial",
+                    "Unimmunized"
+                ]
+            },
+            {
+                "key": "weight_tracking",
+                "label": "Weight for Age (Growth Chart)",
+                "type": "select",
+                "options": [
+                    "Green (Normal)",
+                    "Yellow (Moderately Underweight)",
+                    "Orange (Severely Underweight)"
+                ]
+            },
+            {
+                "key": "breastfeeding",
+                "label": "Exclusive Breastfeeding (if <6m)",
+                "type": "select",
+                "options": [
+                    "Yes",
+                    "No",
+                    "Not Applicable"
+                ]
+            },
+            {
+                "key": "deworming",
+                "label": "Deworming given in last 6 months?",
+                "type": "checkbox"
+            },
+            {
+                "key": "developmental_milestones",
+                "label": "Developmental Milestones delay?",
+                "type": "textarea"
+            }
+        ]
+    },
+    {
+        "form_id": "geriatric_assessment_v1",
+        "title": "Geriatric Assessment (>60 yrs)",
+        "fields": [
+            {
+                "key": "adl_status",
+                "label": "Activities of Daily Living (ADL)",
+                "type": "select",
+                "options": [
+                    "Independent",
+                    "Needs Assistance",
+                    "Dependent"
+                ]
+            },
+            {
+                "key": "mobility",
+                "label": "Mobility Status",
+                "type": "select",
+                "options": [
+                    "Normal",
+                    "Uses Stick/Walker",
+                    "Bedridden"
+                ]
+            },
+            {
+                "key": "sensory_issues",
+                "label": "Vision/Hearing Impairment",
+                "type": "textarea"
+            },
+            {
+                "key": "chronic_medication",
+                "label": "Adherence to Daily Medication",
+                "type": "select",
+                "options": [
+                    "Regular",
+                    "Irregular",
+                    "Stopped"
+                ]
+            },
+            {
+                "key": "mental_state",
+                "label": "Memory/Cognitive Issues",
+                "type": "textarea"
+            }
+        ]
+    },
+    {
+        "form_id": "disability_needs_v1",
+        "title": "Special Needs / Disability Assessment",
+        "fields": [
+            {
+                "key": "disability_type",
+                "label": "Type of Disability",
+                "type": "select",
+                "options": [
+                    "Locomotor",
+                    "Visual",
+                    "Hearing",
+                    "Intellectual",
+                    "Other"
+                ]
+            },
+            {
+                "key": "disability_percentage",
+                "label": "Percentage (if certified)",
+                "type": "number"
+            },
+            {
+                "key": "assistive_devices",
+                "label": "Need for Assistive Devices?",
+                "type": "textarea"
+            },
+            {
+                "key": "social_benefits",
+                "label": "Receiving Disability Pension?",
+                "type": "checkbox"
+            }
+        ]
+    },
+    {
+        "form_id": "ncd_screening_v1",
+        "title": "NCD Screening (NPCDCS)",
+        "fields": [
+            {
+                "key": "screening_date",
+                "label": "Screening Date",
+                "type": "date",
+                "required": true
+            },
+            {
+                "key": "risk_factors",
+                "label": "Risk Factors",
+                "type": "select",
+                "options": [
+                    "None",
+                    "Smoking",
+                    "Alcohol",
+                    "Physical Inactivity",
+                    "Obesity"
+                ]
+            },
+            {
+                "key": "bp_systolic",
+                "label": "BP Systolic (mmHg)",
+                "type": "number"
+            },
+            {
+                "key": "bp_diastolic",
+                "label": "BP Diastolic (mmHg)",
+                "type": "number"
+            },
+            {
+                "key": "rbs",
+                "label": "Random Blood Sugar (mg/dL)",
+                "type": "number"
+            },
+            {
+                "key": "history_ncd",
+                "label": "Known Case of HTN/DM?",
+                "type": "checkbox"
+            }
+        ]
+    },
+    {
+        "form_id": "cd_screening_v1",
+        "title": "Communicable Disease Screening",
+        "fields": [
+            {
+                "key": "symptoms_date",
+                "label": "Date of Assessment",
+                "type": "date",
+                "required": true
+            },
+            {
+                "key": "cough_duration",
+                "label": "Cough > 2 weeks?",
+                "type": "checkbox"
+            },
+            {
+                "key": "fever_duration",
+                "label": "Fever > 2 weeks?",
+                "type": "checkbox"
+            },
+            {
+                "key": "weight_loss",
+                "label": "Significant Weight Loss?",
+                "type": "checkbox"
+            },
+            {
+                "key": "skin_patches",
+                "label": "Hypopigmented/Anesthetic Patches?",
+                "type": "checkbox"
+            },
+            {
+                "key": "vector_history",
+                "label": "History of Malaria/Dengue (Last 6m)?",
+                "type": "checkbox"
+            }
+        ]
+    }
+]
