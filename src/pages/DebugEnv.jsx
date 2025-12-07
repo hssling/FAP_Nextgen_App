@@ -44,7 +44,13 @@ const DebugEnv = () => {
                     <p style={{ color: url ? 'green' : 'red', fontWeight: 'bold' }}>
                         {url ? '✅ DETECTED' : '❌ MISSING'}
                     </p>
-                    {url && <p style={{ fontSize: '0.8rem', color: '#666' }}>Example: {url.substring(0, 15)}...</p>}
+                    {url && (
+                        <div style={{ fontSize: '0.8rem', color: '#666', background: '#e5e7eb', padding: '0.5rem', borderRadius: '4px', wordBreak: 'break-all' }}>
+                            Start: "{url.substring(0, 1)}"<br />
+                            End: "{url.substring(url.length - 1)}"<br />
+                            Full: {url ? url.substring(0, 15) + '...' : 'N/A'}
+                        </div>
+                    )}
                 </div>
 
                 <hr style={{ margin: '1rem 0' }} />
