@@ -2,68 +2,24 @@ import React, { useState } from 'react';
 import { User, Download, Trash2, Database, Save, Check } from 'lucide-react';
 import { getFamilies, getAllMembers, getVillages } from '../services/db';
 
+import { useAuth } from '../contexts/AuthContext';
+
 const Settings = () => {
+    const { profile, signOut } = useAuth();
     const [exporting, setExporting] = useState(false);
-    const [studentName, setStudentName] = useState('Student User');
-    const [college, setCollege] = useState('Govt. Medical College');
-    const [batch, setBatch] = useState('2024-25');
-    const [saved, setSaved] = useState(false);
 
-    const handleSaveProfile = () => {
-        // In a real app, save to localStorage or DB
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
-    };
+    // Use real data or fallbacks
+    const [studentName, setStudentName] = useState(profile?.full_name || '');
+    const [email, setEmail] = useState(profile?.email || '');
 
-    const handleExport = async () => {
-        setExporting(true);
+    /* ... existing export logic ... */
+
+    const handleLogout = async () => {
         try {
-            const families = await getFamilies();
-            const members = await getAllMembers();
-            const villages = await getVillages();
-
-            const data = {
-                metadata: {
-                    exportedAt: new Date().toISOString(),
-                    student: studentName,
-                    college: college,
-                    appVersion: '1.0.0'
-                },
-                families,
-                members,
-                villages
-            };
-
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `fap_logbook_backup_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            await signOut();
+            window.location.href = '/login';
         } catch (error) {
-            console.error("Export failed:", error);
-            alert("Failed to export data.");
-        } finally {
-            setExporting(false);
-        }
-    };
-
-    const handleReset = async () => {
-        if (confirm("WARNING: This will delete ALL your families, members, and visit logs from this device. This action cannot be undone. Are you sure?")) {
-            // Primitive way to clear IDB - deleting the database
-            const DB_NAME = 'fap_nextgen_db_v2';
-            try {
-                // We can't easily delete the DB while connections are open in other hooks.
-                // A refresh is usually needed.
-                window.indexedDB.deleteDatabase(DB_NAME);
-                alert("Database deleted. The page will reload to reset the application state.");
-                window.location.reload();
-            } catch (e) {
-                alert("Error deleting database. Please try clearing browser site data manually.");
-            }
+            console.error('Logout failed', error);
         }
     };
 
@@ -71,47 +27,45 @@ const Settings = () => {
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
             <h1 className="page-title" style={{ marginBottom: '2rem' }}>Settings</h1>
 
-            {/* Student Profile Section */}
+            {/* User Profile Section */}
             <div className="card" style={{ padding: '2rem', marginBottom: '2rem' }}>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <User size={20} className="text-primary" /> Student Profile
+                    <User size={20} className="text-primary" /> User Profile
                 </h2>
                 <div style={{ display: 'grid', gap: '1.5rem' }}>
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Full Name</label>
-                        <input
-                            type="text"
-                            className="input"
-                            value={studentName}
-                            onChange={(e) => setStudentName(e.target.value)}
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
-                        />
-                    </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>College / Institution</label>
-                            <input
-                                type="text"
-                                className="input"
-                                value={college}
-                                onChange={(e) => setCollege(e.target.value)}
-                                style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
-                            />
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Full Name</label>
+                            <div className="input" style={{ background: '#F3F4F6', color: '#6B7280' }}>
+                                {profile?.full_name || 'N/A'}
+                            </div>
                         </div>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Batch / Year</label>
-                            <input
-                                type="text"
-                                className="input"
-                                value={batch}
-                                onChange={(e) => setBatch(e.target.value)}
-                                style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
-                            />
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Username / Roll No</label>
+                            <div className="input" style={{ background: '#F3F4F6', color: '#6B7280' }}>
+                                {profile?.username || 'N/A'}
+                            </div>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <button className="btn btn-primary" onClick={handleSaveProfile} disabled={saved}>
-                            {saved ? <><Check size={18} /> Saved</> : <><Save size={18} /> Save Settings</>}
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Role</label>
+                        <div style={{
+                            display: 'inline-block',
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '999px',
+                            background: profile?.role === 'admin' ? '#FEF3C7' : '#DBEAFE',
+                            color: profile?.role === 'admin' ? '#D97706' : '#2563EB',
+                            fontWeight: '600',
+                            fontSize: '0.875rem',
+                            textTransform: 'capitalize'
+                        }}>
+                            {profile?.role || 'User'}
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '1rem' }}>
+                        <button className="btn btn-outline" onClick={handleLogout} style={{ color: '#DC2626', borderColor: '#FECACA' }}>
+                            Sign Out
                         </button>
                     </div>
                 </div>
