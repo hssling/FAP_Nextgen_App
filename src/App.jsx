@@ -15,6 +15,7 @@ import Register from './pages/Register';
 import TeacherDashboard from './pages/TeacherDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import LearningObjectives from './pages/LearningObjectives';
+import DebugEnv from './pages/DebugEnv';
 import TeacherStudentAssignment from './components/TeacherStudentAssignment';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -116,6 +117,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
       <Route path="/register" element={user ? <Navigate to="/" /> : <Register />} />
+      <Route path="/debug" element={<DebugEnv />} />
 
       {/* Student Routes */}
       <Route path="/" element={<ProtectedRoute allowedRoles={['student']}><Layout /></ProtectedRoute>}>
