@@ -1,0 +1,569 @@
+{
+    "program_overview": {
+        "title": "Family Adoption Programme (FAP)",
+        "duration": "3 Years (Phase 1, Phase 2, Phase 3)",
+        "nmc_mandate": "Graduate Medical Education Regulations 2023",
+        "objective": "To provide experiential learning in community health and develop socially responsible healthcare professionals"
+    },
+    "year_1": {
+        "phase": "Foundation Phase",
+        "duration": "1st Professional Year",
+        "focus": "Understanding social determinants of health and basic family assessment",
+        "competencies": [
+            {
+                "code": "CM 1.1",
+                "domain": "Community Medicine",
+                "competency": "Demonstrate understanding of social determinants of health",
+                "description": "Identify and describe how social, economic, cultural, and environmental factors influence health and disease in the adopted family",
+                "level": "Knows",
+                "assessment_methods": [
+                    "Logbook",
+                    "Reflection",
+                    "Family profile report"
+                ]
+            },
+            {
+                "code": "CM 1.2",
+                "domain": "Community Medicine",
+                "competency": "Conduct basic family health assessment",
+                "description": "Perform systematic family registration, household survey, and basic health assessment of all family members",
+                "level": "Knows How",
+                "assessment_methods": [
+                    "Direct observation",
+                    "Logbook",
+                    "OSCE"
+                ]
+            },
+            {
+                "code": "CM 1.3",
+                "domain": "Community Medicine",
+                "competency": "Identify environmental health hazards",
+                "description": "Assess household environment including water source, sanitation, waste disposal, ventilation, and vector breeding sites",
+                "level": "Knows How",
+                "assessment_methods": [
+                    "Checklist",
+                    "Logbook",
+                    "Photo documentation"
+                ]
+            },
+            {
+                "code": "CM 1.4",
+                "domain": "Community Medicine",
+                "competency": "Document health data systematically",
+                "description": "Maintain accurate and complete records of family health data using standardized formats",
+                "level": "Shows How",
+                "assessment_methods": [
+                    "Logbook review",
+                    "Data quality audit"
+                ]
+            },
+            {
+                "code": "AETCOM 1.1",
+                "domain": "AETCOM",
+                "competency": "Demonstrate empathy and respect",
+                "description": "Interact with family members with empathy, respect for cultural beliefs, and maintain confidentiality",
+                "level": "Shows How",
+                "assessment_methods": [
+                    "Faculty observation",
+                    "Family feedback",
+                    "Reflection"
+                ]
+            }
+        ],
+        "specific_learning_objectives": [
+            "Understand the concept of family as a unit of health care",
+            "Identify family structure, composition, and life cycle stage",
+            "Assess socioeconomic status using Modified Kuppuswamy Scale",
+            "Identify environmental health hazards in the household",
+            "Understand health-seeking behavior of the family",
+            "Recognize cultural and religious factors affecting health",
+            "Document baseline health status of all family members",
+            "Establish rapport and trust with the family",
+            "Understand ethical principles in community health practice"
+        ],
+        "expected_activities": [
+            {
+                "activity": "Family Registration",
+                "timeline": "Week 1-2",
+                "description": "Complete household registration form with demographic details, family composition, and socioeconomic assessment",
+                "deliverable": "Completed registration form in logbook",
+                "competencies_addressed": [
+                    "CM 1.2",
+                    "CM 1.4"
+                ]
+            },
+            {
+                "activity": "Household Survey",
+                "timeline": "Week 2-3",
+                "description": "Conduct comprehensive household survey including housing, water, sanitation, waste disposal, and environmental assessment",
+                "deliverable": "Household survey form with observations and photos",
+                "competencies_addressed": [
+                    "CM 1.3",
+                    "CM 1.4"
+                ]
+            },
+            {
+                "activity": "Baseline Health Assessment",
+                "timeline": "Week 3-6",
+                "description": "Conduct initial health assessment of all family members including vital signs, anthropometry, and health history",
+                "deliverable": "Individual health assessment forms for each member",
+                "competencies_addressed": [
+                    "CM 1.2",
+                    "CM 1.4"
+                ]
+            },
+            {
+                "activity": "Socioeconomic Assessment",
+                "timeline": "Week 2-3",
+                "description": "Apply Modified Kuppuswamy Scale to determine socioeconomic status",
+                "deliverable": "Completed Kuppuswamy assessment with score and classification",
+                "competencies_addressed": [
+                    "CM 1.1",
+                    "CM 1.4"
+                ]
+            },
+            {
+                "activity": "First Reflection",
+                "timeline": "Week 4",
+                "description": "Write reflective entry on first family visit experience, challenges faced, and learning points",
+                "deliverable": "Reflection entry (minimum 300 words)",
+                "competencies_addressed": [
+                    "AETCOM 1.1"
+                ]
+            },
+            {
+                "activity": "Family Health Profile",
+                "timeline": "Week 8",
+                "description": "Compile comprehensive family health profile including genogram, family health tree, and identified health problems",
+                "deliverable": "Family health profile report",
+                "competencies_addressed": [
+                    "CM 1.1",
+                    "CM 1.2",
+                    "CM 1.4"
+                ]
+            }
+        ],
+        "minimum_visits": 6,
+        "assessment_criteria": {
+            "logbook_completion": "100% of required forms",
+            "visit_frequency": "At least 1 visit per month",
+            "reflection_quality": "Demonstrates critical thinking and self-awareness",
+            "family_rapport": "Positive feedback from family",
+            "data_accuracy": "Complete and accurate documentation"
+        }
+    },
+    "year_2": {
+        "phase": "Intermediate Phase",
+        "duration": "2nd Professional Year",
+        "focus": "Comprehensive health needs assessment and intervention planning",
+        "competencies": [
+            {
+                "code": "CM 2.1",
+                "domain": "Community Medicine",
+                "competency": "Conduct comprehensive health needs assessment",
+                "description": "Identify health needs across life cycle stages using appropriate assessment tools and screening protocols",
+                "level": "Shows How",
+                "assessment_methods": [
+                    "Case presentation",
+                    "Logbook",
+                    "OSCE"
+                ]
+            },
+            {
+                "code": "CM 2.2",
+                "domain": "Community Medicine",
+                "competency": "Identify health problems using clinical reasoning",
+                "description": "Analyze health data to identify priority health problems and their determinants",
+                "level": "Shows How",
+                "assessment_methods": [
+                    "Problem list",
+                    "Case discussion",
+                    "Written exam"
+                ]
+            },
+            {
+                "code": "CM 2.3",
+                "domain": "Community Medicine",
+                "competency": "Plan and implement health interventions",
+                "description": "Develop evidence-based intervention plans for identified health problems and implement feasible interventions",
+                "level": "Shows How",
+                "assessment_methods": [
+                    "Intervention plan",
+                    "Implementation report",
+                    "Outcome documentation"
+                ]
+            },
+            {
+                "code": "CM 2.4",
+                "domain": "Community Medicine",
+                "competency": "Conduct health education sessions",
+                "description": "Plan and deliver health education sessions on priority health topics using appropriate methods and materials",
+                "level": "Shows How",
+                "assessment_methods": [
+                    "Direct observation",
+                    "Session plan",
+                    "Family feedback"
+                ]
+            },
+            {
+                "code": "CM 2.5",
+                "domain": "Community Medicine",
+                "competency": "Understand community health programs",
+                "description": "Explain national health programs relevant to family health needs and facilitate access to these programs",
+                "level": "Knows How",
+                "assessment_methods": [
+                    "Written exam",
+                    "Viva",
+                    "Program linkage documentation"
+                ]
+            }
+        ],
+        "specific_learning_objectives": [
+            "Conduct life-cycle specific health assessments (infant, child, adolescent, adult, elderly)",
+            "Screen for non-communicable diseases (hypertension, diabetes, obesity)",
+            "Screen for communicable diseases (TB, leprosy, vector-borne diseases)",
+            "Assess mental health using validated screening tools (PHQ-9, GAD-7)",
+            "Conduct nutritional assessment and dietary counseling",
+            "Identify high-risk individuals and conditions",
+            "Develop prioritized problem list with clinical reasoning",
+            "Plan evidence-based interventions for identified problems",
+            "Deliver health education on priority topics",
+            "Link family to appropriate health services and schemes",
+            "Understand and apply principles of behavior change communication",
+            "Monitor intervention compliance and outcomes"
+        ],
+        "expected_activities": [
+            {
+                "activity": "Life-Cycle Specific Assessments",
+                "timeline": "Month 1-3",
+                "description": "Conduct age-appropriate assessments for each family member (growth monitoring for children, NCD screening for adults, geriatric assessment for elderly)",
+                "deliverable": "Completed assessment forms with auto-calculated results",
+                "competencies_addressed": [
+                    "CM 2.1",
+                    "CM 2.2"
+                ]
+            },
+            {
+                "activity": "Mental Health Screening",
+                "timeline": "Month 2",
+                "description": "Administer PHQ-9 and GAD-7 to adult family members, interpret scores, and identify those needing referral",
+                "deliverable": "Completed screening forms with risk stratification",
+                "competencies_addressed": [
+                    "CM 2.1",
+                    "CM 2.2"
+                ]
+            },
+            {
+                "activity": "Problem Identification & Prioritization",
+                "timeline": "Month 3",
+                "description": "Compile comprehensive problem list, analyze determinants, and prioritize based on severity and feasibility",
+                "deliverable": "Prioritized problem list with justification",
+                "competencies_addressed": [
+                    "CM 2.2"
+                ]
+            },
+            {
+                "activity": "Intervention Planning",
+                "timeline": "Month 4",
+                "description": "Develop detailed intervention plans for top 3 priority problems including objectives, activities, timeline, and expected outcomes",
+                "deliverable": "Written intervention plans",
+                "competencies_addressed": [
+                    "CM 2.3"
+                ]
+            },
+            {
+                "activity": "Health Education Sessions",
+                "timeline": "Month 4-8",
+                "description": "Conduct minimum 3 health education sessions on topics relevant to family needs (e.g., diabetes management, hygiene, family planning)",
+                "deliverable": "Session plans, IEC materials, attendance records, feedback",
+                "competencies_addressed": [
+                    "CM 2.4"
+                ]
+            },
+            {
+                "activity": "Intervention Implementation",
+                "timeline": "Month 5-10",
+                "description": "Implement planned interventions, document compliance, and monitor progress",
+                "deliverable": "Implementation logs, progress notes",
+                "competencies_addressed": [
+                    "CM 2.3"
+                ]
+            },
+            {
+                "activity": "Program Linkage",
+                "timeline": "Month 6",
+                "description": "Identify eligible family members for government health schemes (PMJAY, PMSBY, pension) and facilitate enrollment",
+                "deliverable": "Documentation of schemes accessed",
+                "competencies_addressed": [
+                    "CM 2.5"
+                ]
+            },
+            {
+                "activity": "Community Diagnosis",
+                "timeline": "Month 8-10",
+                "description": "Participate in village/ward level health assessment and identify community health priorities",
+                "deliverable": "Community diagnosis report",
+                "competencies_addressed": [
+                    "CM 2.1",
+                    "CM 2.2"
+                ]
+            },
+            {
+                "activity": "Monthly Reflections",
+                "timeline": "Every month",
+                "description": "Write monthly reflective entries on learning experiences, challenges, and professional growth",
+                "deliverable": "12 reflection entries",
+                "competencies_addressed": [
+                    "AETCOM"
+                ]
+            }
+        ],
+        "minimum_visits": 12,
+        "assessment_criteria": {
+            "assessment_completion": "All life-cycle assessments completed",
+            "problem_identification": "Comprehensive and prioritized problem list",
+            "intervention_quality": "Evidence-based and culturally appropriate",
+            "health_education": "Minimum 3 sessions conducted effectively",
+            "program_linkage": "At least 1 family member enrolled in scheme",
+            "reflection_depth": "Demonstrates advanced clinical reasoning"
+        }
+    },
+    "year_3": {
+        "phase": "Advanced Phase",
+        "duration": "3rd Professional Year (7th Semester)",
+        "focus": "Continuity of care, outcome evaluation, and comprehensive reporting",
+        "competencies": [
+            {
+                "code": "CM 3.1",
+                "domain": "Community Medicine",
+                "competency": "Demonstrate continuity of care",
+                "description": "Provide continuous, comprehensive care to the adopted family over 3 years with regular follow-up and monitoring",
+                "level": "Does",
+                "assessment_methods": [
+                    "Visit logs",
+                    "Longitudinal case study",
+                    "Family testimonial"
+                ]
+            },
+            {
+                "code": "CM 3.2",
+                "domain": "Community Medicine",
+                "competency": "Evaluate intervention outcomes",
+                "description": "Assess effectiveness of implemented interventions using objective indicators and document health improvements",
+                "level": "Shows How",
+                "assessment_methods": [
+                    "Outcome report",
+                    "Before-after analysis",
+                    "Case presentation"
+                ]
+            },
+            {
+                "code": "CM 3.3",
+                "domain": "Community Medicine",
+                "competency": "Conduct community-based research",
+                "description": "Identify a community health problem, design a simple research study, collect and analyze data, and present findings",
+                "level": "Shows How",
+                "assessment_methods": [
+                    "Research proposal",
+                    "Data analysis",
+                    "Presentation"
+                ]
+            },
+            {
+                "code": "CM 3.4",
+                "domain": "Community Medicine",
+                "competency": "Demonstrate leadership in community health",
+                "description": "Organize and lead community health activities such as health camps, awareness campaigns, or screening programs",
+                "level": "Shows How",
+                "assessment_methods": [
+                    "Event report",
+                    "Faculty observation",
+                    "Community feedback"
+                ]
+            },
+            {
+                "code": "CM 3.5",
+                "domain": "Community Medicine",
+                "competency": "Produce comprehensive family health report",
+                "description": "Compile and present a comprehensive report documenting 3-year journey with the family including assessments, interventions, and outcomes",
+                "level": "Does",
+                "assessment_methods": [
+                    "Final report",
+                    "Presentation",
+                    "Viva voce"
+                ]
+            }
+        ],
+        "specific_learning_objectives": [
+            "Demonstrate sustained engagement with adopted family",
+            "Track health parameters longitudinally (baseline → follow-up → endline)",
+            "Evaluate intervention effectiveness using objective indicators",
+            "Document health improvements and positive changes",
+            "Identify persistent challenges and barriers to health",
+            "Conduct community-based research on priority health issue",
+            "Organize and lead community health activities",
+            "Develop comprehensive family health report",
+            "Present case study to peers and faculty",
+            "Reflect on professional growth and competency development",
+            "Demonstrate cultural competence and ethical practice"
+        ],
+        "expected_activities": [
+            {
+                "activity": "Endline Assessment",
+                "timeline": "Month 1-2",
+                "description": "Conduct comprehensive endline assessment of all family members using same tools as baseline for comparison",
+                "deliverable": "Endline assessment forms with trend analysis",
+                "competencies_addressed": [
+                    "CM 3.1",
+                    "CM 3.2"
+                ]
+            },
+            {
+                "activity": "Outcome Evaluation",
+                "timeline": "Month 2-3",
+                "description": "Analyze baseline vs endline data, calculate outcome indicators, and assess intervention effectiveness",
+                "deliverable": "Outcome evaluation report with charts/graphs",
+                "competencies_addressed": [
+                    "CM 3.2"
+                ]
+            },
+            {
+                "activity": "Community Research Project",
+                "timeline": "Month 3-6",
+                "description": "Design and conduct a community-based research study on a priority health issue identified during FAP",
+                "deliverable": "Research report with methodology, findings, and recommendations",
+                "competencies_addressed": [
+                    "CM 3.3"
+                ]
+            },
+            {
+                "activity": "Health Camp Organization",
+                "timeline": "Month 4",
+                "description": "Organize a health camp in the adopted village/ward providing screening, health education, and referral services",
+                "deliverable": "Camp report with attendance, services provided, and outcomes",
+                "competencies_addressed": [
+                    "CM 3.4"
+                ]
+            },
+            {
+                "activity": "Comprehensive Family Report",
+                "timeline": "Month 5-6",
+                "description": "Compile comprehensive report covering: family profile, baseline assessment, problems identified, interventions implemented, outcomes achieved, lessons learned",
+                "deliverable": "Final family health report (minimum 20 pages)",
+                "competencies_addressed": [
+                    "CM 3.5"
+                ]
+            },
+            {
+                "activity": "Case Presentation",
+                "timeline": "Month 7",
+                "description": "Present family case study to department highlighting key learnings, challenges, and outcomes",
+                "deliverable": "PowerPoint presentation + oral presentation",
+                "competencies_addressed": [
+                    "CM 3.5"
+                ]
+            },
+            {
+                "activity": "Portfolio Compilation",
+                "timeline": "Month 6-7",
+                "description": "Compile complete portfolio including all assessments, interventions, reflections, certificates, and evidence of competency achievement",
+                "deliverable": "Professional portfolio (digital + physical)",
+                "competencies_addressed": [
+                    "All"
+                ]
+            },
+            {
+                "activity": "Final Reflection",
+                "timeline": "Month 7",
+                "description": "Write comprehensive reflective essay on 3-year FAP journey, professional growth, and impact on career aspirations",
+                "deliverable": "Reflective essay (minimum 1000 words)",
+                "competencies_addressed": [
+                    "AETCOM"
+                ]
+            }
+        ],
+        "minimum_visits": 8,
+        "assessment_criteria": {
+            "continuity_of_care": "Regular visits maintained over 3 years",
+            "outcome_achievement": "Measurable health improvements documented",
+            "research_quality": "Scientifically sound methodology and analysis",
+            "leadership_demonstrated": "Successful organization of community activity",
+            "report_comprehensiveness": "Complete documentation of 3-year journey",
+            "presentation_quality": "Clear, professional, and insightful",
+            "portfolio_completeness": "All required documents included",
+            "overall_competency": "Achievement of all year-wise competencies"
+        }
+    },
+    "assessment_tools": [
+        {
+            "tool": "Logbook",
+            "purpose": "Document all visits, activities, and assessments",
+            "frequency": "Every visit",
+            "evaluated_by": "Faculty"
+        },
+        {
+            "tool": "Reflection Journal",
+            "purpose": "Demonstrate critical thinking and self-awareness",
+            "frequency": "Monthly minimum",
+            "evaluated_by": "Faculty"
+        },
+        {
+            "tool": "Direct Observation",
+            "purpose": "Assess clinical and communication skills",
+            "frequency": "At least 3 times per year",
+            "evaluated_by": "Faculty during field visits"
+        },
+        {
+            "tool": "Case Presentation",
+            "purpose": "Assess clinical reasoning and presentation skills",
+            "frequency": "Once per year",
+            "evaluated_by": "Faculty panel"
+        },
+        {
+            "tool": "OSCE Stations",
+            "purpose": "Assess specific competencies in standardized setting",
+            "frequency": "End of each year",
+            "evaluated_by": "External examiners"
+        },
+        {
+            "tool": "Portfolio Review",
+            "purpose": "Comprehensive assessment of learning journey",
+            "frequency": "End of Year 3",
+            "evaluated_by": "Faculty committee"
+        },
+        {
+            "tool": "Viva Voce",
+            "purpose": "Assess depth of understanding and competency",
+            "frequency": "End of Year 3",
+            "evaluated_by": "Internal + External examiners"
+        }
+    ],
+    "grading_criteria": {
+        "year_1": {
+            "logbook_completion": 30,
+            "visit_frequency": 20,
+            "family_profile_report": 20,
+            "reflections": 15,
+            "faculty_assessment": 15,
+            "total": 100
+        },
+        "year_2": {
+            "logbook_completion": 20,
+            "assessments_quality": 20,
+            "intervention_plans": 20,
+            "health_education": 15,
+            "reflections": 10,
+            "faculty_assessment": 15,
+            "total": 100
+        },
+        "year_3": {
+            "outcome_evaluation": 20,
+            "research_project": 20,
+            "final_report": 25,
+            "case_presentation": 15,
+            "portfolio": 10,
+            "viva_voce": 10,
+            "total": 100
+        }
+    }
+}

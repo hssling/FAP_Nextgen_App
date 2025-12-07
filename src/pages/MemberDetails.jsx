@@ -74,7 +74,8 @@ const MemberDetails = () => {
             id: Date.now(),
             formId: selectedAssessmentForm,
             date: new Date().toISOString().split('T')[0],
-            data: data
+            data: data.calculated_fields ? data : { ...data }, // Store raw data
+            calculated_fields: data.calculated_fields || null // Store calculations separately
         };
         const updated = {
             ...member,
@@ -294,6 +295,11 @@ const MemberDetails = () => {
                                 schema={getFormSchema(selectedAssessmentForm)}
                                 onSubmit={handleAssessmentSubmit}
                                 onCancel={() => setSelectedAssessmentForm(null)}
+                                memberData={{
+                                    gender: member.gender,
+                                    age: member.age,
+                                    name: member.name
+                                }}
                             />
                         )}
                     </div>

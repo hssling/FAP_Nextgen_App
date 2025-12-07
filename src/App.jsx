@@ -12,6 +12,7 @@ import Resources from './pages/Resources';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import TeacherDashboard from './pages/TeacherDashboard';
+import LearningObjectives from './pages/LearningObjectives';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Protected Route Component
@@ -50,6 +51,7 @@ const AppRoutes = () => {
         <Route path="families/:id/members/:memberId" element={<MemberDetails />} />
         <Route path="community" element={<Community />} />
         <Route path="reflections" element={<Reflections />} />
+        <Route path="learning-objectives" element={<LearningObjectives />} />
         <Route path="resources" element={<Resources />} />
         <Route path="reports" element={<Reports />} />
         <Route path="settings" element={<Settings />} />

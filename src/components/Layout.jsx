@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Settings, Activity, Map, GraduationCap, LogOut, BookOpen, BookmarkCheck } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, Activity, Map, GraduationCap, LogOut, BookOpen, BookmarkCheck, Target } from 'lucide-react';
 import styles from './Layout.module.css';
 import ErrorBoundary from './ErrorBoundary';
 import { useAuth } from '../contexts/AuthContext';
@@ -39,6 +39,10 @@ const Layout = () => {
                             <NavLink to="/reflections" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <BookOpen size={20} />
                                 Reflections
+                            </NavLink>
+                            <NavLink to="/learning-objectives" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                                <Target size={20} />
+                                Learning Objectives
                             </NavLink>
                             <NavLink to="/resources" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <BookmarkCheck size={20} />

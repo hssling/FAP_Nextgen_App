@@ -1,0 +1,630 @@
+{
+    "CM_1.1": {
+        "code": "CM 1.1",
+        "competency": "Demonstrate understanding of social determinants of health",
+        "learning_content": {
+            "introduction": "Social determinants of health (SDOH) are the conditions in which people are born, grow, live, work, and age. These circumstances are shaped by the distribution of money, power, and resources at global, national, and local levels.",
+            "key_concepts": [
+                {
+                    "concept": "What are Social Determinants of Health?",
+                    "explanation": "Non-medical factors that influence health outcomes. They include economic stability, education access, healthcare access, neighborhood environment, and social/community context.",
+                    "examples": [
+                        "Income level affects ability to afford nutritious food",
+                        "Education level influences health literacy and health behaviors",
+                        "Housing quality impacts exposure to environmental hazards",
+                        "Social support networks affect mental health and coping"
+                    ]
+                },
+                {
+                    "concept": "Categories of Social Determinants",
+                    "explanation": "WHO identifies 5 main categories of social determinants",
+                    "categories": [
+                        {
+                            "name": "Economic Stability",
+                            "factors": [
+                                "Employment",
+                                "Income",
+                                "Expenses",
+                                "Debt",
+                                "Medical bills",
+                                "Support"
+                            ]
+                        },
+                        {
+                            "name": "Education Access and Quality",
+                            "factors": [
+                                "Early childhood education",
+                                "Enrollment in higher education",
+                                "High school graduation",
+                                "Language and literacy"
+                            ]
+                        },
+                        {
+                            "name": "Healthcare Access and Quality",
+                            "factors": [
+                                "Access to healthcare",
+                                "Access to primary care",
+                                "Health literacy"
+                            ]
+                        },
+                        {
+                            "name": "Neighborhood and Built Environment",
+                            "factors": [
+                                "Access to healthy foods",
+                                "Quality of housing",
+                                "Crime and violence",
+                                "Environmental conditions"
+                            ]
+                        },
+                        {
+                            "name": "Social and Community Context",
+                            "factors": [
+                                "Social cohesion",
+                                "Civic participation",
+                                "Discrimination",
+                                "Incarceration"
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "clinical_application": {
+                "in_fap": "When you visit your adopted family, observe and document:",
+                "assessment_points": [
+                    "Family's monthly income and sources",
+                    "Education level of family members",
+                    "Type of employment (regular/irregular/unemployed)",
+                    "Housing type (kutcha/semi-pucca/pucca)",
+                    "Access to clean water and sanitation",
+                    "Distance to nearest health facility",
+                    "Social support networks in the community",
+                    "Caste/religion and any discrimination faced"
+                ],
+                "documentation": "Use Modified Kuppuswamy Scale to assess socioeconomic status. Document environmental factors using household survey form."
+            },
+            "case_study": {
+                "scenario": "Ramesh, 45 years old, works as a daily wage laborer. He has diabetes but cannot afford regular medications. His children dropped out of school to work. The family lives in a one-room kutcha house with no toilet.",
+                "analysis": "Multiple social determinants affecting health:",
+                "determinants_identified": [
+                    "Economic: Low income, irregular employment → Cannot afford diabetes medication",
+                    "Education: Children's school dropout → Perpetuates poverty cycle",
+                    "Housing: Kutcha house → Exposure to environmental hazards",
+                    "Sanitation: No toilet → Risk of infections, lack of dignity",
+                    "Healthcare access: Cannot afford treatment → Uncontrolled diabetes"
+                ],
+                "intervention_approach": "Address social determinants through: 1) Link to PM-JAY for free diabetes care, 2) Enroll children in government schemes, 3) Apply for housing under PMAY, 4) Facilitate toilet construction under Swachh Bharat"
+            },
+            "learning_resources": [
+                {
+                    "type": "Video",
+                    "title": "WHO on Social Determinants of Health",
+                    "duration": "5 minutes",
+                    "url": "https://www.who.int/health-topics/social-determinants-of-health"
+                },
+                {
+                    "type": "Reading",
+                    "title": "Park's Textbook - Chapter on Social Determinants",
+                    "pages": "Chapter 3"
+                },
+                {
+                    "type": "Framework",
+                    "title": "Dahlgren-Whitehead Rainbow Model",
+                    "description": "Visual model showing layers of determinants from individual to societal level"
+                }
+            ],
+            "assessment_questions": [
+                {
+                    "question": "List 5 social determinants that affect your adopted family's health",
+                    "type": "Short answer",
+                    "points": 5
+                },
+                {
+                    "question": "How does low education level of the head of household affect family health?",
+                    "type": "Essay",
+                    "points": 10
+                },
+                {
+                    "question": "Design an intervention addressing social determinants for a family with poor sanitation",
+                    "type": "Case-based",
+                    "points": 15
+                }
+            ]
+        }
+    },
+    "CM_1.2": {
+        "code": "CM 1.2",
+        "competency": "Conduct basic family health assessment",
+        "learning_content": {
+            "introduction": "Family health assessment is a systematic process of collecting comprehensive information about the family's health status, structure, functioning, and resources to identify health needs and plan interventions.",
+            "key_concepts": [
+                {
+                    "concept": "Family as a Unit of Care",
+                    "explanation": "The family is the primary social unit where health behaviors are learned, health decisions are made, and care is provided during illness.",
+                    "importance": [
+                        "Family members influence each other's health behaviors",
+                        "Family provides emotional and financial support during illness",
+                        "Family health problems often have common determinants",
+                        "Interventions at family level are more sustainable"
+                    ]
+                },
+                {
+                    "concept": "Components of Family Assessment",
+                    "components": [
+                        {
+                            "component": "Family Structure",
+                            "what_to_assess": [
+                                "Family composition (nuclear/joint/extended)",
+                                "Number of members",
+                                "Age and gender distribution",
+                                "Relationships between members",
+                                "Decision-making patterns"
+                            ],
+                            "tools": [
+                                "Genogram",
+                                "Family tree",
+                                "Ecomap"
+                            ]
+                        },
+                        {
+                            "component": "Family Development Stage",
+                            "what_to_assess": [
+                                "Newly married couple",
+                                "Family with young children",
+                                "Family with adolescents",
+                                "Family with adult children",
+                                "Aging family"
+                            ],
+                            "significance": "Each stage has specific health needs and challenges"
+                        },
+                        {
+                            "component": "Family Health Status",
+                            "what_to_assess": [
+                                "Current health problems of each member",
+                                "Chronic diseases",
+                                "Immunization status",
+                                "Nutritional status",
+                                "Mental health",
+                                "Reproductive health"
+                            ],
+                            "tools": [
+                                "Individual health assessment forms",
+                                "Growth charts",
+                                "Screening tools"
+                            ]
+                        },
+                        {
+                            "component": "Family Functioning",
+                            "what_to_assess": [
+                                "Communication patterns",
+                                "Problem-solving abilities",
+                                "Roles and responsibilities",
+                                "Affective involvement",
+                                "Behavior control"
+                            ],
+                            "tools": [
+                                "Family APGAR",
+                                "Observation during visits"
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "step_by_step_guide": {
+                "title": "How to Conduct Family Health Assessment",
+                "steps": [
+                    {
+                        "step": 1,
+                        "title": "Preparation",
+                        "actions": [
+                            "Review family registration form",
+                            "Prepare assessment tools and forms",
+                            "Plan visit timing (convenient for family)",
+                            "Ensure privacy and confidentiality"
+                        ]
+                    },
+                    {
+                        "step": 2,
+                        "title": "Introduction and Rapport Building",
+                        "actions": [
+                            "Introduce yourself and explain purpose",
+                            "Obtain informed consent",
+                            "Assure confidentiality",
+                            "Start with general conversation to build trust"
+                        ],
+                        "tips": "Use local language, show respect for cultural practices, be non-judgmental"
+                    },
+                    {
+                        "step": 3,
+                        "title": "Family Structure Assessment",
+                        "actions": [
+                            "Draw genogram with family",
+                            "Identify all family members",
+                            "Note relationships and living arrangements",
+                            "Understand decision-making patterns"
+                        ],
+                        "duration": "15-20 minutes"
+                    },
+                    {
+                        "step": 4,
+                        "title": "Individual Health Assessment",
+                        "actions": [
+                            "Assess each family member systematically",
+                            "Record age, gender, occupation, education",
+                            "Document current health problems",
+                            "Check immunization status (children)",
+                            "Measure vital signs and anthropometry"
+                        ],
+                        "duration": "30-45 minutes"
+                    },
+                    {
+                        "step": 5,
+                        "title": "Environmental Assessment",
+                        "actions": [
+                            "Observe housing conditions",
+                            "Check water source and quality",
+                            "Assess sanitation facilities",
+                            "Note waste disposal methods",
+                            "Identify environmental hazards"
+                        ],
+                        "duration": "15-20 minutes"
+                    },
+                    {
+                        "step": 6,
+                        "title": "Documentation",
+                        "actions": [
+                            "Complete all assessment forms",
+                            "Record observations accurately",
+                            "Note family's concerns and priorities",
+                            "Thank family for cooperation"
+                        ],
+                        "important": "Document same day while memory is fresh"
+                    }
+                ]
+            },
+            "clinical_skills": {
+                "communication_skills": [
+                    "Active listening",
+                    "Open-ended questioning",
+                    "Empathetic responses",
+                    "Non-verbal communication",
+                    "Cultural sensitivity"
+                ],
+                "assessment_skills": [
+                    "Systematic data collection",
+                    "Observation skills",
+                    "Vital signs measurement",
+                    "Anthropometric measurements",
+                    "Use of assessment tools"
+                ],
+                "documentation_skills": [
+                    "Accurate recording",
+                    "Organized format",
+                    "Objective vs subjective data",
+                    "Confidentiality maintenance"
+                ]
+            },
+            "common_challenges": [
+                {
+                    "challenge": "Family not available during visit",
+                    "solution": "Schedule visit in advance, visit during evening/weekend, be flexible with timing"
+                },
+                {
+                    "challenge": "Language barrier",
+                    "solution": "Learn basic local language phrases, use translator if needed, use visual aids"
+                },
+                {
+                    "challenge": "Family reluctant to share information",
+                    "solution": "Build trust gradually, explain purpose clearly, assure confidentiality, start with non-sensitive topics"
+                },
+                {
+                    "challenge": "Too much information to collect in one visit",
+                    "solution": "Prioritize essential information, plan multiple visits, focus on one aspect per visit"
+                }
+            ],
+            "learning_resources": [
+                {
+                    "type": "Video",
+                    "title": "Family Health Assessment Demonstration",
+                    "description": "Step-by-step demonstration of conducting family assessment"
+                },
+                {
+                    "type": "Practice Tool",
+                    "title": "Genogram Drawing Exercise",
+                    "description": "Interactive tool to practice drawing family genograms"
+                },
+                {
+                    "type": "Checklist",
+                    "title": "Family Assessment Checklist",
+                    "description": "Comprehensive checklist to ensure nothing is missed"
+                }
+            ],
+            "assessment_questions": [
+                {
+                    "question": "Draw a genogram for your adopted family and explain the family structure",
+                    "type": "Practical",
+                    "points": 10
+                },
+                {
+                    "question": "What are the key components of family health assessment? Explain each briefly.",
+                    "type": "Short answer",
+                    "points": 10
+                },
+                {
+                    "question": "You visit a family where the mother refuses to share health information. How will you handle this situation?",
+                    "type": "Scenario-based",
+                    "points": 5
+                }
+            ]
+        }
+    },
+    "CM_2.1": {
+        "code": "CM 2.1",
+        "competency": "Conduct comprehensive health needs assessment",
+        "learning_content": {
+            "introduction": "Comprehensive health needs assessment goes beyond basic assessment to identify specific health needs across the life cycle, using appropriate screening tools and clinical reasoning.",
+            "key_concepts": [
+                {
+                    "concept": "Life-Cycle Approach to Health Assessment",
+                    "explanation": "Different age groups have different health needs, risks, and appropriate assessment methods",
+                    "life_stages": [
+                        {
+                            "stage": "Infants (0-1 year)",
+                            "priority_assessments": [
+                                "Growth monitoring (weight, length, head circumference)",
+                                "Developmental milestones (DDST-II)",
+                                "Immunization status",
+                                "Breastfeeding practices",
+                                "Common illnesses (diarrhea, ARI, malnutrition)"
+                            ],
+                            "screening_tools": [
+                                "WHO growth charts",
+                                "DDST-II",
+                                "Immunization card"
+                            ],
+                            "red_flags": [
+                                "Weight faltering",
+                                "Developmental delay",
+                                "Missed immunizations",
+                                "Severe malnutrition"
+                            ]
+                        },
+                        {
+                            "stage": "Children (1-5 years)",
+                            "priority_assessments": [
+                                "Growth and nutrition (WHO Z-scores)",
+                                "Immunization completion",
+                                "Developmental screening",
+                                "Vision and hearing",
+                                "Dental health"
+                            ],
+                            "screening_tools": [
+                                "WHO growth standards",
+                                "Vision screening chart",
+                                "Dental examination"
+                            ],
+                            "red_flags": [
+                                "Stunting",
+                                "Wasting",
+                                "Developmental delay",
+                                "Vision/hearing problems"
+                            ]
+                        },
+                        {
+                            "stage": "School-age (6-12 years)",
+                            "priority_assessments": [
+                                "School health record",
+                                "Vision screening",
+                                "Nutritional status",
+                                "Physical activity",
+                                "Learning difficulties"
+                            ],
+                            "screening_tools": [
+                                "Snellen chart",
+                                "BMI for age",
+                                "School performance records"
+                            ],
+                            "red_flags": [
+                                "Obesity",
+                                "Myopia",
+                                "Learning disabilities",
+                                "Behavioral problems"
+                            ]
+                        },
+                        {
+                            "stage": "Adolescents (13-19 years)",
+                            "priority_assessments": [
+                                "HEADSS assessment (Home, Education, Activities, Drugs, Sexuality, Suicide)",
+                                "Nutritional status (anemia, obesity)",
+                                "Mental health (depression, anxiety)",
+                                "Reproductive health",
+                                "Substance use"
+                            ],
+                            "screening_tools": [
+                                "HEADSS framework",
+                                "PHQ-9",
+                                "GAD-7",
+                                "Hemoglobin testing"
+                            ],
+                            "red_flags": [
+                                "Depression/anxiety",
+                                "Substance abuse",
+                                "Risky sexual behavior",
+                                "Eating disorders"
+                            ]
+                        },
+                        {
+                            "stage": "Adults (20-59 years)",
+                            "priority_assessments": [
+                                "NCD screening (hypertension, diabetes, obesity)",
+                                "Cardiovascular risk assessment",
+                                "Cancer screening (as per age)",
+                                "Reproductive health (women)",
+                                "Occupational health"
+                            ],
+                            "screening_tools": [
+                                "BP measurement",
+                                "Blood sugar testing",
+                                "BMI",
+                                "Pap smear",
+                                "Breast examination"
+                            ],
+                            "red_flags": [
+                                "Uncontrolled HTN/DM",
+                                "High CV risk",
+                                "Suspicious lumps",
+                                "Occupational hazards"
+                            ]
+                        },
+                        {
+                            "stage": "Elderly (60+ years)",
+                            "priority_assessments": [
+                                "Comprehensive Geriatric Assessment (CGA)",
+                                "Functional status (ADL, IADL)",
+                                "Cognitive screening (MMSE)",
+                                "Fall risk assessment",
+                                "Polypharmacy review",
+                                "Social support"
+                            ],
+                            "screening_tools": [
+                                "Barthel Index",
+                                "MMSE",
+                                "Tinetti Balance Test",
+                                "Medication review"
+                            ],
+                            "red_flags": [
+                                "Functional decline",
+                                "Cognitive impairment",
+                                "High fall risk",
+                                "Social isolation"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "concept": "Screening vs Diagnosis",
+                    "explanation": "Screening identifies individuals at risk who need further evaluation. It is not diagnosis.",
+                    "key_points": [
+                        "Screening is for apparently healthy individuals",
+                        "Uses simple, quick, acceptable tests",
+                        "Positive screen requires confirmatory diagnosis",
+                        "Not all conditions are suitable for screening"
+                    ],
+                    "wilson_jungner_criteria": [
+                        "Condition should be important health problem",
+                        "Natural history should be understood",
+                        "Recognizable latent/early stage",
+                        "Suitable test available",
+                        "Test acceptable to population",
+                        "Facilities for diagnosis and treatment available",
+                        "Agreed policy on whom to treat",
+                        "Cost-effective",
+                        "Case-finding should be continuous"
+                    ]
+                }
+            ],
+            "assessment_protocols": {
+                "ncd_screening": {
+                    "title": "Non-Communicable Disease Screening Protocol",
+                    "target_population": "All adults ≥30 years",
+                    "frequency": "Annual",
+                    "components": [
+                        {
+                            "parameter": "Blood Pressure",
+                            "method": "Auscultatory method using mercury/aneroid sphygmomanometer",
+                            "normal_range": "<120/80 mmHg",
+                            "action_if_abnormal": "Repeat on 3 occasions, refer if persistently elevated"
+                        },
+                        {
+                            "parameter": "Blood Sugar",
+                            "method": "Fasting/Random blood glucose using glucometer",
+                            "normal_range": "Fasting <100 mg/dL, Random <140 mg/dL",
+                            "action_if_abnormal": "Refer for confirmatory HbA1c or OGTT"
+                        },
+                        {
+                            "parameter": "BMI",
+                            "method": "Weight (kg) / Height² (m²)",
+                            "normal_range": "18.5-22.9 (Asian cut-off)",
+                            "action_if_abnormal": "Dietary counseling, lifestyle modification"
+                        },
+                        {
+                            "parameter": "Waist-Hip Ratio",
+                            "method": "Waist circumference / Hip circumference",
+                            "normal_range": "M: <0.90, F: <0.80",
+                            "action_if_abnormal": "Cardiovascular risk counseling"
+                        }
+                    ]
+                },
+                "mental_health_screening": {
+                    "title": "Mental Health Screening Protocol",
+                    "target_population": "Adults with risk factors or symptoms",
+                    "tools": [
+                        {
+                            "tool": "PHQ-9",
+                            "purpose": "Depression screening",
+                            "administration": "Self-report or interviewer-administered",
+                            "scoring": "0-4: Minimal, 5-9: Mild, 10-14: Moderate, 15-19: Moderately severe, 20-27: Severe",
+                            "action_points": [
+                                "Score ≥10: Consider treatment",
+                                "Question 9 positive: Assess suicide risk immediately",
+                                "Score ≥15: Refer to psychiatrist"
+                            ]
+                        },
+                        {
+                            "tool": "GAD-7",
+                            "purpose": "Anxiety screening",
+                            "scoring": "0-4: Minimal, 5-9: Mild, 10-14: Moderate, 15-21: Severe",
+                            "action_points": [
+                                "Score ≥10: Consider treatment",
+                                "Score ≥15: Refer to psychiatrist"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "clinical_application": {
+                "in_fap": "Conduct age-appropriate assessments for each family member",
+                "year_2_focus": [
+                    "Complete life-cycle assessments for all members",
+                    "Use appropriate screening tools",
+                    "Identify high-risk individuals",
+                    "Document findings systematically",
+                    "Prioritize health needs"
+                ]
+            },
+            "learning_resources": [
+                {
+                    "type": "Protocol",
+                    "title": "NPCDCS Operational Guidelines",
+                    "description": "National Programme for Prevention and Control of Cancer, Diabetes, CVD and Stroke"
+                },
+                {
+                    "type": "Tool",
+                    "title": "WHO STEPS Approach",
+                    "description": "Stepwise approach to NCD risk factor surveillance"
+                },
+                {
+                    "type": "Practice",
+                    "title": "Screening Tool Practice Module",
+                    "description": "Interactive module to practice using PHQ-9, GAD-7, and other tools"
+                }
+            ],
+            "assessment_questions": [
+                {
+                    "question": "Design a comprehensive health assessment plan for a 65-year-old man with diabetes",
+                    "type": "Case-based",
+                    "points": 15
+                },
+                {
+                    "question": "What are Wilson-Jungner criteria for screening? Apply them to diabetes screening.",
+                    "type": "Essay",
+                    "points": 10
+                },
+                {
+                    "question": "Administer PHQ-9 to a family member and interpret the results",
+                    "type": "Practical",
+                    "points": 10
+                }
+            ]
+        }
+    }
+}
