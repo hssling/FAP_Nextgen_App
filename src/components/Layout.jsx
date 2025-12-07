@@ -6,9 +6,24 @@ import ErrorBoundary from './ErrorBoundary';
 import { useAuth } from '../contexts/AuthContext';
 
 const Layout = () => {
-    const { user, logout } = useAuth();
+    const { profile, signOut } = useAuth();
 
-    const isTeacher = user?.role === 'teacher';
+    const isTeacher = profile?.role === 'teacher';
+    const isAdmin = profile?.role === 'admin';
+
+    const handleLogout = async () => {
+        try {
+            await signOut();
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
+    };
+
+    const getRoleDisplay = () => {
+        if (isAdmin) return 'Administrator';
+        if (isTeacher) return 'Faculty Mentor';
+        return profile?.year ? `Year ${profile.year} MBBS` : 'MBBS Student';
+    };
 
     return (
         <div className={styles.layout}>
@@ -17,12 +32,12 @@ const Layout = () => {
                     <Activity size={32} className={styles.logoIcon} />
                     <div>
                         <h1>FAP NextGen</h1>
-                        <span>{isTeacher ? 'Mentor Portal' : 'MBBS Family Adoption'}</span>
+                        <span>{isTeacher ? 'Mentor Portal' : isAdmin ? 'Admin Portal' : 'MBBS Family Adoption'}</span>
                     </div>
                 </div>
 
                 <nav className={styles.nav}>
-                    {!isTeacher ? (
+                    {!isTeacher && !isAdmin ? (
                         <>
                             <NavLink to="/" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <LayoutDashboard size={20} />
@@ -53,33 +68,48 @@ const Layout = () => {
                                 Logbook Reports
                             </NavLink>
                         </>
-                    ) : (
+                    ) : isTeacher ? (
                         // Teacher Menu
                         <NavLink to="/teacher-dashboard" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                             <Users size={20} />
                             My Mentees
                         </NavLink>
+                    ) : (
+                        // Admin Menu
+                        <>
+                            <NavLink to="/admin-dashboard" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                                <GraduationCap size={20} />
+                                Admin Dashboard
+                            </NavLink>
+                            <NavLink to="/admin-dashboard/assignments" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                                <Users size={20} />
+                                Assign Students
+                            </NavLink>
+                        </>
                     )}
 
-                    <NavLink to="/settings" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                    <NavLink
+                        to={isTeacher ? '/teacher-dashboard/settings' : isAdmin ? '/admin-dashboard/settings' : '/settings'}
+                        className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
+                    >
                         <Settings size={20} />
                         Settings
                     </NavLink>
 
                     <div style={{ marginTop: 'auto', borderTop: '1px solid var(--color-border)', paddingTop: '1rem', paddingLeft: '1rem' }}>
-                        <button onClick={logout} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '500' }}>
+                        <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '500' }}>
                             <LogOut size={18} /> Logout
                         </button>
                     </div>
                 </nav>
 
                 <div className={styles.userProfile}>
-                    <div className={styles.avatar} style={{ backgroundColor: isTeacher ? '#FCD34D' : '#E0F2FE', color: isTeacher ? '#92400E' : '#0284C7' }}>
-                        {user ? user.name.charAt(0) : 'U'}
+                    <div className={styles.avatar} style={{ backgroundColor: isTeacher ? '#FCD34D' : isAdmin ? '#C084FC' : '#E0F2FE', color: isTeacher ? '#92400E' : isAdmin ? '#581C87' : '#0284C7' }}>
+                        {profile?.full_name?.charAt(0) || profile?.username?.charAt(0) || 'U'}
                     </div>
                     <div className={styles.userInfo}>
-                        <p className={styles.userName}>{user ? user.name : 'User'}</p>
-                        <p className={styles.userRole}>{isTeacher ? 'Faculty Mentor' : '1st Year MBBS'}</p>
+                        <p className={styles.userName}>{profile?.full_name || profile?.username || 'User'}</p>
+                        <p className={styles.userRole}>{getRoleDisplay()}</p>
                     </div>
                 </div>
             </aside>

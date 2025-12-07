@@ -15,7 +15,7 @@ export const supabase = supabaseUrl && supabaseAnonKey
         auth: {
             autoRefreshToken: true,
             persistSession: true,
-            detectSessionInUrl: true
+            detectSessionInUrl: false // Disable this to prevent potential hangs
         }
     })
     : null;
