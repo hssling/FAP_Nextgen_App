@@ -19,25 +19,28 @@ const Login = () => {
         setError('');
 
         try {
-            // Step 1: Get user profile by username
-            // Create a promise race to timeout the RPC call if it hangs
-            const rpcPromise = supabase.rpc('get_user_by_username', { p_username: username });
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Connection timed out. Please check your internet connection.')), 8000)
-            );
-
-            const { data: userProfile, error: profileError } = await Promise.race([rpcPromise, timeoutPromise]);
+            // Step 1: Get user profile by username directly from table
+            // This avoids RPC hangs and is faster
+            const { data: userProfile, error: profileError } = await supabase
+                .from('profiles')
+                .select('email, role, id')
+                .eq('username', username)
+                .single();
 
             if (profileError) {
-                console.error('RPC Error:', profileError);
+                console.error('Profile Fetch Error:', profileError);
+                // Handle specific "Row not found" error
+                if (profileError.code === 'PGRST116') {
+                    throw new Error('Invalid username');
+                }
                 throw new Error('Database Error: ' + profileError.message);
             }
 
-            if (!userProfile || userProfile.length === 0) {
-                throw new Error('Invalid username or password');
+            if (!userProfile || !userProfile.email) {
+                throw new Error('User found but has no email linked. Please contact admin.');
             }
 
-            const profile = userProfile[0];
+            const profile = userProfile;
 
             // Step 2: Sign in with email and password
             const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
