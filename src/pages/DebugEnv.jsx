@@ -1,9 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const DebugEnv = () => {
     const url = import.meta.env.VITE_SUPABASE_URL;
     const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
     const mode = import.meta.env.MODE;
+
+    const [testResult, setTestResult] = useState(null);
+
+    const runTest = async () => {
+        setTestResult('Testing connection...');
+        try {
+            if (!url || !key) throw new Error('Cannot test: Missing variables');
+
+            // Try a simple fetch to the health check endpoint or rest/v1/
+            const target = `${url}/rest/v1/profiles?select=count&limit=1`;
+
+            const response = await fetch(target, {
+                headers: {
+                    'apikey': key,
+                    'Authorization': `Bearer ${key}`
+                }
+            });
+
+            if (response.ok) {
+                setTestResult('✅ SUCCESS: Connection verified! Database is reachable.');
+            } else {
+                setTestResult(`❌ FAILED: Status ${response.status} - ${response.statusText}`);
+            }
+        } catch (e) {
+            setTestResult('❌ ERROR: ' + e.message);
+        }
+    };
 
     return (
         <div style={{ padding: '2rem', fontFamily: 'monospace', maxWidth: '600px', margin: '0 auto' }}>
@@ -29,14 +56,37 @@ const DebugEnv = () => {
                     </p>
                     {key && <p style={{ fontSize: '0.8rem', color: '#666' }}>Length: {key.length} characters</p>}
                 </div>
+
+                <button
+                    onClick={runTest}
+                    style={{
+                        marginTop: '1rem',
+                        padding: '0.5rem 1rem',
+                        background: '#2563EB',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        width: '100%',
+                        fontWeight: 'bold'
+                    }}
+                >
+                    RUN LIVE CONNECTION TEST
+                </button>
+
+                {testResult && (
+                    <div style={{ marginTop: '1rem', padding: '1rem', background: '#e0e7ff', borderRadius: '4px', border: '1px solid #c7d2fe' }}>
+                        <strong>Result:</strong> {testResult}
+                    </div>
+                )}
             </div>
 
             <div style={{ marginTop: '2rem', padding: '1rem', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #D97706' }}>
                 <h3 style={{ marginTop: 0, color: '#B45309' }}> Troubleshooting Guide</h3>
                 <ul style={{ paddingLeft: '1.5rem', color: '#92400E' }}>
                     <li style={{ marginBottom: '0.5rem' }}>If status is <strong>❌ MISSING</strong>, go to Vercel Dashboard &gt; Settings &gt; Environment Variables.</li>
-                    <li style={{ marginBottom: '0.5rem' }}>Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code>.</li>
-                    <li><strong>IMPORTANT:</strong> Go to Deployments &gt; Redeploy to apply changes.</li>
+                    <li style={{ marginBottom: '0.5rem' }}>If Connection Fails with <strong>Failed to fetch</strong>, it is likely a CORS issue, Typo in URL, or AdBlocker.</li>
+                    <li><strong>IMPORTANT:</strong> Always Redeploy after changing settings.</li>
                 </ul>
             </div>
 
