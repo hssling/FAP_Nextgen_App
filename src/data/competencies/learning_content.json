@@ -631,80 +631,44 @@
         "code": "CM 1.3",
         "competency": "Identify environmental health hazards",
         "learning_content": {
-            "introduction": "Environmental health assessment involves identifying physical, chemical, and biological hazards in the home that can cause disease or injury. A healthy home environment is fundamental to family well-being.",
+            "introduction": "**Author: Dr Siddalingaiah H S**\n\nUse this competency to organise determinants, frameworks and metrics. Document the policy levers, behavioural theories and field tools that make population health interventions successful.",
             "key_concepts": [
                 {
-                    "concept": "Standards of Housing",
-                    "explanation": "WHO criteria for healthful housing context",
+                    "concept": "Determinant Mapping",
+                    "explanation": "Map determinants across social, economic, cultural, environmental and political layers."
+                },
+                {
+                    "concept": "Field Methodology",
+                    "explanation": "Use SMART objectives and logic models for every field activity. Triangulate data sources before drawing conclusions.",
                     "examples": [
-                        "Satisfactory site",
-                        "Safe water supply",
-                        "Sanitary disposal of waste",
-                        "Adequate protection against heat/cold/damp",
-                        "Adequate protection against accidents"
+                        "Direct Observation",
+                        "Interview",
+                        "Measurement"
                     ]
                 },
                 {
-                    "concept": "Five 'F's of Transmission",
-                    "explanation": "Routes of faecal-oral transmission",
-                    "examples": [
-                        "Faeces",
-                        "Fluids",
-                        "Fingers",
-                        "Flies",
-                        "Fields/Floors"
-                    ]
+                    "concept": "Ethical Reflection",
+                    "explanation": "Document ethical reflections after each posting."
+                }
+            ],
+            "learning_resources": [
+                {
+                    "type": "Textbook",
+                    "title": "Park K. Textbook of Preventive and Social Medicine"
+                },
+                {
+                    "type": "Manual",
+                    "title": "MoHFW. Comprehensive Primary Health Care Operations Manual 2023"
                 }
             ],
             "clinical_application": {
-                "in_fap": "Systematically inspect the house and surroundings.",
+                "in_fap": "Systematically inspect the house and surroundings using standard checklists.",
                 "assessment_points": [
-                    "Lighting & Ventilation: Window area >20% of floor area?",
-                    "Overcrowding: <100 sq.ft per person?",
-                    "Water Storage: Clean containers? Ladle used?",
-                    "Mosquito Breeding: Check coolers, pots, tires.",
-                    "Indoor Air Pollution: Chulha type, smoke outlet."
-                ]
-            },
-            "step_by_step_guide": {
-                "title": "Conducting Environmental Survey",
-                "steps": [
-                    {
-                        "step": 1,
-                        "title": "Exterior",
-                        "actions": [
-                            "Check drainage",
-                            "Waste dumping",
-                            "Vectors"
-                        ]
-                    },
-                    {
-                        "step": 2,
-                        "title": "Interior",
-                        "actions": [
-                            "Count rooms",
-                            "Measure dimensions (approx)",
-                            "Check ventilation"
-                        ]
-                    },
-                    {
-                        "step": 3,
-                        "title": "Kitchen",
-                        "actions": [
-                            "Fuel type",
-                            "Food storage",
-                            "Water storage"
-                        ]
-                    },
-                    {
-                        "step": 4,
-                        "title": "Sanitation",
-                        "actions": [
-                            "Toilet availability",
-                            "Type (Pit/Flush)",
-                            "Handwashing usage"
-                        ]
-                    }
+                    "Lighting & Ventilation",
+                    "Overcrowding",
+                    "Water Storage Safety",
+                    "Mosquito Breeding Sites",
+                    "Indoor Air Pollution"
                 ]
             }
         }
@@ -739,49 +703,44 @@
         "code": "CM 2.2",
         "competency": "Identify health problems using clinical reasoning",
         "learning_content": {
-            "introduction": "Clinical reasoning in community health involves synthesizing data from history, examination, and environment to identify underlying health problems and their determinants.",
+            "introduction": "**Author: Dr Siddalingaiah H S**\n\nAssess socio-cultural context (beliefs, norms, cultural practices) and family structures to understand health risks. Use validated SES tools to classify socio-economic standing and guide interventions.",
             "key_concepts": [
                 {
-                    "concept": "Problem List",
-                    "explanation": "A categorized list of all issues affecting the family.",
-                    "categories": [
-                        {
-                            "name": "Medical",
-                            "factors": [
-                                "Diabetes",
-                                "Anemia",
-                                "Scabies"
-                            ]
-                        },
-                        {
-                            "name": "Social",
-                            "factors": [
-                                "Unemployment",
-                                "School dropout",
-                                "Alcoholism"
-                            ]
-                        },
-                        {
-                            "name": "Environmental",
-                            "factors": [
-                                "No toilet",
-                                "Open drainage"
-                            ]
-                        }
+                    "concept": "Socio-Economic Assessment",
+                    "explanation": "Prepare SES scales with latest CPI values (Kuppuswamy for urban, BG Prasad for rural).",
+                    "examples": [
+                        "Education",
+                        "Occupation",
+                        "Income"
                     ]
                 },
                 {
-                    "concept": "Web of Causation",
-                    "explanation": "Tracing the multiple factors leading to a condition.",
-                    "examples": [
-                        "Anemia -> Poor Diet (Iron) + Worms (Sanitation) + Poverty (Economic)"
-                    ]
+                    "concept": "Family Dynamics",
+                    "explanation": "Observe family dynamics and decision-making patterns."
+                },
+                {
+                    "concept": "Actionable Planning",
+                    "explanation": "Translate assessment into tangible actions (scheme linkages, IEC, referral)."
+                }
+            ],
+            "learning_resources": [
+                {
+                    "type": "Workbook",
+                    "title": "CBME Simulation Workbook for socio-economic assessment"
+                },
+                {
+                    "type": "Manual",
+                    "title": "WHO Social Determinants of Health training manual"
+                },
+                {
+                    "type": "Guide",
+                    "title": "MoPR & MoHFW VHSNC participation guides"
                 }
             ],
             "assessment_questions": [
                 {
-                    "question": "Create a Web of Causation for a child with Recurrent Diarrhea in your adopted family.",
-                    "type": "Analysis",
+                    "question": "Calculate the SES of your adopted family using the appropriate scale with current CPI.",
+                    "type": "Practical",
                     "points": 10
                 }
             ]
@@ -791,24 +750,29 @@
         "code": "CM 2.3",
         "competency": "Plan and implement health interventions",
         "learning_content": {
-            "introduction": "Interventions are actions to improve health. They should be evidence-based, feasible, and acceptable to the family.",
+            "introduction": "**Author: Dr Siddalingaiah H S**\n\nPrepare culturally sensitive guides, listen actively, probe for hidden concerns, and observe structural issues. Classify barriers (individual/system) and propose specific solutions or referrals.",
             "key_concepts": [
                 {
-                    "concept": "SMART Goals",
-                    "explanation": "Specific, Measurable, Achievable, Relevant, Time-bound.",
-                    "examples": [
-                        "Instead of 'Improve diet', use 'Eat 1 bowl of greens daily for 1 month'."
-                    ]
+                    "concept": "Behavioural Barries",
+                    "explanation": "Link barriers to behavioural frameworks (Andersen, COM-B)."
                 },
                 {
-                    "concept": "Levels of Prevention",
-                    "explanation": "Matching intervention to problem stage.",
-                    "examples": [
-                        "Primordial: Prevent risk factors",
-                        "Primary: Immunization",
-                        "Secondary: Early Diagnosis",
-                        "Tertiary: Rehab"
-                    ]
+                    "concept": "Documentation",
+                    "explanation": "Capture economic, socio-cultural, and system details accurately. Document and escalate findings for action."
+                },
+                {
+                    "concept": "Self-Reflection",
+                    "explanation": "Reflect on personal biases after each encounter."
+                }
+            ],
+            "learning_resources": [
+                {
+                    "type": "Resource",
+                    "title": "WHO Risk Communication & Community Engagement resources"
+                },
+                {
+                    "type": "Guide",
+                    "title": "UNICEF C4D practical guides"
                 }
             ]
         }
@@ -817,53 +781,31 @@
         "code": "CM 2.4",
         "competency": "Conduct health education sessions",
         "learning_content": {
-            "introduction": "Health education empowers families to take control of their health. It is not just 'giving advice' but facilitating behavior change.",
+            "introduction": "**Author: Dr Siddalingaiah H S**\n\nUse social psychology theories to decode why communities adopt or resist health behaviours. Map social networks and capital, identify influencers, track rumours, and design interventions that leverage community strengths.",
             "key_concepts": [
                 {
-                    "concept": "Counseling Principles (GATHER)",
-                    "explanation": "Greet, Ask, Tell, Help, Explain, Return."
+                    "concept": "Diagnosis",
+                    "explanation": "Apply TPB/COM-B to diagnose behaviours and distinguish between capability, opportunity, and motivation gaps."
                 },
                 {
-                    "concept": "Adult Learning Principles",
-                    "explanation": "Adults learn best when the topic is relevant to their immediate problems and they are involved in the process."
+                    "concept": "Social Capital",
+                    "explanation": "Differentiate bonding, bridging, and linking capital to understand community resilience."
+                },
+                {
+                    "concept": "Infodemic Management",
+                    "explanation": "Monitor and counter misinformation transparently. Engage opinion leaders."
                 }
             ],
-            "step_by_step_guide": {
-                "title": "Planning a Session",
-                "steps": [
-                    {
-                        "step": 1,
-                        "title": "Needs Assessment",
-                        "actions": [
-                            "What does the family want to know?",
-                            "What do they NEED to know?"
-                        ]
-                    },
-                    {
-                        "step": 2,
-                        "title": "Objectives",
-                        "actions": [
-                            "What should they be able to do after the session?"
-                        ]
-                    },
-                    {
-                        "step": 3,
-                        "title": "Method/AV Aid",
-                        "actions": [
-                            "Flipchart",
-                            "Video",
-                            "Demonstration"
-                        ]
-                    },
-                    {
-                        "step": 4,
-                        "title": "Evaluation",
-                        "actions": [
-                            "Ask them to repeat back (Teach-back method)"
-                        ]
-                    }
-                ]
-            }
+            "learning_resources": [
+                {
+                    "type": "Toolkit",
+                    "title": "UNICEF C4D toolkit"
+                },
+                {
+                    "type": "Guidance",
+                    "title": "WHO infodemic management guidance"
+                }
+            ]
         }
     },
     "CM_3.1": {
