@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { User, Download, Trash2, Database, Save, Check } from 'lucide-react';
 import { getFamilies, getAllMembers, getVillages } from '../services/db';
-
 import { useAuth } from '../contexts/AuthContext';
 
 const Settings = () => {
@@ -10,9 +9,6 @@ const Settings = () => {
 
     // Use real data or fallbacks
     const [studentName, setStudentName] = useState(profile?.full_name || '');
-    const [email, setEmail] = useState(profile?.email || '');
-
-    /* ... existing export logic ... */
 
     const handleLogout = async () => {
         try {
@@ -20,6 +16,54 @@ const Settings = () => {
             window.location.href = '/login';
         } catch (error) {
             console.error('Logout failed', error);
+        }
+    };
+
+    const handleExport = async () => {
+        setExporting(true);
+        try {
+            const families = await getFamilies();
+            const members = await getAllMembers();
+            const villages = await getVillages();
+
+            const data = {
+                metadata: {
+                    exportedAt: new Date().toISOString(),
+                    student: studentName,
+                    appVersion: '2.0.0'
+                },
+                families,
+                members,
+                villages
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `fap_logbook_backup_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Export failed:", error);
+            alert("Failed to export data.");
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const handleReset = async () => {
+        if (confirm("WARNING: This will delete ALL your families, members, and visit logs from this device. This action cannot be undone. Are you sure?")) {
+            const DB_NAME = 'fap_nextgen_db_v2';
+            try {
+                window.indexedDB.deleteDatabase(DB_NAME);
+                alert("Database deleted. The page will reload to reset the application state.");
+                window.location.reload();
+            } catch (e) {
+                alert("Error deleting database. Please try clearing browser site data manually.");
+            }
         }
     };
 
