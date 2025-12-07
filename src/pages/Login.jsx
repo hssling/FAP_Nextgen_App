@@ -302,8 +302,14 @@ const Login = () => {
                     borderTop: '1px solid var(--color-border)',
                     textAlign: 'center'
                 }}>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>
                         FAP NextGen v2.0 • NMC-CBME Aligned
+                    </p>
+                    <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                        Concept & Design: <br />
+                        <span style={{ fontWeight: '600', color: '#0F766E' }}>Dr. Siddalingaiah H.S.</span><br />
+                        Professor, Community Medicine<br />
+                        Shridevi Institute of Medical Sciences & Research Hospital, Tumkur
                     </p>
                 </div>
             </motion.div>

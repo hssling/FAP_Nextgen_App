@@ -99,7 +99,11 @@ const Settings = () => {
             </div>
 
             <div style={{ textAlign: 'center', marginTop: '3rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                <p>FAP NextGen v1.0.0 • Built with ❤️ for Medical Students</p>
+                <p style={{ marginBottom: '0.5rem' }}>FAP NextGen v2.0 • NMC-CBME Aligned</p>
+                <p style={{ fontSize: '0.75rem', fontStyle: 'italic' }}>
+                    Concept & Design: <strong>Dr. Siddalingaiah H.S.</strong><br />
+                    Professor, Community Medicine, SIMS & RH, Tumkur
+                </p>
             </div>
         </div>
     );
