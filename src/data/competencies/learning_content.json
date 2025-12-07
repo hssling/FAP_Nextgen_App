@@ -626,5 +626,265 @@
                 }
             ]
         }
+    },
+    "CM_1.3": {
+        "code": "CM 1.3",
+        "competency": "Identify environmental health hazards",
+        "learning_content": {
+            "introduction": "Environmental health assessment involves identifying physical, chemical, and biological hazards in the home that can cause disease or injury. A healthy home environment is fundamental to family well-being.",
+            "key_concepts": [
+                {
+                    "concept": "Standards of Housing",
+                    "explanation": "WHO criteria for healthful housing context",
+                    "examples": [
+                        "Satisfactory site",
+                        "Safe water supply",
+                        "Sanitary disposal of waste",
+                        "Adequate protection against heat/cold/damp",
+                        "Adequate protection against accidents"
+                    ]
+                },
+                {
+                    "concept": "Five 'F's of Transmission",
+                    "explanation": "Routes of faecal-oral transmission",
+                    "examples": [
+                        "Faeces",
+                        "Fluids",
+                        "Fingers",
+                        "Flies",
+                        "Fields/Floors"
+                    ]
+                }
+            ],
+            "clinical_application": {
+                "in_fap": "Systematically inspect the house and surroundings.",
+                "assessment_points": [
+                    "Lighting & Ventilation: Window area >20% of floor area?",
+                    "Overcrowding: <100 sq.ft per person?",
+                    "Water Storage: Clean containers? Ladle used?",
+                    "Mosquito Breeding: Check coolers, pots, tires.",
+                    "Indoor Air Pollution: Chulha type, smoke outlet."
+                ]
+            },
+            "step_by_step_guide": {
+                "title": "Conducting Environmental Survey",
+                "steps": [
+                    {
+                        "step": 1,
+                        "title": "Exterior",
+                        "actions": [
+                            "Check drainage",
+                            "Waste dumping",
+                            "Vectors"
+                        ]
+                    },
+                    {
+                        "step": 2,
+                        "title": "Interior",
+                        "actions": [
+                            "Count rooms",
+                            "Measure dimensions (approx)",
+                            "Check ventilation"
+                        ]
+                    },
+                    {
+                        "step": 3,
+                        "title": "Kitchen",
+                        "actions": [
+                            "Fuel type",
+                            "Food storage",
+                            "Water storage"
+                        ]
+                    },
+                    {
+                        "step": 4,
+                        "title": "Sanitation",
+                        "actions": [
+                            "Toilet availability",
+                            "Type (Pit/Flush)",
+                            "Handwashing usage"
+                        ]
+                    }
+                ]
+            }
+        }
+    },
+    "AETCOM_1.1": {
+        "code": "AETCOM 1.1",
+        "competency": "Demonstrate empathy and respect towards family",
+        "learning_content": {
+            "introduction": "Empathy is the ability to understand and share the feelings of another. It is distinct from sympathy. In FAP, building a respectful partnership is key.",
+            "key_concepts": [
+                {
+                    "concept": "Cultural Humility",
+                    "explanation": "Acknowledging that the family is the expert on their own life and culture. Being open to learning without judgment."
+                },
+                {
+                    "concept": "Confidentiality",
+                    "explanation": "Ensuring that personal family details are not discussed casually or shared without permission."
+                }
+            ],
+            "clinical_application": {
+                "in_fap": "Practice AETCOM principles in every visit.",
+                "assessment_points": [
+                    "Did I ask permission before entering?",
+                    "Did I sit at their level?",
+                    "Did I listen more than I spoke?",
+                    "Did I avoid judging their habits?"
+                ]
+            }
+        }
+    },
+    "CM_2.2": {
+        "code": "CM 2.2",
+        "competency": "Identify health problems using clinical reasoning",
+        "learning_content": {
+            "introduction": "Clinical reasoning in community health involves synthesizing data from history, examination, and environment to identify underlying health problems and their determinants.",
+            "key_concepts": [
+                {
+                    "concept": "Problem List",
+                    "explanation": "A categorized list of all issues affecting the family.",
+                    "categories": [
+                        {
+                            "name": "Medical",
+                            "factors": [
+                                "Diabetes",
+                                "Anemia",
+                                "Scabies"
+                            ]
+                        },
+                        {
+                            "name": "Social",
+                            "factors": [
+                                "Unemployment",
+                                "School dropout",
+                                "Alcoholism"
+                            ]
+                        },
+                        {
+                            "name": "Environmental",
+                            "factors": [
+                                "No toilet",
+                                "Open drainage"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "concept": "Web of Causation",
+                    "explanation": "Tracing the multiple factors leading to a condition.",
+                    "examples": [
+                        "Anemia -> Poor Diet (Iron) + Worms (Sanitation) + Poverty (Economic)"
+                    ]
+                }
+            ],
+            "assessment_questions": [
+                {
+                    "question": "Create a Web of Causation for a child with Recurrent Diarrhea in your adopted family.",
+                    "type": "Analysis",
+                    "points": 10
+                }
+            ]
+        }
+    },
+    "CM_2.3": {
+        "code": "CM 2.3",
+        "competency": "Plan and implement health interventions",
+        "learning_content": {
+            "introduction": "Interventions are actions to improve health. They should be evidence-based, feasible, and acceptable to the family.",
+            "key_concepts": [
+                {
+                    "concept": "SMART Goals",
+                    "explanation": "Specific, Measurable, Achievable, Relevant, Time-bound.",
+                    "examples": [
+                        "Instead of 'Improve diet', use 'Eat 1 bowl of greens daily for 1 month'."
+                    ]
+                },
+                {
+                    "concept": "Levels of Prevention",
+                    "explanation": "Matching intervention to problem stage.",
+                    "examples": [
+                        "Primordial: Prevent risk factors",
+                        "Primary: Immunization",
+                        "Secondary: Early Diagnosis",
+                        "Tertiary: Rehab"
+                    ]
+                }
+            ]
+        }
+    },
+    "CM_2.4": {
+        "code": "CM 2.4",
+        "competency": "Conduct health education sessions",
+        "learning_content": {
+            "introduction": "Health education empowers families to take control of their health. It is not just 'giving advice' but facilitating behavior change.",
+            "key_concepts": [
+                {
+                    "concept": "Counseling Principles (GATHER)",
+                    "explanation": "Greet, Ask, Tell, Help, Explain, Return."
+                },
+                {
+                    "concept": "Adult Learning Principles",
+                    "explanation": "Adults learn best when the topic is relevant to their immediate problems and they are involved in the process."
+                }
+            ],
+            "step_by_step_guide": {
+                "title": "Planning a Session",
+                "steps": [
+                    {
+                        "step": 1,
+                        "title": "Needs Assessment",
+                        "actions": [
+                            "What does the family want to know?",
+                            "What do they NEED to know?"
+                        ]
+                    },
+                    {
+                        "step": 2,
+                        "title": "Objectives",
+                        "actions": [
+                            "What should they be able to do after the session?"
+                        ]
+                    },
+                    {
+                        "step": 3,
+                        "title": "Method/AV Aid",
+                        "actions": [
+                            "Flipchart",
+                            "Video",
+                            "Demonstration"
+                        ]
+                    },
+                    {
+                        "step": 4,
+                        "title": "Evaluation",
+                        "actions": [
+                            "Ask them to repeat back (Teach-back method)"
+                        ]
+                    }
+                ]
+            }
+        }
+    },
+    "CM_3.1": {
+        "code": "CM 3.1",
+        "competency": "Demonstrate continuity of care",
+        "learning_content": {
+            "introduction": "Continuity of care is the hallmark of Family Medicine. It builds trust and allows for observation of health trends over time.",
+            "key_concepts": [
+                {
+                    "concept": "Types of Continuity",
+                    "explanation": "Informational (Data), Longitudinal (Time), Interpersonal (Relationship)."
+                },
+                {
+                    "concept": "Tracking Trends",
+                    "explanation": "Using growth charts, BP logs, and sugar logs to visualize progress."
+                }
+            ],
+            "case_study": {
+                "scenario": "A student visits a hypertensive patient for 3 years. Year 1: BP 160/100, irregular meds. Year 2: BP 150/90, better diet. Year 3: BP 130/80, regular meds.",
+                "analysis": "This success was only possible due to the sustained relationship and gradual behavior change support."
+            }
+        }
     }
 }
