@@ -43,23 +43,26 @@ const TeacherStudentAssignment = () => {
             if (teachersError) throw teachersError;
             setTeachers(teachersData || []);
 
-            // Load mappings
+            // Load mappings (Explicit Joins)
             const { data: mappingsData, error: mappingsError } = await supabase
                 .from('teacher_student_mappings')
                 .select(`
-          *,
-          teacher:profiles!teacher_id(id, username, full_name, department),
-          student:profiles!student_id(id, username, full_name, year, registration_number)
-        `)
+                    *,
+                    teacher:profiles!teacher_id(id, username, full_name, department),
+                    student:profiles!student_id(id, username, full_name, year, registration_number)
+                `)
                 .eq('is_active', true)
-                .order('created_at', { ascending: false });
+                .order('assigned_at', { ascending: false });
 
-            if (mappingsError) throw mappingsError;
+            if (mappingsError) {
+                console.error("Mapping Load Error:", mappingsError);
+                throw mappingsError;
+            }
             setMappings(mappingsData || []);
 
         } catch (error) {
             console.error('Error loading data:', error);
-            setError('Failed to load data');
+            setError('Failed to load data. Please refresh.');
         } finally {
             setLoading(false);
         }
@@ -81,38 +84,50 @@ const TeacherStudentAssignment = () => {
         }
 
         try {
-            // Check if mapping already exists
-            const existing = mappings.find(
-                m => m.student_id === selectedStudent && m.teacher_id === selectedTeacher
-            );
+            // Check for EXISTING active mapping for this student (Student can only have 1 active mentor?)
+            // If we want to enforce 1-to-1, we should check here.
+            // Current schema has UNIQUE(teacher, student), but doesn't prevent student having MULTIPLE teachers rows.
+            // Assumption: Student has only one mentor.
+            // We should De-activate any OTHER active mappings for this student first.
 
-            if (existing) {
-                setError('This student is already assigned to this teacher');
-                return;
-            }
-
-            const { error: insertError } = await supabase
+            /* Optional: Enforce One Mentor per Student Logic */
+            const { error: deactivateError } = await supabase
                 .from('teacher_student_mappings')
-                .insert([{
+                .update({ is_active: false })
+                .eq('student_id', selectedStudent)
+                .neq('teacher_id', selectedTeacher); // Don't deactivate if it's the same teacher (upsert will handle)
+
+            if (deactivateError) console.warn("Deactivation warning:", deactivateError);
+
+            // Upsert the new mapping
+            const { data, error: upsertError } = await supabase
+                .from('teacher_student_mappings')
+                .upsert([{
                     teacher_id: selectedTeacher,
                     student_id: selectedStudent,
                     assigned_by: profile.id,
                     is_active: true,
+                    assigned_at: new Date().toISOString(),
                     notes: notes || null
-                }]);
+                }], {
+                    onConflict: 'teacher_id, student_id',
+                    ignoreDuplicates: false
+                })
+                .select();
 
-            if (insertError) throw insertError;
+            if (upsertError) throw upsertError;
 
             setSuccess('Student assigned successfully!');
             setSelectedStudent('');
-            setSelectedTeacher('');
             setNotes('');
-            loadData();
+            // Don't clear teacher, usually assigning multiple students to one teacher
+
+            await loadData(); // Reload to update list
 
             setTimeout(() => setSuccess(''), 3000);
         } catch (error) {
             console.error('Error assigning student:', error);
-            setError('Failed to assign student');
+            setError('Failed to assign student: ' + error.message);
         }
     };
 
