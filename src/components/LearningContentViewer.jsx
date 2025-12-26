@@ -5,7 +5,11 @@ import learningContent from '../data/competencies/learning_content_v2.json';
 
 const LearningContentViewer = ({ competencyCode }) => {
     const [expandedSections, setExpandedSections] = useState({});
-    const content = learningContent[competencyCode.replace(/\s+/g, '_')];
+    const lookupKey = competencyCode.replace(/\s+/g, '_');
+    console.log('🔍 Looking for:', competencyCode, '→', lookupKey);
+    console.log('📚 Available keys:', Object.keys(learningContent));
+    console.log('✅ Found content:', !!learningContent[lookupKey]);
+    const content = learningContent[lookupKey];
 
     if (!content) {
         return (
