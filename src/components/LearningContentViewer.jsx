@@ -5,13 +5,13 @@ import learningContent from '../data/competencies/learning_content.json';
 
 const LearningContentViewer = ({ competencyCode }) => {
     const [expandedSections, setExpandedSections] = useState({});
-    const content = learningContent[competencyCode.replace(' ', '_')];
+    const content = learningContent[competencyCode.replace(/\s+/g, '_')];
 
     if (!content) {
         return (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                 <BookOpen size={48} style={{ margin: '0 auto 1rem' }} />
-                <p>Learning content for this competency is being developed.</p>
+                <p>Learning content for this competency ({competencyCode} &rarr; {competencyCode.replace(' ', '_')}) is being developed.</p>
             </div>
         );
     }
