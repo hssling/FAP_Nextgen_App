@@ -243,7 +243,7 @@ const Reports = () => {
                     </div>
 
                     {/* Progress Stats */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                    <div className="grid-layout grid-2">
                         <div className="card" style={{ padding: '2rem' }}>
                             <SectionHeader icon={FileText} title="Logbook Entries" color="#F97316" />
                             <div style={{ textAlign: 'center', padding: '2rem' }}>

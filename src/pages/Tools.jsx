@@ -1,6 +1,7 @@
 import React from 'react';
 import BMICalculator from '../components/tools/BMICalculator';
 import KuppuswamyCalculator from '../components/tools/KuppuswamyCalculator';
+import BGPrasadCalculator from '../components/tools/BGPrasadCalculator';
 import HealthTrends from '../components/tools/HealthTrends';
 import FamilyReportGenerator from '../components/tools/FamilyReportGenerator';
 import './Tools.css';
@@ -17,6 +18,7 @@ const Tools = () => {
                 {/* Column 1: Calculators */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     <KuppuswamyCalculator />
+                    <BGPrasadCalculator />
                     <BMICalculator />
                 </div>
 
