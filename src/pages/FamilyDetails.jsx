@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { User, Activity, Calendar, Droplets, Home, Trash2, PlusCircle, FileText, ArrowRight, ClipboardList } from 'lucide-react';
+import { User, Activity, Calendar, Droplets, Home, Trash2, PlusCircle, FileText, ArrowRight, ClipboardList, Camera, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +32,7 @@ const FamilyDetails = () => {
         protocol: null,
         memberId: ''
     });
+    const [uploading, setUploading] = useState(false); // For Photo Upload
 
     useEffect(() => {
         if (profile) loadData();
@@ -52,7 +53,8 @@ const FamilyDetails = () => {
                 ...famData,
                 headName: famData.head_name,
                 village: famData.village,
-                membersCount: famData.members_count
+                membersCount: famData.members_count,
+                photoUrl: famData.photo_url // Map photo url
             };
             setFamily(mappedFam);
 
@@ -168,6 +170,48 @@ const FamilyDetails = () => {
         });
     };
 
+    const handlePhotoUpload = async (e) => {
+        try {
+            setUploading(true);
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${id}-${Math.random()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            // 1. Upload to Storage
+            const { error: uploadError } = await supabase.storage
+                .from('family-photos')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            // 2. Get Public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('family-photos')
+                .getPublicUrl(filePath);
+
+            // 3. Update Database
+            const { error: dbError } = await supabase
+                .from('families')
+                .update({ photo_url: publicUrl })
+                .eq('id', id);
+
+            if (dbError) throw dbError;
+
+            // 4. Update Local State
+            setFamily(prev => ({ ...prev, photoUrl: publicUrl }));
+            alert("Photo updated successfully!");
+
+        } catch (error) {
+            console.error('Error uploads:', error);
+            alert('Error uploading photo!');
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const getFormSchema = (formId) => {
         return formRegistry.find(f => f.form_id === formId);
     };
@@ -195,11 +239,33 @@ const FamilyDetails = () => {
                     </Link>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end' }}>
-                    <div>
-                        <h1 className="page-title">{family.headName} Family</h1>
-                        <div style={{ display: 'flex', gap: '1.5rem', color: 'var(--color-text-muted)' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Home size={18} /> {family.village}</span>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><User size={18} /> {members.length} Members</span>
+                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                        {/* Photo Section */}
+                        <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', border: '3px solid white', boxShadow: 'var(--shadow-md)', backgroundColor: '#E2E8F0' }}>
+                            {family.photoUrl ? (
+                                <img src={family.photoUrl} alt="Family" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8' }}>
+                                    <User size={32} />
+                                </div>
+                            )}
+                            {/* Hidden Input Trigger */}
+                            <label style={{
+                                position: 'absolute', bottom: 0, left: 0, right: 0, height: '30px',
+                                background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                cursor: 'pointer', color: 'white'
+                            }}>
+                                <Camera size={14} />
+                                <input type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} disabled={uploading} />
+                            </label>
+                        </div>
+
+                        <div>
+                            <h1 className="page-title">{family.headName} Family</h1>
+                            <div style={{ display: 'flex', gap: '1.5rem', color: 'var(--color-text-muted)' }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Home size={18} /> {family.village}</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><User size={18} /> {members.length} Members</span>
+                            </div>
                         </div>
                     </div>
                     <motion.button
