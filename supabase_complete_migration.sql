@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS family_visits (
   notes text,
   activity_type text, -- e.g., "Routine", "Medical Camp", "Survey"
   outcome text,
+  data jsonb DEFAULT '{}'::jsonb, -- Stores flexible visit details (BP, Weight, Protocol Data)
   created_at timestamp with time zone DEFAULT now()
 );
 
