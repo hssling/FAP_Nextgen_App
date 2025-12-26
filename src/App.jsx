@@ -9,6 +9,7 @@ import Community from './pages/Community';
 import Reflections from './pages/Reflections';
 import Reports from './pages/Reports';
 import Resources from './pages/Resources';
+import Tools from './pages/Tools';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -128,6 +129,7 @@ const AppRoutes = () => {
         <Route path="community" element={<Community />} />
         <Route path="reflections" element={<Reflections />} />
         <Route path="learning-objectives" element={<LearningObjectives />} />
+        <Route path="tools" element={<Tools />} />
         <Route path="resources" element={<Resources />} />
         <Route path="reports" element={<Reports />} />
         <Route path="settings" element={<Settings />} />
