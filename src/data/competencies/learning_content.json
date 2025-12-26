@@ -673,6 +673,53 @@
             }
         }
     },
+    "CM_1.4": {
+        "code": "CM 1.4",
+        "competency": "Document health data systematically",
+        "learning_content": {
+            "introduction": "Documentation is a critical skill for any medical professional. In FAP, maintaining accurate logbooks and health records ensures continuity of care and provides legal and medical proof of services rendered.",
+            "key_concepts": [
+                {
+                    "concept": "Principles of Documentation",
+                    "explanation": "Records must be accurate, complete, timely, and legible. 'If it isn't documented, it didn't happen.'",
+                    "examples": [
+                        "Date and time of visit",
+                        "Specific observations (not vague)",
+                        "Signatures where required"
+                    ]
+                },
+                {
+                    "concept": "The Family Folder",
+                    "explanation": "A central repository for all family health data, including socio-demographics, medical history, and visit notes."
+                },
+                {
+                    "concept": "Confidentiality & Privacy",
+                    "explanation": "Ethical and legal obligation to protect family health information from unauthorized access."
+                }
+            ],
+            "clinical_application": {
+                "in_fap": "Maintain your FAP Logbook and Family Folder meticulously.",
+                "assessment_points": [
+                    "Is the family registration form complete?",
+                    "Are growth charts plotted correctly?",
+                    "Are reflection entries dated and signed?"
+                ]
+            },
+            "learning_resources": [
+                {
+                    "type": "Guide",
+                    "title": "Medical Records & Documentation Guidelines (NMC)"
+                }
+            ],
+            "assessment_questions": [
+                {
+                    "question": "What are the 4 key principles of good documentation?",
+                    "type": "Short answer",
+                    "points": 5
+                }
+            ]
+        }
+    },
     "AETCOM_1.1": {
         "code": "AETCOM 1.1",
         "competency": "Demonstrate empathy and respect towards family",
@@ -808,24 +855,155 @@
             ]
         }
     },
+    "CM_2.5": {
+        "code": "CM 2.5",
+        "competency": "Understand community health programs",
+        "learning_content": {
+            "introduction": "National Health Programs (NHPs) are capable of addressing the majority of health needs in the community. Linking families to these schemes is a high-impact intervention.",
+            "key_concepts": [
+                {
+                    "concept": "RMNCH+A",
+                    "explanation": "Reproductive, Maternal, Newborn, Child and Adolescent Health strategy. Includes JSY, JSSK, RBSK."
+                },
+                {
+                    "concept": "Disease Control Programs",
+                    "explanation": "NTEP (TB), NVBDCP (Vector-borne), NPCDCS (NCDs)."
+                },
+                {
+                    "concept": "Social Protection Schemes",
+                    "explanation": "PM-JAY (Ayushman Bharat) for hospitalization, PMSBY/PMJJBY for insurance."
+                }
+            ],
+            "clinical_application": {
+                "in_fap": "Identify family members eligible for government schemes and facilitate their enrollment.",
+                "examples": [
+                    "Pregnant woman -> Link to JSY/JSSK",
+                    "Elderly with cataracts -> Link to NPCB",
+                    "BPL family -> Link to PM-JAY"
+                ]
+            },
+            "learning_resources": [
+                {
+                    "type": "Portal",
+                    "title": "National Health Portal (India)"
+                }
+            ],
+            "assessment_questions": [
+                {
+                    "question": "List 3 benefits available to a pregnant woman under JSY.",
+                    "type": "Short answer",
+                    "points": 5
+                }
+            ]
+        }
+    },
     "CM_3.1": {
         "code": "CM 3.1",
         "competency": "Demonstrate continuity of care",
         "learning_content": {
-            "introduction": "Continuity of care is the hallmark of Family Medicine. It builds trust and allows for observation of health trends over time.",
+            "introduction": "Continuity of care is the hallmark of Family Medicine. It builds trust, improves compliance, and allows for observation of health trends over time.",
             "key_concepts": [
                 {
-                    "concept": "Types of Continuity",
-                    "explanation": "Informational (Data), Longitudinal (Time), Interpersonal (Relationship)."
+                    "concept": "Dimensions of Continuity",
+                    "explanation": "1. Informational (Availability of past data), 2. Longitudinal (Care over time), 3. Interpersonal (Patient-Doctor Relationship)."
                 },
                 {
-                    "concept": "Tracking Trends",
-                    "explanation": "Using growth charts, BP logs, and sugar logs to visualize progress."
+                    "concept": "Tracking Health Trends",
+                    "explanation": "Using growth charts, BP logs, and sugar logs to visualize progress over 3 years."
                 }
             ],
             "case_study": {
                 "scenario": "A student visits a hypertensive patient for 3 years. Year 1: BP 160/100, irregular meds. Year 2: BP 150/90, better diet. Year 3: BP 130/80, regular meds.",
                 "analysis": "This success was only possible due to the sustained relationship and gradual behavior change support."
+            }
+        }
+    },
+    "CM_3.2": {
+        "code": "CM 3.2",
+        "competency": "Evaluate intervention outcomes",
+        "learning_content": {
+            "introduction": "Evaluation helps determine if our health interventions actually worked. It transforms 'activity' into 'outcome'.",
+            "key_concepts": [
+                {
+                    "concept": "Process vs. Outcome Indicators",
+                    "explanation": "Process: Did we deliver the education? Outcome: Did the blood pressure come down?"
+                },
+                {
+                    "concept": "Before-After Analysis",
+                    "explanation": "Comparing baseline data (Year 1) with endline data (Year 3) to measure change."
+                }
+            ],
+            "clinical_application": {
+                "in_fap": "Use your logbook data to compare family health status from first visit to last visit.",
+                "examples": [
+                    "Change in BMI",
+                    "Improvement in Anemia status",
+                    "Adoption of family planning"
+                ]
+            }
+        }
+    },
+    "CM_3.3": {
+        "code": "CM 3.3",
+        "competency": "Conduct community-based research",
+        "learning_content": {
+            "introduction": "Research generates new knowledge. Even at the undergraduate level, simple observational studies can provide insights into community health problems.",
+            "key_concepts": [
+                {
+                    "concept": "Research Question",
+                    "explanation": "Formulating a clear, feasible question based on problems observed in FAP families."
+                },
+                {
+                    "concept": "Data Collection",
+                    "explanation": "Using surveys, interviews, or observations to gather data from the community."
+                },
+                {
+                    "concept": "Ethical Considerations",
+                    "explanation": "Informed consent and privacy are paramount in community research."
+                }
+            ],
+            "clinical_application": {
+                "in_fap": "Identify a common problem (e.g., anemia in adolescent girls) and conduct a small survey."
+            }
+        }
+    },
+    "CM_3.4": {
+        "code": "CM 3.4",
+        "competency": "Demonstrate leadership in community health",
+        "learning_content": {
+            "introduction": "Doctors are community leaders. Organizing health camps and events requires leadership, management, and teamwork skills.",
+            "key_concepts": [
+                {
+                    "concept": "Event Planning",
+                    "explanation": "Logistics, manpower, permissions, and supplies."
+                },
+                {
+                    "concept": "Stakeholder Engagement",
+                    "explanation": "Working with village leaders, ASHA workers, and local administration."
+                }
+            ],
+            "clinical_application": {
+                "in_fap": "Organize a small health awareness event or screening camp in your adopted village."
+            }
+        }
+    },
+    "CM_3.5": {
+        "code": "CM 3.5",
+        "competency": "Produce comprehensive family health report",
+        "learning_content": {
+            "introduction": "The Final FAP Report is the culmination of 3 years of work. It tells the story of your family's health journey.",
+            "key_concepts": [
+                {
+                    "concept": "Report Structure",
+                    "explanation": "Introduction -> Methodology -> Baseline Assessment -> Interventions -> Outcomes -> Discussion -> Conclusion."
+                },
+                {
+                    "concept": "Reflection",
+                    "explanation": "Critical analysis of what went well and what could be improved."
+                }
+            ],
+            "clinical_application": {
+                "in_fap": "Compile your final report using data from all 3 years of logbook entries."
             }
         }
     }
