@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, CheckCircle, AlertCircle, Lightbulb, FileText, Video, Download, ChevronDown, ChevronUp } from 'lucide-react';
-import learningContent from '../data/competencies/learning_content.json';
+import learningContent from '../data/competencies/learning_content_v2.json';
 
 const LearningContentViewer = ({ competencyCode }) => {
     const [expandedSections, setExpandedSections] = useState({});
