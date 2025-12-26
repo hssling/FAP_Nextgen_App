@@ -121,7 +121,7 @@ const Reports = () => {
                         <ReportCard label="Morbidity Load" value={Object.values(morbidity).reduce((a, b) => a + b, 0)} subtext="Active Conditions" color="#EF4444" />
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '3rem' }}>
+                    <div className="grid-layout grid-2" style={{ marginBottom: '3rem' }}>
                         {/* Demographic Profile */}
                         <div className="card" style={{ padding: '2rem' }}>
                             <SectionHeader icon={Users} title="Demographic Profile" color="#1E3A8A" />
@@ -143,7 +143,7 @@ const Reports = () => {
                         {/* Socio-Economic Status (Kuppuswamy) */}
                         <div className="card" style={{ padding: '2rem' }}>
                             <SectionHeader icon={TrendingUp} title="Socio-Economic Status" color="#059669" />
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div className="grid-layout grid-2">
                                 {Object.entries(socioEconomic).map(([cls, val]) => (
                                     <div key={cls} style={{ padding: '1rem', border: '1px solid #E5E7EB', borderRadius: 'var(--radius-md)' }}>
                                         <div style={{ textTransform: 'capitalize', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{cls.replace(/([A-Z])/g, ' $1').trim()} Class</div>
@@ -155,7 +155,7 @@ const Reports = () => {
                     </div>
 
                     {/* MCH & Morbidity */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '3rem' }}>
+                    <div className="grid-layout grid-2" style={{ marginBottom: '3rem' }}>
                         <div className="card" style={{ padding: '2rem' }}>
                             <SectionHeader icon={Baby} title="Maternal & Child Health" color="#DB2777" />
                             <div style={{ display: 'grid', gap: '1.5rem' }}>

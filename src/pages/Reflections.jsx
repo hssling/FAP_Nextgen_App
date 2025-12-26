@@ -95,7 +95,7 @@ const Reflections = () => {
                 <p className="page-subtitle">Document your learning journey and field experiences.</p>
             </motion.header>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '2rem' }}>
+            <div className="grid-layout grid-split">
                 {/* Form Section */}
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
