@@ -15,6 +15,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import TeacherDashboard from './pages/TeacherDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import UserManagement from './pages/UserManagement';
+import ForgotPassword from './pages/ForgotPassword';
 import LearningObjectives from './pages/LearningObjectives';
 import DebugEnv from './pages/DebugEnv';
 import TeacherStudentAssignment from './components/TeacherStudentAssignment';
@@ -118,6 +120,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
       <Route path="/register" element={user ? <Navigate to="/" /> : <Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/debug" element={<DebugEnv />} />
 
       {/* Student Routes */}
@@ -145,6 +148,7 @@ const AppRoutes = () => {
       <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={['admin']}><Layout /></ProtectedRoute>}>
         <Route index element={<AdminDashboard />} />
         <Route path="assignments" element={<TeacherStudentAssignment />} />
+        <Route path="users" element={<UserManagement />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 

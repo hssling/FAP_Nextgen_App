@@ -55,9 +55,14 @@ const Login = () => {
             // Step 3: Fetch Role to Redirect (if we didn't get it from username lookup)
             const { data: profileData } = await supabase
                 .from('profiles')
-                .select('role')
+                .select('role, is_active')
                 .eq('id', authData.user.id)
                 .single();
+
+            if (profileData && profileData.is_active === false) {
+                await supabase.auth.signOut();
+                throw new Error('Your account is deactivated or pending approval. Please contact admin.');
+            }
 
             const userRole = profileData?.role || 'student';
 
@@ -302,8 +307,8 @@ const Login = () => {
                     </p>
                     <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
                         Forgot your password?{' '}
-                        <a href="#" style={{ color: '#0F766E', textDecoration: 'none', fontWeight: '500' }}>
-                            Contact Admin
+                        <a href="/forgot-password" style={{ color: '#0F766E', textDecoration: 'none', fontWeight: '500' }}>
+                            Reset Here
                         </a>
                     </p>
                 </div>
