@@ -19,50 +19,60 @@ const Login = () => {
         setError('');
 
         try {
-            // Step 1: Get user profile by username directly from table
-            // This avoids RPC hangs and is faster
-            const { data: userProfile, error: profileError } = await supabase
-                .from('profiles')
-                .select('email, role, id')
-                .eq('username', username)
-                .single();
+            let loginEmail = username;
+            let role = null;
 
-            if (profileError) {
-                console.error('Profile Fetch Error:', profileError);
-                // Handle specific "Row not found" error
-                if (profileError.code === 'PGRST116') {
-                    throw new Error('Invalid username');
+            // If input is NOT an email, look up the email from username
+            if (!username.includes('@')) {
+                const { data: userProfile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('email, role')
+                    .eq('username', username.toLowerCase())
+                    .single();
+
+                if (profileError) {
+                    if (profileError.code === 'PGRST116') throw new Error('Invalid username or email');
+                    throw new Error('Database Error');
                 }
-                throw new Error('Database Error: ' + profileError.message);
-            }
 
-            if (!userProfile || !userProfile.email) {
-                throw new Error('User found but has no email linked. Please contact admin.');
+                if (!userProfile?.email) {
+                    throw new Error('Username has no linked email. Please login with your Email Address.');
+                }
+                loginEmail = userProfile.email;
             }
-
-            const profile = userProfile;
 
             // Step 2: Sign in with email and password
             const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
-                email: profile.email,
+                email: loginEmail,
                 password: password,
             });
 
             if (signInError) {
                 console.error('Auth Error:', signInError);
-                throw new Error('Invalid username or password');
+                throw new Error('Invalid credentials');
             }
 
-            // Step 3: Redirect based on role
+            // Step 3: Fetch Role to Redirect (if we didn't get it from username lookup)
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', authData.user.id)
+                .single();
+
+            const userRole = profileData?.role || 'student';
+
+            // Step 4: Redirect
             const from = location.state?.from?.pathname || '/';
 
-            if (profile.role === 'teacher') {
+            if (userRole === 'teacher') {
                 navigate('/teacher-dashboard', { replace: true });
-            } else if (profile.role === 'admin') {
+            } else if (userRole === 'admin') {
                 navigate('/admin-dashboard', { replace: true });
             } else {
                 navigate(from, { replace: true });
             }
+
+
         } catch (err) {
             console.error('Login error:', err);
             setError(err.message || 'Login failed. Please check your credentials and try again.');
@@ -152,7 +162,7 @@ const Login = () => {
                             fontSize: '0.875rem',
                             color: 'var(--color-text)'
                         }}>
-                            Username
+                            Username or Email
                         </label>
                         <div style={{ position: 'relative' }}>
                             <User size={20} style={{
@@ -178,7 +188,7 @@ const Login = () => {
                                     transition: 'all 0.2s',
                                     backgroundColor: loading ? '#F9FAFB' : 'white'
                                 }}
-                                placeholder="Enter your username"
+                                placeholder="Username or Email Address"
                                 onFocus={(e) => e.target.style.borderColor = '#0F766E'}
                                 onBlur={(e) => e.target.style.borderColor = 'var(--color-border)'}
                             />

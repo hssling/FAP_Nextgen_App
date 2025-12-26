@@ -83,6 +83,7 @@ const Register = () => {
                 id: authData.user.id,
                 username: formData.username.toLowerCase(),
                 full_name: formData.fullName,
+                email: formData.email, // Add email to profile
                 role: formData.role,
                 is_active: true
             };
