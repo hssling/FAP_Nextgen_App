@@ -55,6 +55,12 @@ export const generateCommunityHealthReport = async (studentId) => {
         };
     });
 
+    // Fetch Reflections Count
+    const { count: refCount } = await supabase
+        .from('reflections')
+        .select('*', { count: 'exact', head: true })
+        .eq('student_id', studentId);
+
     const report = {
         demographics: {
             totalFamilies: families.length,
@@ -67,7 +73,11 @@ export const generateCommunityHealthReport = async (studentId) => {
         childHealth: calculateChildHealthIndicators(membersWithAssessments),
         morbidity: calculateMorbidityProfile(membersWithAssessments),
         socioEconomic: calculateSES(families, visits),
-        environmental: calculateEnvironmentalStats(families, visits)
+        environmental: calculateEnvironmentalStats(families, visits),
+        logbook: {
+            visits: visits.length,
+            reflections: refCount || 0
+        }
     };
 
     return report;

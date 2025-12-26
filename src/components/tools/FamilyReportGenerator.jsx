@@ -169,13 +169,13 @@ const FamilyReportGenerator = () => {
                     >
                         {({ blob, url, loading: pdfLoading, error }) =>
                             <button style={btnStyle} disabled={pdfLoading}>
-                                {pdfLoading ? 'Building PDF...' : 'Download Family Folder PDF'}
+                                {pdfLoading ? 'Building PDF...' : `Download Report for ${reportData.family.head_name}`}
                             </button>
                         }
                     </PDFDownloadLink>
                 ) : (
                     <button style={{ ...btnStyle, opacity: 0.5, cursor: 'not-allowed' }} disabled>
-                        {loading ? 'Fetching Data...' : 'Select a Family to Generate'}
+                        {loading ? 'Fetching Real Data...' : 'Select a Family to Generate'}
                     </button>
                 )}
             </div>

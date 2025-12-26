@@ -111,118 +111,142 @@ const Reports = () => {
                 )}
             </div>
 
-            {activeTab === 'community' ? (
-                /* Community Report View */
-                <>
-                    {/* Executive Summary */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-                        <ReportCard label="Total Population" value={demographics.totalPopulation} subtext={`${demographics.totalFamilies} Families`} color="#3B82F6" />
-                        <ReportCard label="Gender Ratio" value={demographics.genderRatio.ratio} subtext="Females per 1000 Males" color="#EC4899" />
-                        <ReportCard label="Dependency Ratio" value={`${demographics.dependencyRatio}%`} subtext="Dependent / Working" color="#F59E0B" />
-                        <ReportCard label="Morbidity Load" value={Object.values(morbidity).reduce((a, b) => a + b, 0)} subtext="Active Conditions" color="#EF4444" />
-                    </div>
+            {/* Print Styles */}
+            <style>{`
+                @media print {
+                    .no-print { display: none !important; }
+                    .print-show { display: block !important; }
+                    .print-break { page-break-before: always; }
+                    body { background: white; font-size: 12pt; }
+                    .card { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; }
+                    h1, h2, h3 { color: black !important; }
+                    /* Force grid to be readable on print */
+                    .grid-layout { display: block !important; }
+                    .grid-layout > div { marginBottom: 2rem; }
+                }
+                .section-hidden { display: none; }
+                .section-visible { display: block; }
+                @media print {
+                    .section-hidden { display: block !important; }
+                }
+            `}</style>
 
-                    <div className="grid-layout grid-2" style={{ marginBottom: '3rem' }}>
-                        {/* Demographic Profile */}
-                        <div className="card" style={{ padding: '2rem' }}>
-                            <SectionHeader icon={Users} title="Demographic Profile" color="#1E3A8A" />
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                {Object.entries(demographics.ageDistribution).map(([group, count]) => (
-                                    <div key={group}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', marginBottom: '0.25rem' }}>
-                                            <span>{group} years</span>
-                                            <span style={{ fontWeight: '600' }}>{Math.round((count / demographics.totalPopulation) * 100)}% ({count})</span>
-                                        </div>
-                                        <div style={{ width: '100%', height: '8px', backgroundColor: '#F1F5F9', borderRadius: '4px' }}>
-                                            <div style={{ width: `${(count / demographics.totalPopulation) * 100}%`, height: '100%', backgroundColor: '#60A5FA', borderRadius: '4px' }}></div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+            {/* Content Container - Renders BOTH but hides one on screen */}
 
-                        {/* Socio-Economic Status (Kuppuswamy) */}
-                        <div className="card" style={{ padding: '2rem' }}>
-                            <SectionHeader icon={TrendingUp} title="Socio-Economic Status" color="#059669" />
-                            <div className="grid-layout grid-2">
-                                {Object.entries(socioEconomic).map(([cls, val]) => (
-                                    <div key={cls} style={{ padding: '1rem', border: '1px solid #E5E7EB', borderRadius: 'var(--radius-md)' }}>
-                                        <div style={{ textTransform: 'capitalize', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{cls.replace(/([A-Z])/g, ' $1').trim()} Class</div>
-                                        <div style={{ fontWeight: '700', fontSize: '1.25rem' }}>{val}%</div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
+            {/* Community Section */}
+            <div className={activeTab === 'community' ? 'section-visible' : 'section-hidden'}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+                    <ReportCard label="Total Population" value={demographics.totalPopulation} subtext={`${demographics.totalFamilies} Families`} color="#3B82F6" />
+                    <ReportCard label="Gender Ratio" value={demographics.genderRatio.ratio} subtext="Females per 1000 Males" color="#EC4899" />
+                    <ReportCard label="Dependency Ratio" value={`${demographics.dependencyRatio}%`} subtext="Dependent / Working" color="#F59E0B" />
+                    <ReportCard label="Morbidity Load" value={Object.values(morbidity).reduce((a, b) => a + b, 0)} subtext="Active Conditions" color="#EF4444" />
+                </div>
 
-                    {/* MCH & Morbidity */}
-                    <div className="grid-layout grid-2" style={{ marginBottom: '3rem' }}>
-                        <div className="card" style={{ padding: '2rem' }}>
-                            <SectionHeader icon={Baby} title="Maternal & Child Health" color="#DB2777" />
-                            <div style={{ display: 'grid', gap: '1.5rem' }}>
-                                <div>
-                                    <h4 style={{ fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.5rem', color: '#9D174D' }}>Antenatal Care</h4>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: '#FCE7F3', borderRadius: 'var(--radius-md)' }}>
-                                        <span>Registered</span> <span style={{ fontWeight: '700' }}>{data.maternalHealth.registeredPregnancies}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: '#FCE7F3', borderRadius: 'var(--radius-md)', marginTop: '0.5rem' }}>
-                                        <span>High Risk</span> <span style={{ fontWeight: '700', color: '#BE123C' }}>{data.maternalHealth.highRiskPregnancies}</span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <h4 style={{ fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.5rem', color: '#047857' }}>Under-5 Children</h4>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: '#D1FAE5', borderRadius: 'var(--radius-md)' }}>
-                                        <span>Total Children</span> <span style={{ fontWeight: '700' }}>{childHealth.totalUnder5}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: '#D1FAE5', borderRadius: 'var(--radius-md)', marginTop: '0.5rem' }}>
-                                        <span>Partially/Unimmunized</span> <span style={{ fontWeight: '700', color: '#B45309' }}>{childHealth.totalUnder5 - childHealth.fullyImmunized}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="card" style={{ padding: '2rem' }}>
-                            <SectionHeader icon={Activity} title="Disease Burden" color="#DC2626" />
-                            {Object.keys(morbidity).length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>No data available.</div>
-                            ) : (
-                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                    <tbody>
-                                        {Object.entries(morbidity)
-                                            .sort(([, a], [, b]) => b - a)
-                                            .map(([disease, count]) => (
-                                                <tr key={disease} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                                                    <td style={{ padding: '0.75rem 0' }}>{disease}</td>
-                                                    <td style={{ padding: '0.75rem 0', textAlign: 'right', fontWeight: 'bold' }}>{count}</td>
-                                                </tr>
-                                            ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Environmental Health */}
+                <div className="grid-layout grid-2" style={{ marginBottom: '3rem' }}>
+                    {/* Demographic Profile */}
                     <div className="card" style={{ padding: '2rem' }}>
-                        <SectionHeader icon={Droplets} title="Environmental Health Indicators" color="#0891B2" />
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem', textAlign: 'center' }}>
+                        <SectionHeader icon={Users} title="Demographic Profile" color="#1E3A8A" />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {Object.entries(demographics.ageDistribution).map(([group, count]) => (
+                                <div key={group}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', marginBottom: '0.25rem' }}>
+                                        <span>{group} years</span>
+                                        <span style={{ fontWeight: '600' }}>{Math.round((count / demographics.totalPopulation) * 100)}% ({count})</span>
+                                    </div>
+                                    <div style={{ width: '100%', height: '8px', backgroundColor: '#F1F5F9', borderRadius: '4px' }}>
+                                        <div style={{ width: `${(count / demographics.totalPopulation) * 100}%`, height: '100%', backgroundColor: '#60A5FA', borderRadius: '4px' }}></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Socio-Economic Status (Kuppuswamy) */}
+                    <div className="card" style={{ padding: '2rem' }}>
+                        <SectionHeader icon={TrendingUp} title="Socio-Economic Status" color="#059669" />
+                        <div className="grid-layout grid-2">
+                            {Object.entries(socioEconomic).map(([cls, val]) => (
+                                <div key={cls} style={{ padding: '1rem', border: '1px solid #E5E7EB', borderRadius: 'var(--radius-md)' }}>
+                                    <div style={{ textTransform: 'capitalize', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{cls.replace(/([A-Z])/g, ' $1').trim()} Class</div>
+                                    <div style={{ fontWeight: '700', fontSize: '1.25rem' }}>{val}%</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* MCH & Morbidity */}
+                <div className="grid-layout grid-2" style={{ marginBottom: '3rem' }}>
+                    <div className="card" style={{ padding: '2rem' }}>
+                        <SectionHeader icon={Baby} title="Maternal & Child Health" color="#DB2777" />
+                        <div style={{ display: 'grid', gap: '1.5rem' }}>
                             <div>
-                                <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#0891B2' }}>{environmental.safeWater}%</div>
-                                <div style={{ fontWeight: '500' }}>Safe Drinking Water</div>
+                                <h4 style={{ fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.5rem', color: '#9D174D' }}>Antenatal Care</h4>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: '#FCE7F3', borderRadius: 'var(--radius-md)' }}>
+                                    <span>Registered</span> <span style={{ fontWeight: '700' }}>{data.maternalHealth.registeredPregnancies}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: '#FCE7F3', borderRadius: 'var(--radius-md)', marginTop: '0.5rem' }}>
+                                    <span>High Risk</span> <span style={{ fontWeight: '700', color: '#BE123C' }}>{data.maternalHealth.highRiskPregnancies}</span>
+                                </div>
                             </div>
                             <div>
-                                <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#059669' }}>{environmental.sanitaryLatrine}%</div>
-                                <div style={{ fontWeight: '500' }}>Sanitary Latrine</div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#D97706' }}>{environmental.wasteSegregation}%</div>
-                                <div style={{ fontWeight: '500' }}>Waste Segregation</div>
+                                <h4 style={{ fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.5rem', color: '#047857' }}>Under-5 Children</h4>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: '#D1FAE5', borderRadius: 'var(--radius-md)' }}>
+                                    <span>Total Children</span> <span style={{ fontWeight: '700' }}>{childHealth.totalUnder5}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: '#D1FAE5', borderRadius: 'var(--radius-md)', marginTop: '0.5rem' }}>
+                                    <span>Partially/Unimmunized</span> <span style={{ fontWeight: '700', color: '#B45309' }}>{childHealth.totalUnder5 - childHealth.fullyImmunized}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </>
-            ) : (
-                /* Student Logbook View */
+
+                    <div className="card" style={{ padding: '2rem' }}>
+                        <SectionHeader icon={Activity} title="Disease Burden" color="#DC2626" />
+                        {Object.keys(morbidity).length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>No data available.</div>
+                        ) : (
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <tbody>
+                                    {Object.entries(morbidity)
+                                        .sort(([, a], [, b]) => b - a)
+                                        .map(([disease, count]) => (
+                                            <tr key={disease} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                                                <td style={{ padding: '0.75rem 0' }}>{disease}</td>
+                                                <td style={{ padding: '0.75rem 0', textAlign: 'right', fontWeight: 'bold' }}>{count}</td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+
+                {/* Environmental Health - Fixed Grid for Mobile */}
+                <div className="card" style={{ padding: '2rem' }}>
+                    <SectionHeader icon={Droplets} title="Environmental Health Indicators" color="#0891B2" />
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '2rem', textAlign: 'center' }}>
+                        <div>
+                            <div style={{ fontSize: 'clamp(1.5rem, 4vw, 2.5rem)', fontWeight: '800', color: '#0891B2' }}>{environmental.safeWater}%</div>
+                            <div style={{ fontWeight: '500', fontSize: '0.9rem' }}>Safe Drinking Water</div>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 'clamp(1.5rem, 4vw, 2.5rem)', fontWeight: '800', color: '#059669' }}>{environmental.sanitaryLatrine}%</div>
+                            <div style={{ fontWeight: '500', fontSize: '0.9rem' }}>Sanitary Latrine</div>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 'clamp(1.5rem, 4vw, 2.5rem)', fontWeight: '800', color: '#D97706' }}>{environmental.wasteSegregation}%</div>
+                            <div style={{ fontWeight: '500', fontSize: '0.9rem' }}>Waste Segregation</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Logbook Section - Printed always, shown on tab */}
+            <div className={`print-break ${activeTab === 'logbook' ? 'section-visible' : 'section-hidden'}`}>
+                {/* Print Title for second section */}
+                <h2 className="print-show" style={{ display: 'none', marginTop: '2rem', marginBottom: '1rem', borderBottom: '2px solid black' }}>Logbook & Feedback</h2>
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
                     {/* Mentor Feedback */}
@@ -248,17 +272,21 @@ const Reports = () => {
                         <div className="card" style={{ padding: '2rem' }}>
                             <SectionHeader icon={FileText} title="Logbook Entries" color="#F97316" />
                             <div style={{ textAlign: 'center', padding: '2rem' }}>
-                                <p style={{ fontSize: '3rem', fontWeight: '800', color: '#EA580C' }}>--</p>
+                                <p style={{ fontSize: '3rem', fontWeight: '800', color: '#EA580C' }}>
+                                    {data?.logbook?.visits || '--'} {/* Assuming analytics returns this or we fetch it */}
+                                </p>
                                 <p>Family Visits Recorded</p>
-                                <button className='btn btn-outline' onClick={() => navigate('/families')}>View Families</button>
+                                <button className='btn btn-outline no-print' onClick={() => navigate('/families')}>View Families</button>
                             </div>
                         </div>
                         <div className="card" style={{ padding: '2rem' }}>
                             <SectionHeader icon={BookOpen} title="Reflections" color="#10B981" />
                             <div style={{ textAlign: 'center', padding: '2rem' }}>
-                                <p style={{ fontSize: '3rem', fontWeight: '800', color: '#059669' }}>--</p>
+                                <p style={{ fontSize: '3rem', fontWeight: '800', color: '#059669' }}>
+                                    {data?.logbook?.reflections || '--'}
+                                </p>
                                 <p>Reflection Journals</p>
-                                <button className='btn btn-outline' onClick={() => navigate('/reflections')}>Write Reflection</button>
+                                <button className='btn btn-outline no-print' onClick={() => navigate('/reflections')}>Write Reflection</button>
                             </div>
                         </div>
                     </div>
@@ -269,12 +297,12 @@ const Reports = () => {
                         <p style={{ marginBottom: '1rem', color: '#4B5563' }}>
                             View longitudinal health data (Blood Pressure, BMI trends) for your adopted families in the Tools section.
                         </p>
-                        <button className="btn btn-primary" onClick={() => navigate('/tools')}>
+                        <button className="btn btn-primary no-print" onClick={() => navigate('/tools')}>
                             Open Health Analytics Tools
                         </button>
                     </div>
                 </div>
-            )}
+            </div>
         </div>
     );
 };
