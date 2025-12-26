@@ -67,6 +67,7 @@ const Settings = () => {
             </div>
         </div>
 
+
             {/* Data Management Section */ }
             <div className="card" style={{ padding: '2rem', marginBottom: '2rem' }}>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

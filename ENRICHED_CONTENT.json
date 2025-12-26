@@ -1,0 +1,253 @@
+{
+    "CM_1.4": {
+        "code": "CM 1.4",
+        "competency": "Document health data systematically",
+        "learning_content": {
+            "introduction": "Documentation is a critical skill for any medical professional. In FAP, maintaining accurate logbooks and health records ensures continuity of care and provides legal and medical proof of services rendered.",
+            "key_concepts": [
+                {
+                    "concept": "Principles of Documentation",
+                    "explanation": "Records must be accurate, complete, timely, and legible. 'If it isn't documented, it didn't happen.'",
+                    "examples": [
+                        "Date and time of visit",
+                        "Specific observations (not vague)",
+                        "Signatures where required"
+                    ]
+                },
+                {
+                    "concept": "The Family Folder",
+                    "explanation": "A central repository for all family health data, including socio-demographics, medical history, and visit notes."
+                },
+                {
+                    "concept": "Confidentiality & Privacy",
+                    "explanation": "Ethical and legal obligation to protect family health information from unauthorized access."
+                }
+            ],
+            "step_by_step_guide": {
+                "title": "How to Maintain FAP Documentation",
+                "steps": [
+                    {
+                        "step": 1,
+                        "title": "Family Registration",
+                        "actions": [
+                            "Complete family registration form with all members",
+                            "Collect demographic data (age, gender, occupation, education)",
+                            "Draw genogram showing family structure",
+                            "Assess socioeconomic status using appropriate scale"
+                        ],
+                        "tips": "Verify spelling of names, get contact numbers for follow-up"
+                    },
+                    {
+                        "step": 2,
+                        "title": "Visit Documentation",
+                        "actions": [
+                            "Record date, time, and duration of visit",
+                            "Document chief complaints and history",
+                            "Record examination findings objectively",
+                            "Note interventions provided and advice given",
+                            "Sign and date each entry"
+                        ],
+                        "tips": "Write legibly, avoid abbreviations that may be unclear"
+                    },
+                    {
+                        "step": 3,
+                        "title": "Health Monitoring",
+                        "actions": [
+                            "Plot growth charts for children",
+                            "Maintain BP/sugar logs for chronic patients",
+                            "Track immunization status",
+                            "Document medication adherence"
+                        ]
+                    },
+                    {
+                        "step": 4,
+                        "title": "Reflection Entries",
+                        "actions": [
+                            "Write reflection after each visit",
+                            "Document what went well and challenges faced",
+                            "Note learning points and questions",
+                            "Plan for next visit"
+                        ],
+                        "tips": "Honest reflection improves learning"
+                    }
+                ]
+            },
+            "clinical_application": {
+                "in_fap": "Maintain your FAP Logbook and Family Folder meticulously.",
+                "assessment_points": [
+                    "Is the family registration form complete?",
+                    "Are growth charts plotted correctly?",
+                    "Are reflection entries dated and signed?",
+                    "Is confidentiality maintained?",
+                    "Are visit notes comprehensive and legible?"
+                ]
+            },
+            "learning_resources": [
+                {
+                    "type": "Guide",
+                    "title": "Medical Records & Documentation Guidelines (NMC)"
+                },
+                {
+                    "type": "Template",
+                    "title": "FAP Logbook Template",
+                    "description": "Standard format for documenting family visits"
+                }
+            ],
+            "assessment_questions": [
+                {
+                    "question": "What are the 4 key principles of good documentation?",
+                    "type": "Short answer",
+                    "points": 5
+                },
+                {
+                    "question": "Review your last 5 visit entries and identify areas for improvement",
+                    "type": "Practical",
+                    "points": 10
+                }
+            ]
+        }
+    },
+    "CM_2.5": {
+        "code": "CM 2.5",
+        "competency": "Understand community health programs",
+        "learning_content": {
+            "introduction": "National Health Programs (NHPs) are capable of addressing the majority of health needs in the community. Linking families to these schemes is a high-impact intervention.",
+            "key_concepts": [
+                {
+                    "concept": "RMNCH+A",
+                    "explanation": "Reproductive, Maternal, Newborn, Child and Adolescent Health strategy. Includes JSY, JSSK, RBSK.",
+                    "programs": [
+                        {
+                            "name": "JSY (Janani Suraksha Yojana)",
+                            "benefits": [
+                                "Cash assistance for institutional delivery",
+                                "Free transport",
+                                "Postnatal care"
+                            ]
+                        },
+                        {
+                            "name": "JSSK (Janani Shishu Suraksha Karyakram)",
+                            "benefits": [
+                                "Free delivery",
+                                "Free drugs and diagnostics",
+                                "Free diet",
+                                "Free transport"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "concept": "Disease Control Programs",
+                    "explanation": "NTEP (TB), NVBDCP (Vector-borne), NPCDCS (NCDs).",
+                    "examples": [
+                        "NTEP: Free TB diagnosis and treatment",
+                        "NVBDCP: Malaria/Dengue prevention and control",
+                        "NPCDCS: NCD screening and management"
+                    ]
+                },
+                {
+                    "concept": "Social Protection Schemes",
+                    "explanation": "PM-JAY (Ayushman Bharat) for hospitalization, PMSBY/PMJJBY for insurance.",
+                    "eligibility": [
+                        "PM-JAY: BPL families, coverage up to ₹5 lakh/year",
+                        "PMSBY: Accident insurance for ₹12/year",
+                        "PMJJBY: Life insurance for ₹330/year"
+                    ]
+                }
+            ],
+            "step_by_step_guide": {
+                "title": "How to Link Families to Health Schemes",
+                "steps": [
+                    {
+                        "step": 1,
+                        "title": "Identify Eligibility",
+                        "actions": [
+                            "Assess family's socioeconomic status",
+                            "Identify pregnant women, children, elderly",
+                            "Check for chronic diseases (TB, DM, HTN)",
+                            "Verify BPL/APL status"
+                        ]
+                    },
+                    {
+                        "step": 2,
+                        "title": "Explain Benefits",
+                        "actions": [
+                            "Explain scheme benefits in simple language",
+                            "Address misconceptions",
+                            "Emphasize free/subsidized services",
+                            "Show success stories from community"
+                        ]
+                    },
+                    {
+                        "step": 3,
+                        "title": "Facilitate Enrollment",
+                        "actions": [
+                            "Help collect required documents",
+                            "Accompany to enrollment center if needed",
+                            "Follow up on application status",
+                            "Ensure family receives benefits"
+                        ]
+                    }
+                ]
+            },
+            "clinical_application": {
+                "in_fap": "Identify family members eligible for government schemes and facilitate their enrollment.",
+                "assessment_points": [
+                    "Have you identified all eligible family members?",
+                    "Have you explained scheme benefits clearly?",
+                    "Have you facilitated enrollment?",
+                    "Have you documented scheme linkages?"
+                ],
+                "examples": [
+                    "Pregnant woman -> Link to JSY/JSSK",
+                    "Elderly with cataracts -> Link to NPCB",
+                    "BPL family -> Link to PM-JAY"
+                ]
+            },
+            "case_study": {
+                "scenario": "Lakshmi, 25 years old, is 6 months pregnant. She plans home delivery as she cannot afford hospital costs. Her family is BPL.",
+                "analysis": "Multiple schemes can help:",
+                "determinants_identified": [
+                    "JSY: Cash incentive for institutional delivery",
+                    "JSSK: Free delivery, drugs, diet, transport",
+                    "PM-JAY: Health insurance for complications",
+                    "ASHA: Accompaniment and support"
+                ],
+                "intervention_approach": "Counsel Lakshmi on benefits of institutional delivery, link to JSY/JSSK, ensure PM-JAY enrollment, coordinate with ASHA worker"
+            },
+            "learning_resources": [
+                {
+                    "type": "Portal",
+                    "title": "National Health Portal (India)",
+                    "url": "https://www.nhp.gov.in"
+                },
+                {
+                    "type": "Guide",
+                    "title": "PM-JAY Beneficiary Identification Guide"
+                },
+                {
+                    "type": "Video",
+                    "title": "RMNCH+A Program Overview",
+                    "duration": "10 minutes"
+                }
+            ],
+            "assessment_questions": [
+                {
+                    "question": "List 3 benefits available to a pregnant woman under JSY.",
+                    "type": "Short answer",
+                    "points": 5
+                },
+                {
+                    "question": "How would you link a diabetic patient to NPCDCS services?",
+                    "type": "Case-based",
+                    "points": 10
+                },
+                {
+                    "question": "Document all scheme linkages you facilitated for your adopted family",
+                    "type": "Practical",
+                    "points": 15
+                }
+            ]
+        }
+    }
+}
