@@ -3,7 +3,7 @@
 -- ============================================
 CREATE TABLE IF NOT EXISTS villages (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  student_id uuid REFERENCES families(student_id) DEFAULT auth.uid(), -- Link to student
+  student_id uuid REFERENCES auth.users(id) DEFAULT auth.uid(), -- Link to student
   village_name text NOT NULL,
   data jsonb DEFAULT '{}'::jsonb, -- Stores full form data (population, resources, etc.)
   created_at timestamp with time zone DEFAULT now(),
