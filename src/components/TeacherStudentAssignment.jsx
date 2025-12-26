@@ -48,8 +48,8 @@ const TeacherStudentAssignment = () => {
                 .from('teacher_student_mappings')
                 .select(`
           *,
-          teacher:teacher_id(id, username, full_name, department),
-          student:student_id(id, username, full_name, year, registration_number)
+          teacher:profiles!teacher_id(id, username, full_name, department),
+          student:profiles!student_id(id, username, full_name, year, registration_number)
         `)
                 .eq('is_active', true)
                 .order('created_at', { ascending: false });

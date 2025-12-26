@@ -13,6 +13,7 @@
     flex-direction: column;
     padding: 1.5rem;
     flex-shrink: 0;
+    transition: transform 0.3s ease, width 0.3s ease;
 }
 
 .logo {
@@ -104,9 +105,73 @@
     flex: 1;
     overflow-y: auto;
     padding: 2rem;
+    position: relative;
+    width: 100%;
 }
 
 .contentContainer {
     max-width: 1200px;
     margin: 0 auto;
+}
+
+.mobileToggle {
+    display: none;
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 100;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--color-border);
+    color: var(--color-primary);
+    cursor: pointer;
+}
+
+.overlay {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 99;
+        transform: translateX(-100%);
+        width: 260px;
+        box-shadow: 4px 0 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .sidebarOpen {
+        transform: translateX(0);
+    }
+
+    .mobileToggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .main {
+        padding: 4.5rem 1rem 2rem 1rem;
+    }
+
+    .overlay {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 90;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+    }
+
+    .overlayOpen {
+        opacity: 1;
+        pointer-events: auto;
+    }
 }

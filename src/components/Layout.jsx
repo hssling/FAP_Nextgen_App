@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Settings, Activity, Map, GraduationCap, LogOut, BookOpen, BookmarkCheck, Target, Calculator } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, Activity, Map, GraduationCap, LogOut, BookOpen, BookmarkCheck, Target, Calculator, Menu, X } from 'lucide-react';
 import styles from './Layout.module.css';
 import ErrorBoundary from './ErrorBoundary';
 import { useAuth } from '../contexts/AuthContext';
 
 const Layout = () => {
     const { profile, signOut } = useAuth();
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const isTeacher = profile?.role === 'teacher';
     const isAdmin = profile?.role === 'admin';
@@ -25,9 +26,23 @@ const Layout = () => {
         return profile?.year ? `Year ${profile.year} MBBS` : 'MBBS Student';
     };
 
+    const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+    const closeSidebar = () => setIsSidebarOpen(false);
+
     return (
         <div className={styles.layout}>
-            <aside className={styles.sidebar}>
+            {/* Mobile Overlay */}
+            <div
+                className={`${styles.overlay} ${isSidebarOpen ? styles.overlayOpen : ''}`}
+                onClick={closeSidebar}
+            />
+
+            {/* Mobile Toggle Button */}
+            <button className={styles.mobileToggle} onClick={toggleSidebar}>
+                {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+
+            <aside className={`${styles.sidebar} ${isSidebarOpen ? styles.sidebarOpen : ''}`}>
                 <div className={styles.logo}>
                     <Activity size={32} className={styles.logoIcon} />
                     <div>
@@ -39,53 +54,53 @@ const Layout = () => {
                 <nav className={styles.nav}>
                     {!isTeacher && !isAdmin ? (
                         <>
-                            <NavLink to="/" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                            <NavLink to="/" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <LayoutDashboard size={20} />
                                 Dashboard
                             </NavLink>
-                            <NavLink to="/families" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                            <NavLink to="/families" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <Users size={20} />
                                 My Families
                             </NavLink>
-                            <NavLink to="/community" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                            <NavLink to="/community" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <Map size={20} />
                                 Community
                             </NavLink>
-                            <NavLink to="/reflections" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                            <NavLink to="/reflections" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <BookOpen size={20} />
                                 Reflections
                             </NavLink>
-                            <NavLink to="/learning-objectives" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                            <NavLink to="/learning-objectives" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <Target size={20} />
                                 Learning Objectives
                             </NavLink>
-                            <NavLink to="/tools" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                            <NavLink to="/tools" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <Calculator size={20} />
                                 Tools & Calculators
                             </NavLink>
-                            <NavLink to="/resources" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                            <NavLink to="/resources" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <BookmarkCheck size={20} />
                                 Resources
                             </NavLink>
-                            <NavLink to="/reports" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                            <NavLink to="/reports" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <FileText size={20} />
                                 Logbook Reports
                             </NavLink>
                         </>
                     ) : isTeacher ? (
                         // Teacher Menu
-                        <NavLink to="/teacher-dashboard" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                        <NavLink to="/teacher-dashboard" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                             <Users size={20} />
                             My Mentees
                         </NavLink>
                     ) : (
                         // Admin Menu
                         <>
-                            <NavLink to="/admin-dashboard" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                            <NavLink to="/admin-dashboard" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <GraduationCap size={20} />
                                 Admin Dashboard
                             </NavLink>
-                            <NavLink to="/admin-dashboard/assignments" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                            <NavLink to="/admin-dashboard/assignments" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <Users size={20} />
                                 Assign Students
                             </NavLink>
@@ -94,6 +109,7 @@ const Layout = () => {
 
                     <NavLink
                         to={isTeacher ? '/teacher-dashboard/settings' : isAdmin ? '/admin-dashboard/settings' : '/settings'}
+                        onClick={closeSidebar}
                         className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
                     >
                         <Settings size={20} />
