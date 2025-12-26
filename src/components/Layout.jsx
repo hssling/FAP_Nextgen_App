@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Settings, Activity, Map, GraduationCap, LogOut, BookOpen, BookmarkCheck, Target, Calculator, Menu, X, Shield } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, Activity, Map, GraduationCap, LogOut, BookOpen, BookmarkCheck, Target, Calculator, Menu, X, Shield, Sparkles } from 'lucide-react';
 import styles from './Layout.module.css';
 import ErrorBoundary from './ErrorBoundary';
 import { useAuth } from '../contexts/AuthContext';
@@ -73,6 +73,10 @@ const Layout = () => {
                             <NavLink to="/learning-objectives" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <Target size={20} />
                                 Learning Objectives
+                            </NavLink>
+                            <NavLink to="/ai-coach" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                                <Sparkles size={20} />
+                                AI Medical Coach
                             </NavLink>
                             <NavLink to="/tools" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <Calculator size={20} />

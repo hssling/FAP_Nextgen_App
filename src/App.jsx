@@ -18,6 +18,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import UserManagement from './pages/UserManagement';
 import ForgotPassword from './pages/ForgotPassword';
 import LearningObjectives from './pages/LearningObjectives';
+import AICoach from './pages/AICoach';
 import DebugEnv from './pages/DebugEnv';
 import TeacherStudentAssignment from './components/TeacherStudentAssignment';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -132,6 +133,7 @@ const AppRoutes = () => {
         <Route path="community" element={<Community />} />
         <Route path="reflections" element={<Reflections />} />
         <Route path="learning-objectives" element={<LearningObjectives />} />
+        <Route path="ai-coach" element={<AICoach />} />
         <Route path="tools" element={<Tools />} />
         <Route path="resources" element={<Resources />} />
         <Route path="reports" element={<Reports />} />
