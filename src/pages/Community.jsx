@@ -1,46 +1,81 @@
 import React, { useEffect, useState } from 'react';
 import { Map, Users, Droplets, Activity, PlusCircle, Edit, Flag, ClipboardList, Heart, Syringe, Baby, TrendingUp, AlertTriangle, Package, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { getVillages, addVillage, updateVillage } from '../services/db';
+import { supabase } from '../services/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 import DynamicForm from '../components/DynamicForm';
 import formRegistry from '../data/forms/registry.json';
 
 const Community = () => {
+    const { profile } = useAuth();
     const [villages, setVillages] = useState([]);
     const [selectedVillage, setSelectedVillage] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [activeSection, setActiveSection] = useState('overview');
 
     useEffect(() => {
-        loadData();
-    }, []);
+        if (profile) loadData();
+    }, [profile]);
 
     const loadData = async () => {
-        const data = await getVillages();
-        setVillages(data);
-        if (data.length > 0 && !selectedVillage) {
-            setSelectedVillage(data[0]);
+        try {
+            const { data, error } = await supabase
+                .from('villages')
+                .select('*')
+                .eq('student_id', profile.id);
+
+            if (error) throw error;
+
+            // Map Supabase layout to component layout (merge 'data' col with top level)
+            const mapped = (data || []).map(v => ({
+                id: v.id,
+                ...v.data, // Spread the JSONB data
+                village_name: v.village_name // Ensure name is preserved
+            }));
+
+            setVillages(mapped);
+            if (mapped.length > 0 && !selectedVillage) {
+                setSelectedVillage(mapped[0]);
+            }
+        } catch (error) {
+            console.error('Error loading villages:', error);
         }
     };
 
     const handleSave = async (formData) => {
-        if (selectedVillage) {
-            const updated = { ...selectedVillage, ...formData };
-            await updateVillage(updated);
-            setSelectedVillage(updated);
-        } else {
-            const id = await addVillage(formData);
-            const newVillage = { ...formData, id };
-            setVillages([...villages, newVillage]);
-            setSelectedVillage(newVillage);
+        try {
+            const villageName = formData.village_name || 'Unnamed Village';
+            const payload = {
+                student_id: profile.id,
+                village_name: villageName,
+                data: formData
+            };
+
+            if (selectedVillage) {
+                // Update
+                const { error } = await supabase
+                    .from('villages')
+                    .update(payload)
+                    .eq('id', selectedVillage.id);
+                if (error) throw error;
+            } else {
+                // Insert
+                const { error } = await supabase
+                    .from('villages')
+                    .insert([payload]);
+                if (error) throw error;
+            }
+
+            setIsEditing(false);
+            loadData();
+        } catch (error) {
+            console.error('Error saving village:', error);
+            alert('Failed to save village data.');
         }
-        setIsEditing(false);
-        loadData();
     };
 
     const getSchema = () => {
         const schema = formRegistry.find(f => f.form_id === 'village_profile_v1');
-        console.log('Schema found:', schema ? 'YES' : 'NO', schema);
         return schema;
     };
 

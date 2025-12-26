@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Users, Calendar, AlertCircle, TrendingUp, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { getFamilies, getMembers } from '../services/db';
+import { supabase } from '../services/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
 const StatCard = ({ title, value, icon: Icon, color, trend, delay }) => (
@@ -36,6 +37,7 @@ const StatCard = ({ title, value, icon: Icon, color, trend, delay }) => (
 );
 
 const Dashboard = () => {
+    const { profile } = useAuth();
     const [stats, setStats] = useState({
         families: 0,
         members: 0,
@@ -44,31 +46,57 @@ const Dashboard = () => {
     });
 
     useEffect(() => {
-        const loadStats = async () => {
-            const families = await getFamilies();
-            let allMembers = [];
-            let problemCount = 0;
+        if (profile) loadStats();
+    }, [profile]);
 
-            for (const fam of families) {
-                const members = await getMembers(fam.id);
-                allMembers = [...allMembers, ...members];
-                members.forEach(m => {
-                    if (m.problems) problemCount += m.problems.length;
-                });
+    const loadStats = async () => {
+        try {
+            // Get Families
+            const { data: families, error: famError } = await supabase
+                .from('families')
+                .select('*')
+                .eq('student_id', profile.id)
+                .order('created_at', { ascending: false });
+
+            if (famError) throw famError;
+
+            // Get Members and Problems
+            let membersCount = 0;
+            let problemsCount = 0;
+
+            if (families.length > 0) {
+                const familyIds = families.map(f => f.id);
+
+                // Fetch members
+                const { data: members, error: memError } = await supabase
+                    .from('family_members')
+                    .select('health_data')
+                    .in('family_id', familyIds);
+
+                if (!memError && members) {
+                    membersCount = members.length;
+                    members.forEach(m => {
+                        if (m.health_data && m.health_data.problems) {
+                            problemsCount += m.health_data.problems.length;
+                        }
+                    });
+                }
             }
 
             setStats({
                 families: families.length,
-                members: allMembers.length,
-                activeProblems: problemCount,
+                members: membersCount,
+                activeProblems: problemsCount,
                 recentActivity: families.slice(0, 3).map(f => ({
-                    title: `Family Added: ${f.headName}`,
-                    date: f.createdAt ? new Date(f.createdAt).toLocaleDateString() : 'Recently'
+                    title: `Family Added: ${f.head_name}`,
+                    date: f.created_at ? new Date(f.created_at).toLocaleDateString() : 'Recently'
                 }))
             });
-        };
-        loadStats();
-    }, []);
+
+        } catch (error) {
+            console.error("Error loading dashboard stats:", error);
+        }
+    };
 
     const containerVariants = {
         hidden: { opacity: 0 },

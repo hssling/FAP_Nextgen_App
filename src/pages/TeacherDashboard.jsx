@@ -10,6 +10,10 @@ const TeacherDashboard = () => {
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [feedback, setFeedback] = useState('');
     const [message, setMessage] = useState('');
+    const [reflections, setReflections] = useState([]);
+    const [studentFamilies, setStudentFamilies] = useState([]); // Added state
+    const [gradingReflectionId, setGradingReflectionId] = useState(null);
+    const [gradingData, setGradingData] = useState({ feedback: '', grade: '' });
 
     useEffect(() => {
         if (profile?.id) {
@@ -79,9 +83,53 @@ const TeacherDashboard = () => {
         }
     };
 
+    const fetchReflections = async (studentId) => {
+        const { data } = await supabase
+            .from('reflections')
+            .select('*')
+            .eq('student_id', studentId)
+            .order('created_at', { ascending: false });
+        setReflections(data || []);
+    };
+
+    const fetchStudentFamilies = async (studentId) => {
+        const { data } = await supabase
+            .from('families')
+            .select('*')
+            .eq('student_id', studentId);
+        setStudentFamilies(data || []);
+    };
+
+    const handleGradeReflection = async (reflectionId) => {
+        if (!gradingData.feedback && !gradingData.grade) return;
+
+        try {
+            const { error } = await supabase
+                .from('reflections')
+                .update({
+                    teacher_feedback: gradingData.feedback,
+                    grade: gradingData.grade,
+                    status: 'Graded'
+                })
+                .eq('id', reflectionId);
+
+            if (error) throw error;
+
+            // Refresh
+            fetchReflections(selectedStudent.id);
+            setGradingReflectionId(null);
+            setGradingData({ feedback: '', grade: '' });
+        } catch (error) {
+            console.error("Grading error:", error);
+            alert("Failed to save grade.");
+        }
+    };
+
     const openReview = (student) => {
         setSelectedStudent(student);
         setFeedback(student.notes || '');
+        fetchReflections(student.id);
+        fetchStudentFamilies(student.id);
     };
 
     if (loading) return <div style={{ padding: '2rem' }}>Loading your mentees...</div>;
@@ -176,7 +224,7 @@ const TeacherDashboard = () => {
                     <div className="grid-layout grid-2">
                         {/* Student Progress */}
                         <div className="card" style={{ padding: '2rem' }}>
-                            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1.5rem' }}>Progress Snapshot</h3>
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1.5rem' }}>Overview</h3>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
                                 <div style={{ padding: '1rem', background: '#F0FDFA', borderRadius: '8px', border: '1px solid #CCFBF1' }}>
@@ -184,24 +232,104 @@ const TeacherDashboard = () => {
                                     <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#115E59' }}>{selectedStudent.familyCount}</div>
                                 </div>
                                 <div style={{ padding: '1rem', background: '#F0F9FF', borderRadius: '8px', border: '1px solid #E0F2FE' }}>
-                                    <div style={{ color: '#0369A1', fontSize: '0.875rem' }}>Year</div>
-                                    <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#075985' }}>{selectedStudent.year}</div>
+                                    <div style={{ color: '#0369A1', fontSize: '0.875rem' }}>Reflections</div>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#075985' }}>{reflections.length}</div>
                                 </div>
                             </div>
 
-                            <div style={{ padding: '1rem', background: '#FFFBEB', borderRadius: '8px', border: '1px solid #FEF3C7' }}>
-                                <p style={{ fontWeight: '600', color: '#92400E', marginBottom: '0.5rem' }}>Goal Status</p>
-                                <p style={{ fontSize: '0.9rem', color: '#B45309' }}>
-                                    {selectedStudent.familyCount >= 3
-                                        ? "✅ Student has met the target of adopting 3 families."
-                                        : `⚠️ Student needs to adopt ${3 - selectedStudent.familyCount} more families.`}
-                                </p>
+                            {/* Added Family List View */}
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>Adopted Families</h3>
+                            <div style={{ marginBottom: '2rem' }}>
+                                {studentFamilies.length === 0 ? (
+                                    <p style={{ fontStyle: 'italic', color: '#999' }}>No families added details yet.</p>
+                                ) : (
+                                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                                        {studentFamilies.map(f => (
+                                            <div key={f.id} style={{ padding: '0.75rem', border: '1px solid #eee', borderRadius: '6px', backgroundColor: '#fff', fontSize: '0.9rem' }}>
+                                                <strong>{f.head_name}</strong>
+                                                <span style={{ margin: '0 0.5rem', color: '#ccc' }}>|</span>
+                                                <span style={{ color: '#666' }}>{f.village || 'No Village'}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginTop: '2rem', marginBottom: '1rem' }}>Recent Reflections</h3>
+                            <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                                {reflections.length === 0 ? (
+                                    <p style={{ color: '#9CA3AF', fontStyle: 'italic' }}>Student has not posted any reflections yet.</p>
+                                ) : (
+                                    reflections.map(ref => (
+                                        <div key={ref.id} style={{ padding: '1rem', background: '#F8FAFC', borderRadius: '8px', marginBottom: '1rem', borderLeft: '4px solid #3B82F6' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                                <span style={{ fontWeight: '600', fontSize: '0.875rem', color: '#1E40AF' }}>{ref.phase}</span>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{new Date(ref.created_at).toLocaleDateString()}</span>
+                                            </div>
+                                            <p style={{ fontSize: '0.875rem', marginBottom: '0.75rem', whiteSpace: 'pre-wrap' }}>{ref.content}</p>
+
+                                            {/* Teacher Feedback / Grading Section */}
+                                            {gradingReflectionId === ref.id ? (
+                                                <div style={{ background: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #E5E7EB', marginTop: '1rem' }}>
+                                                    <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Add Assessment</h4>
+                                                    <textarea
+                                                        placeholder="Feedback..."
+                                                        className="input"
+                                                        style={{ width: '100%', fontSize: '0.875rem', marginBottom: '0.5rem' }}
+                                                        value={gradingData.feedback}
+                                                        onChange={(e) => setGradingData({ ...gradingData, feedback: e.target.value })}
+                                                    />
+                                                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                                        <select
+                                                            className="input"
+                                                            style={{ fontSize: '0.875rem' }}
+                                                            value={gradingData.grade}
+                                                            onChange={(e) => setGradingData({ ...gradingData, grade: e.target.value })}
+                                                        >
+                                                            <option value="">Select Grade</option>
+                                                            <option value="A">A (Excellent)</option>
+                                                            <option value="B">B (Good)</option>
+                                                            <option value="C">C (Satisfactory)</option>
+                                                            <option value="D">D (Needs Improvement)</option>
+                                                        </select>
+                                                        <div style={{ flex: 1 }}></div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                                        <button className="btn btn-outline" style={{ fontSize: '0.75rem' }} onClick={() => setGradingReflectionId(null)}>Cancel</button>
+                                                        <button className="btn btn-primary" style={{ fontSize: '0.75rem' }} onClick={() => handleGradeReflection(ref.id)}>Save Assessment</button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', borderTop: '1px solid #E2E8F0', paddingTop: '0.5rem' }}>
+                                                    <div>
+                                                        {ref.status === 'Graded' ? (
+                                                            <span style={{ fontSize: '0.75rem', color: '#059669', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                                <CheckCircle size={12} /> Graded: {ref.grade}
+                                                            </span>
+                                                        ) : (
+                                                            <span style={{ fontSize: '0.75rem', color: '#D97706' }}>Pending Review</span>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        style={{ fontSize: '0.75rem', color: '#2563EB', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '500' }}
+                                                        onClick={() => {
+                                                            setGradingReflectionId(ref.id);
+                                                            setGradingData({ feedback: ref.teacher_feedback || '', grade: ref.grade || '' });
+                                                        }}
+                                                    >
+                                                        {ref.status === 'Graded' ? 'Edit Assessment' : 'Rate / Feedback'}
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </div>
 
                         {/* Feedback Form */}
                         <div className="card" style={{ padding: '2rem' }}>
-                            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1.5rem' }}>Assessment & Feedback</h3>
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1.5rem' }}>Overall Assessment & Remarks</h3>
 
                             {message && (
                                 <div style={{ padding: '0.75rem', background: '#DCFCE7', color: '#166534', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.875rem' }}>

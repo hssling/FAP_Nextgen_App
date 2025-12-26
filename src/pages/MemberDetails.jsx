@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { User, Activity, AlertCircle, CheckCircle, Pill, Utensils, FileText, ClipboardList, Plus, ShieldCheck, CreditCard, ChevronRight } from 'lucide-react';
-import { getMembers, updateMember } from '../services/db';
+import { supabase } from '../services/supabaseClient';
 import DynamicForm from '../components/DynamicForm';
 import formRegistry from '../data/forms/registry.json';
 
@@ -23,28 +23,63 @@ const MemberDetails = () => {
     const [abhaVerified, setAbhaVerified] = useState(false);
 
     useEffect(() => {
-        const loadMember = async () => {
-            const allMembers = await getMembers(id);
-            const found = allMembers.find(m => m.id === parseInt(memberId));
-            // Ensure arrays exist
-            if (found) {
-                if (!found.problems) found.problems = [];
-                if (!found.interventions) found.interventions = [];
-                if (!found.assessments) found.assessments = [];
-                if (found.abhaId) {
-                    setAbhaId(found.abhaId);
-                    setAbhaVerified(true);
-                }
-            }
-            setMember(found);
-            setLoading(false);
-        };
         loadMember();
-    }, [id, memberId]);
+    }, [memberId]);
+
+    const loadMember = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('family_members')
+                .select('*')
+                .eq('id', memberId)
+                .single();
+
+            if (error) throw error;
+
+            // Normalize health_data
+            const healthData = data.health_data || {};
+            const preparedMember = {
+                ...data,
+                problems: healthData.problems || [],
+                interventions: healthData.interventions || [],
+                assessments: healthData.assessments || [],
+                abhaId: healthData.abhaId || ''
+            };
+
+            if (preparedMember.abhaId) {
+                setAbhaId(preparedMember.abhaId);
+                setAbhaVerified(true);
+            }
+
+            setMember(preparedMember);
+        } catch (error) {
+            console.error("Error loading member:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleUpdateMember = async (updatedMember) => {
-        await updateMember(updatedMember);
-        setMember({ ...updatedMember });
+        try {
+            // Extract health data
+            const healthData = {
+                problems: updatedMember.problems,
+                interventions: updatedMember.interventions,
+                assessments: updatedMember.assessments,
+                abhaId: updatedMember.abhaId
+            };
+
+            const { error } = await supabase
+                .from('family_members')
+                .update({ health_data: healthData })
+                .eq('id', memberId);
+
+            if (error) throw error;
+            setMember(updatedMember);
+        } catch (error) {
+            console.error("Error updating member:", error);
+            alert("Failed to update member.");
+        }
     };
 
     const addProblem = async (e) => {
@@ -74,8 +109,8 @@ const MemberDetails = () => {
             id: Date.now(),
             formId: selectedAssessmentForm,
             date: new Date().toISOString().split('T')[0],
-            data: data.calculated_fields ? data : { ...data }, // Store raw data
-            calculated_fields: data.calculated_fields || null // Store calculations separately
+            data: data.calculated_fields ? data : { ...data },
+            calculated_fields: data.calculated_fields || null
         };
         const updated = {
             ...member,

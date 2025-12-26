@@ -2,28 +2,57 @@ import React, { useEffect, useState } from 'react';
 import { Plus, MapPin, Users, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getFamilies, addFamily } from '../services/db';
+import { supabase } from '../services/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 
 const Families = () => {
+    const { profile } = useAuth();
     const [families, setFamilies] = useState([]);
     const [showAddModal, setShowAddModal] = useState(false);
-    const [newFamily, setNewFamily] = useState({ headName: '', village: '', membersCount: 1 });
+    const [newFamily, setNewFamily] = useState({ head_name: '', village: '', members_count: 1 });
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        loadFamilies();
-    }, []);
+        if (profile) loadFamilies();
+    }, [profile]);
 
     const loadFamilies = async () => {
-        const data = await getFamilies();
-        setFamilies(data);
+        try {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('families')
+                .select('*')
+                .eq('student_id', profile.id)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setFamilies(data || []);
+        } catch (error) {
+            console.error('Error fetching families:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleAddSubmit = async (e) => {
         e.preventDefault();
-        await addFamily(newFamily);
-        setShowAddModal(false);
-        setNewFamily({ headName: '', village: '', membersCount: 1 });
-        loadFamilies();
+        try {
+            const { error } = await supabase.from('families').insert([{
+                student_id: profile.id,
+                head_name: newFamily.head_name,
+                village: newFamily.village,
+                members_count: newFamily.members_count
+            }]);
+
+            if (error) throw error;
+
+            setShowAddModal(false);
+            setNewFamily({ head_name: '', village: '', members_count: 1 });
+            loadFamilies(); // Reload list
+        } catch (error) {
+            console.error('Error adding family:', error);
+            alert('Failed to add family.');
+        }
     };
 
     return (
@@ -49,7 +78,7 @@ const Families = () => {
                 </motion.button>
             </motion.header>
 
-            {families.length === 0 ? (
+            {loading ? <p>Loading...</p> : families.length === 0 ? (
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -100,7 +129,7 @@ const Families = () => {
                                                 fontWeight: '700', fontSize: '1.25rem'
                                             }}
                                         >
-                                            {family.headName.charAt(0)}
+                                            {family.head_name.charAt(0)}
                                         </motion.div>
                                         <span style={{
                                             padding: '0.25rem 0.75rem', borderRadius: '99px',
@@ -111,7 +140,7 @@ const Families = () => {
                                         </span>
                                     </div>
 
-                                    <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.25rem' }}>{family.headName} Family</h3>
+                                    <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.25rem' }}>{family.head_name} Family</h3>
 
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
                                         <MapPin size={16} />
@@ -120,7 +149,7 @@ const Families = () => {
 
                                     <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-                                            {family.membersCount || 0} Members
+                                            {family.members_count || 0} Members
                                         </span>
                                         <motion.div
                                             whileHover={{ x: 5 }}
@@ -164,8 +193,8 @@ const Families = () => {
                                         required
                                         placeholder="e.g. Ram Charan"
                                         style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
-                                        value={newFamily.headName}
-                                        onChange={e => setNewFamily({ ...newFamily, headName: e.target.value })}
+                                        value={newFamily.head_name}
+                                        onChange={e => setNewFamily({ ...newFamily, head_name: e.target.value })}
                                     />
                                 </div>
                                 <div style={{ marginBottom: '1rem' }}>
@@ -185,8 +214,8 @@ const Families = () => {
                                         type="number"
                                         min="1"
                                         style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
-                                        value={newFamily.membersCount}
-                                        onChange={e => setNewFamily({ ...newFamily, membersCount: parseInt(e.target.value) })}
+                                        value={newFamily.members_count}
+                                        onChange={e => setNewFamily({ ...newFamily, members_count: parseInt(e.target.value) })}
                                     />
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>

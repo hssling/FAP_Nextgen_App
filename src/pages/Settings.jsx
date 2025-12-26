@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { User, Download, Trash2, Database, Save, Check } from 'lucide-react';
-import { getFamilies, getAllMembers, getVillages } from '../services/db';
+import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 
 const Settings = () => {
     const { profile, signOut } = useAuth();
-    const [exporting, setExporting] = useState(false);
 
     // Use real data or fallbacks
     const [studentName, setStudentName] = useState(profile?.full_name || '');
@@ -16,54 +15,6 @@ const Settings = () => {
             window.location.href = '/login';
         } catch (error) {
             console.error('Logout failed', error);
-        }
-    };
-
-    const handleExport = async () => {
-        setExporting(true);
-        try {
-            const families = await getFamilies();
-            const members = await getAllMembers();
-            const villages = await getVillages();
-
-            const data = {
-                metadata: {
-                    exportedAt: new Date().toISOString(),
-                    student: studentName,
-                    appVersion: '2.0.0'
-                },
-                families,
-                members,
-                villages
-            };
-
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `fap_logbook_backup_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error("Export failed:", error);
-            alert("Failed to export data.");
-        } finally {
-            setExporting(false);
-        }
-    };
-
-    const handleReset = async () => {
-        if (confirm("WARNING: This will delete ALL your families, members, and visit logs from this device. This action cannot be undone. Are you sure?")) {
-            const DB_NAME = 'fap_nextgen_db_v2';
-            try {
-                window.indexedDB.deleteDatabase(DB_NAME);
-                alert("Database deleted. The page will reload to reset the application state.");
-                window.location.reload();
-            } catch (e) {
-                alert("Error deleting database. Please try clearing browser site data manually.");
-            }
         }
     };
 
@@ -114,32 +65,59 @@ const Settings = () => {
                     </div>
                 </div>
             </div>
+        </div>
 
-            {/* Data Management Section */}
-            <div className="card" style={{ padding: '2rem' }}>
+            {/* Data Management Section */ }
+            <div className="card" style={{ padding: '2rem', marginBottom: '2rem' }}>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <Database size={20} className="text-secondary" /> Data Management
                 </h2>
+                
+                <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+                    Your data is securely stored in the cloud. You can download a complete backup of your records (families, visits, reflections) for your personal archives.
+                </p>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
-                    <div>
-                        <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>Export Logbook Data</div>
-                        <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Download all your family records, visits, and assessments as a JSON file.</div>
-                    </div>
-                    <button className="btn btn-outline" onClick={handleExport} disabled={exporting}>
-                        <Download size={18} /> {exporting ? 'Exporting...' : 'Export JSON'}
-                    </button>
-                </div>
+                <button 
+                    className="btn btn-outline" 
+                    onClick={async () => {
+                        const btn = document.activeElement;
+                        btn.disabled = true;
+                        btn.innerText = "Generating Backup...";
+                        
+                        try {
+                             const { data: families } = await supabase.from('families').select('*').eq('student_id', profile.id);
+                             const { data: members } = await supabase.from('family_members').select('*').in('family_id', (families || []).map(f => f.id));
+                             const { data: visits } = await supabase.from('family_visits').select('*').in('family_id', (families || []).map(f => f.id));
+                             const { data: villages } = await supabase.from('villages').select('*').eq('student_id', profile.id);
+                             const { data: reflections } = await supabase.from('reflections').select('*').eq('student_id', profile.id);
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', marginTop: '1rem', backgroundColor: '#FEF2F2', borderRadius: 'var(--radius-md)', border: '1px solid #FECACA' }}>
-                    <div>
-                        <div style={{ fontWeight: '600', color: '#991B1B', marginBottom: '0.25rem' }}>Reset Application</div>
-                        <div style={{ fontSize: '0.875rem', color: '#B91C1C' }}>Permanently delete all data and start over.</div>
-                    </div>
-                    <button className="btn" style={{ backgroundColor: '#DC2626', color: 'white', border: 'none' }} onClick={handleReset}>
-                        <Trash2 size={18} /> Reset Database
-                    </button>
-                </div>
+                             const backupData = {
+                                 meta: { date: new Date().toISOString(), user: profile.full_name },
+                                 families: families || [],
+                                 members: members || [],
+                                 visits: visits || [],
+                                 villages: villages || [],
+                                 reflections: reflections || []
+                             };
+
+                             const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+                             const url = URL.createObjectURL(blob);
+                             const a = document.createElement('a');
+                             a.href = url;
+                             a.download = `fap_backup_${new Date().toISOString().split('T')[0]}.json`;
+                             a.click();
+                        } catch (e) {
+                            console.error(e);
+                            alert("Backup Failed");
+                        } finally {
+                            btn.disabled = false;
+                            btn.innerText = "Download Full Backup";
+                        }
+                    }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'center' }}
+                >
+                    <Download size={18} /> Download Full Backup
+                </button>
             </div>
 
             <div style={{ textAlign: 'center', marginTop: '3rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
@@ -149,7 +127,7 @@ const Settings = () => {
                     Professor, Community Medicine, SIMS & RH, Tumkur
                 </p>
             </div>
-        </div>
+        </div >
     );
 };
 

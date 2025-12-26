@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Save, Star, User, Sparkles, X } from 'lucide-react';
+import { BookOpen, Save, Star, User, Sparkles, X, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getFamilies, addReflection, getReflections } from '../services/db';
+import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 
 const Reflections = () => {
-    const { user } = useAuth();
+    const { profile } = useAuth();
     const [families, setFamilies] = useState([]);
     const [reflections, setReflections] = useState([]);
     const [formData, setFormData] = useState({
@@ -15,15 +15,39 @@ const Reflections = () => {
     });
     const [aiFeedback, setAiFeedback] = useState(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        loadData();
-    }, []);
+        if (profile) loadData();
+    }, [profile]);
 
     const loadData = async () => {
-        const [fams, refs] = await Promise.all([getFamilies(), getReflections()]);
-        setFamilies(fams);
-        setReflections(refs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+        try {
+            setLoading(true);
+            // 1. Fetch Families (from Supabase)
+            const { data: fams, error: famError } = await supabase
+                .from('families')
+                .select('id, head_name')
+                .eq('student_id', profile.id);
+
+            if (famError) console.error("Family fetch error:", famError);
+            setFamilies(fams || []);
+
+            // 2. Fetch Reflections
+            const { data: refs, error: refError } = await supabase
+                .from('reflections')
+                .select('*, families(head_name)')
+                .eq('student_id', profile.id)
+                .order('created_at', { ascending: false });
+
+            if (refError) console.error("Reflection fetch error:", refError);
+            setReflections(refs || []);
+
+        } catch (error) {
+            console.error("Load error:", error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleAICoach = () => {
@@ -31,31 +55,18 @@ const Reflections = () => {
 
         setIsAnalyzing(true);
 
-        // Simulate AI processing delay
+        // Simulate AI
         setTimeout(() => {
             const text = formData.content.toLowerCase();
             let feedback = "Great documentation. ";
             let tips = [];
 
-            // Simple keyword analysis simulation
-            if (text.includes('diet') || text.includes('food') || text.includes('nutrition')) {
-                tips.push("Consider adding a 24-hour dietary recall to the next visit.");
-            }
-            if (text.includes('trust') || text.includes('rapport') || text.includes('refused')) {
-                tips.push("Building trust takes time. Focus on active listening without immediate medical advice.");
-            }
-            if (text.includes('water') || text.includes('sanitation') || text.includes('toilet')) {
-                tips.push("This relates to environmental health. Check if this affects the whole community.");
-            }
-            if (text.includes('happy') || text.includes('sad') || text.includes('anxious')) {
-                tips.push("Good job noting the psychosocial state of the family.");
-            }
+            if (text.includes('diet') || text.includes('food')) tips.push("Consider adding a 24-hour dietary recall.");
+            if (text.includes('trust') || text.includes('rapport')) tips.push("Building trust takes time. Focus on active listening.");
+            if (text.includes('water') || text.includes('sanitation')) tips.push("Check if this affects the whole community.");
 
-            if (tips.length === 0) {
-                feedback += "Try to link your observation to specific social determinants of health in your next entry.";
-            } else {
-                feedback += "Here are some suggestions for your next steps: " + tips.join(" ");
-            }
+            if (tips.length === 0) feedback += "Try to link your observation to specific social determinants.";
+            else feedback += "Suggestions: " + tips.join(" ");
 
             setAiFeedback(feedback);
             setIsAnalyzing(false);
@@ -66,22 +77,25 @@ const Reflections = () => {
         e.preventDefault();
         if (!formData.content.trim()) return;
 
-        await addReflection({
-            ...formData,
-            studentId: user?.id || 'guest',
-            status: 'Pending',
-            aiFeedback: aiFeedback, // Save the feedback if generated
-            familyId: formData.familyId ? parseInt(formData.familyId) : null
-        });
+        try {
+            const { error } = await supabase.from('reflections').insert([{
+                student_id: profile.id,
+                family_id: formData.familyId || null,
+                phase: formData.phase,
+                content: formData.content,
+                ai_feedback: aiFeedback,
+                status: 'Pending'
+            }]);
 
-        setFormData({ ...formData, content: '' });
-        setAiFeedback(null);
-        loadData();
-    };
+            if (error) throw error;
 
-    const getFamilyName = (id) => {
-        const fam = families.find(f => f.id === id);
-        return fam ? `${fam.headName}'s Family` : 'General / No Link';
+            setFormData({ ...formData, content: '' });
+            setAiFeedback(null);
+            loadData(); // Reload list
+        } catch (error) {
+            console.error("Save error:", error);
+            alert("Failed to save reflection.");
+        }
     };
 
     return (
@@ -118,7 +132,7 @@ const Reflections = () => {
                                 >
                                     <option value="">-- General Reflection --</option>
                                     {families.map(f => (
-                                        <option key={f.id} value={f.id}>{f.headName}</option>
+                                        <option key={f.id} value={f.id}>{f.head_name}</option>
                                     ))}
                                 </select>
                             </div>
@@ -141,7 +155,7 @@ const Reflections = () => {
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Reflection Narrative</label>
                                 <textarea
                                     rows={8}
-                                    placeholder="What did you learn today? How did the visit go? (Mention keywords like 'diet', 'trust', 'sanitation' to trigger AI Coach)"
+                                    placeholder="What did you learn today?..."
                                     value={formData.content}
                                     onChange={e => setFormData({ ...formData, content: e.target.value })}
                                     style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', fontFamily: 'inherit', resize: 'vertical' }}
@@ -188,11 +202,7 @@ const Reflections = () => {
                                     disabled={!formData.content || isAnalyzing}
                                     style={{ fontSize: '0.9rem' }}
                                 >
-                                    {isAnalyzing ? (
-                                        <><span>Analyzing...</span></>
-                                    ) : (
-                                        <><Sparkles size={16} style={{ color: '#D97706' }} /> Ask AI Coach</>
-                                    )}
+                                    {isAnalyzing ? "Analyzing..." : <><Sparkles size={16} style={{ color: '#D97706' }} /> Ask AI Coach</>}
                                 </button>
                                 <button type="submit" className="btn btn-primary">
                                     <Save size={18} /> Save Entry
@@ -210,7 +220,7 @@ const Reflections = () => {
                     </div>
 
                     <AnimatePresence>
-                        {reflections.length === 0 ? (
+                        {loading ? <p>Loading...</p> : reflections.length === 0 ? (
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
@@ -238,12 +248,15 @@ const Reflections = () => {
                                                 }}>
                                                     {ref.phase}
                                                 </span>
-                                                <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                    <User size={14} /> {getFamilyName(ref.familyId)}
-                                                </span>
+                                                {/* If linked to family, show it */}
+                                                {ref.family_id && (
+                                                    <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                        <User size={14} /> Family: {ref.families?.head_name || 'Linked Family'}
+                                                    </span>
+                                                )}
                                             </div>
                                             <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                                                {new Date(ref.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                {new Date(ref.created_at).toLocaleDateString()}
                                             </span>
                                         </div>
 
@@ -251,9 +264,14 @@ const Reflections = () => {
                                             {ref.content}
                                         </p>
 
-                                        {ref.aiFeedback && (
-                                            <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#F8FAFC', borderRadius: 'var(--radius-md)', borderLeft: '3px solid #60A5FA', fontSize: '0.875rem', color: '#475569' }}>
-                                                <strong>AI Coach Note:</strong> {ref.aiFeedback.replace("AI Coach Feedback", "")}
+                                        {/* Teacher Feedback Display */}
+                                        {ref.teacher_feedback && (
+                                            <div style={{ marginTop: '1rem', padding: '1rem', background: '#ECFDF5', borderRadius: '8px', borderLeft: '4px solid #059669' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: '#047857', fontWeight: '600' }}>
+                                                    <MessageCircle size={16} /> Mentor Feedback
+                                                </div>
+                                                <p style={{ fontSize: '0.9rem', color: '#065F46' }}>{ref.teacher_feedback}</p>
+                                                {ref.grade && <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#047857', fontWeight: '700' }}>Grade: {ref.grade}</div>}
                                             </div>
                                         )}
 

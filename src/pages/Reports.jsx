@@ -31,8 +31,9 @@ const Reports = () => {
     const [feedback, setFeedback] = useState(null);
 
     useEffect(() => {
+        if (!profile) return;
         const loadReport = async () => {
-            const result = await generateCommunityHealthReport();
+            const result = await generateCommunityHealthReport(profile.id);
             setData(result);
             setLoading(false);
         };

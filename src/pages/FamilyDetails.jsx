@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { User, Activity, Calendar, Droplets, Home, Trash2, PlusCircle, FileText, ArrowRight, ClipboardList } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getFamily, getMembers, addMember } from '../services/db';
+import { supabase } from '../services/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 import DynamicForm from '../components/DynamicForm';
 import formRegistry from '../data/forms/registry.json';
 
 const FamilyDetails = () => {
     const { id } = useParams();
+    const { profile } = useAuth();
     const [family, setFamily] = useState(null);
     const [members, setMembers] = useState([]);
     const [visits, setVisits] = useState([]);
@@ -27,44 +29,90 @@ const FamilyDetails = () => {
         purpose: 'General Assessment',
         duration: '1',
         reflections: '',
-        protocol: null
+        protocol: null,
+        memberId: ''
     });
 
     useEffect(() => {
-        loadData();
-    }, [id]);
+        if (profile) loadData();
+    }, [id, profile]);
 
     const loadData = async () => {
-        const fam = await getFamily(id);
-        const mems = await getMembers(id);
-        const mockVisits = [
-            {
-                id: 1,
-                date: new Date().toISOString().split('T')[0],
-                purpose: 'Environment & Sanitation',
-                duration: 1.5,
-                status: 'Completed',
-                protocol: 'environment_sanitation_v1',
-                data: {
-                    water_quality_rc: 0.3,
-                    rc_pass: true,
-                    solid_waste: 'segregated',
-                    ventilation: 'Adequate',
-                    vector_breeding: false
-                }
-            }
-        ];
-        setFamily(fam);
-        setMembers(mems);
-        setVisits(mockVisits);
+        try {
+            // Fetch Family
+            const { data: famData, error: famError } = await supabase
+                .from('families')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (famError) throw famError;
+
+            const mappedFam = {
+                ...famData,
+                headName: famData.head_name,
+                village: famData.village,
+                membersCount: famData.members_count
+            };
+            setFamily(mappedFam);
+
+            // Fetch Members
+            const { data: memData, error: memError } = await supabase
+                .from('family_members')
+                .select('*')
+                .eq('family_id', id);
+
+            if (memError) throw memError;
+            setMembers(memData || []);
+
+            // Fetch Visits
+            const { data: visData, error: visError } = await supabase
+                .from('family_visits')
+                .select('*')
+                .eq('family_id', id)
+                .order('visit_date', { ascending: false });
+
+            if (visError) throw visError;
+
+            // Map visits to UI format
+            const mappedVisits = (visData || []).map(v => ({
+                id: v.id,
+                date: v.visit_date,
+                purpose: v.activity_type || 'General Visit',
+                notes: v.notes,
+                duration: v.data?.duration || '-',
+                protocol: v.data?.protocol || null,
+                data: v.data || {}
+            }));
+            setVisits(mappedVisits);
+
+        } catch (error) {
+            console.error("Error loading family details:", error);
+        }
     };
 
     const handleAddMember = async (e) => {
         e.preventDefault();
-        await addMember({ ...newMember, familyId: parseInt(id) });
-        setShowMemberModal(false);
-        setNewMember({ name: '', age: '', gender: 'Male', relationship: '' });
-        loadData();
+        try {
+            const { error } = await supabase
+                .from('family_members')
+                .insert([{
+                    family_id: id,
+                    name: newMember.name,
+                    age: parseInt(newMember.age),
+                    gender: newMember.gender,
+                    relationship: newMember.relationship
+                }]);
+
+            if (error) throw error;
+
+            setShowMemberModal(false);
+            setNewMember({ name: '', age: '', gender: 'Male', relationship: '' });
+            loadData(); // Refresh
+        } catch (error) {
+            console.error("Error adding member:", error);
+            alert("Failed to add member");
+        }
     };
 
     const handleVisitBasicSubmit = (e) => {
@@ -77,14 +125,34 @@ const FamilyDetails = () => {
         }
     };
 
-    const finalizeVisit = (protocolData) => {
-        const visit = {
-            ...newVisit,
-            id: Date.now(),
-            data: protocolData
-        };
-        setVisits([visit, ...visits]);
-        resetVisitModal();
+    const finalizeVisit = async (protocolData) => {
+        try {
+            const payload = {
+                family_id: id,
+                student_id: profile.id,
+                visit_date: newVisit.date,
+                notes: newVisit.reflections,
+                activity_type: newVisit.purpose, // Use purpose as activity type
+                data: {
+                    ...protocolData,
+                    duration: newVisit.duration,
+                    protocol: newVisit.protocol,
+                    member_id: newVisit.memberId || null
+                }
+            };
+
+            const { error } = await supabase
+                .from('family_visits')
+                .insert([payload]);
+
+            if (error) throw error;
+
+            resetVisitModal();
+            loadData();
+        } catch (error) {
+            console.error("Error logging visit:", error);
+            alert("Failed to log visit.");
+        }
     };
 
     const resetVisitModal = () => {
@@ -95,7 +163,8 @@ const FamilyDetails = () => {
             purpose: 'General Assessment',
             duration: '1',
             reflections: '',
-            protocol: null
+            protocol: null,
+            memberId: ''
         });
     };
 
@@ -219,34 +288,62 @@ const FamilyDetails = () => {
 
                     {activeTab === 'socio' && (
                         <div className="card" style={{ padding: '2rem' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                                <div>
-                                    <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <Home size={20} className="text-primary" /> Housing Condition
-                                    </h3>
-                                    <div style={{ display: 'grid', gap: '1rem' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--color-border)' }}>
-                                            <span style={{ color: 'var(--color-text-muted)' }}>Type of House</span>
-                                            <span style={{ fontWeight: '500' }}>Pucca</span>
+                            {visits.find(v => v.protocol === 'socio_economic_v1') ? (
+                                (() => {
+                                    const sesData = visits.find(v => v.protocol === 'socio_economic_v1').data || {};
+                                    return (
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                                            <div>
+                                                <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <Home size={20} className="text-primary" /> SES Status
+                                                </h3>
+                                                <div style={{ display: 'grid', gap: '1rem' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--color-border)' }}>
+                                                        <span style={{ color: 'var(--color-text-muted)' }}>Head Education</span>
+                                                        <span style={{ fontWeight: '500' }}>{sesData.head_education || '-'}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--color-border)' }}>
+                                                        <span style={{ color: 'var(--color-text-muted)' }}>Head Occupation</span>
+                                                        <span style={{ fontWeight: '500' }}>{sesData.head_occupation || '-'}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--color-border)' }}>
+                                                        <span style={{ color: 'var(--color-text-muted)' }}>Monthly Income</span>
+                                                        <span style={{ fontWeight: '500' }}>₹{sesData.monthly_income || '-'}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <Activity size={20} className="text-secondary" /> Kuppuswamy Class
+                                                </h3>
+                                                <div style={{ padding: '1.5rem', backgroundColor: '#F0FDFA', borderRadius: '8px', textAlign: 'center' }}>
+                                                    <div style={{ fontSize: '2rem', fontWeight: '700', color: '#0F766E' }}>
+                                                        {/* Simple logic placeholder, ideally calculate real class */}
+                                                        {sesData.monthly_income > 50000 ? 'I (Upper)' : (sesData.monthly_income > 2000 ? 'IV (Upper Lower)' : 'V (Lower)')}
+                                                    </div>
+                                                    <div style={{ color: '#0F766E' }}>Estimated Socio-Economic Class</div>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
+                                    );
+                                })()
+                            ) : (
+                                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
+                                    <p>No Socio-Economic Assessment recorded yet.</p>
+                                    <button
+                                        className="btn btn-outline"
+                                        style={{ marginTop: '1rem' }}
+                                        onClick={() => {
+                                            setNewVisit(prev => ({ ...prev, protocol: 'socio_economic_v1', purpose: 'SES Assessment' }));
+                                            setShowVisitModal(true);
+                                            setVisitStep(2);
+                                            setSelectedProtocol('socio_economic_v1');
+                                        }}
+                                    >
+                                        Perform Assessment Now
+                                    </button>
                                 </div>
-
-                                <div>
-                                    <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <Droplets size={20} className="text-secondary" /> Water & Sanitation
-                                    </h3>
-                                    <div style={{ display: 'grid', gap: '1rem' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--color-border)' }}>
-                                            <span style={{ color: 'var(--color-text-muted)' }}>Water Source</span>
-                                            <span style={{ fontWeight: '500' }}>Piped Water</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
-                                <button className="btn btn-outline">Edit Details</button>
-                            </div>
+                            )}
                         </div>
                     )}
 
@@ -395,6 +492,20 @@ const FamilyDetails = () => {
                             <>
                                 <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem' }}>Log New Visit</h2>
                                 <form onSubmit={handleVisitBasicSubmit}>
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Subject (Optional)</label>
+                                        <select
+                                            style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
+                                            value={newVisit.memberId}
+                                            onChange={e => setNewVisit({ ...newVisit, memberId: e.target.value })}
+                                        >
+                                            <option value="">-- General Family Visit --</option>
+                                            {members.map(m => (
+                                                <option key={m.id} value={m.id}>{m.name} ({m.relationship})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Date</label>
@@ -434,10 +545,24 @@ const FamilyDetails = () => {
                                                 </div>
                                             </label>
                                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', backgroundColor: '#FEF2F2' }}>
-                                                <input type="radio" name="protocol" value="health_education_session_v1" checked={newVisit.protocol === 'health_education_session_v1'} onChange={(e) => setNewVisit({ ...newVisit, protocol: e.target.value })} />
+                                                <input type="radio" name="protocol" value="antenatal_care_v1" checked={newVisit.protocol === 'antenatal_care_v1'} onChange={(e) => setNewVisit({ ...newVisit, protocol: e.target.value })} />
                                                 <div>
-                                                    <strong>Health Education Session</strong>
-                                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Structured teaching on nutrition, hygiene, etc.</div>
+                                                    <strong>ANC Assessment</strong>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Pregnant women checkup (BP, HB, etc)</div>
+                                                </div>
+                                            </label>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', backgroundColor: '#FFF7ED' }}>
+                                                <input type="radio" name="protocol" value="ncd_screening_v1" checked={newVisit.protocol === 'ncd_screening_v1'} onChange={(e) => setNewVisit({ ...newVisit, protocol: e.target.value })} />
+                                                <div>
+                                                    <strong>NCD Screening</strong>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Blood Pressure, Diabetes risk check</div>
+                                                </div>
+                                            </label>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', backgroundColor: '#ECFDF5' }}>
+                                                <input type="radio" name="protocol" value="socio_economic_v1" checked={newVisit.protocol === 'socio_economic_v1'} onChange={(e) => setNewVisit({ ...newVisit, protocol: e.target.value })} />
+                                                <div>
+                                                    <strong>Socio-Economic Assessment</strong>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Kuppuswamy Scale (Education, Occupation, Income)</div>
                                                 </div>
                                             </label>
                                         </div>

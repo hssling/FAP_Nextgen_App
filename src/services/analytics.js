@@ -1,10 +1,59 @@
-import { getFamilies, getAllMembers, getVillages } from './db';
+import { supabase } from './supabaseClient';
 import formRegistry from '../data/forms/registry.json';
 
-export const generateCommunityHealthReport = async () => {
-    const families = await getFamilies();
-    const members = await getAllMembers();
-    const villages = await getVillages();
+export const generateCommunityHealthReport = async (studentId) => {
+    let families = [];
+    let members = [];
+    let visits = [];
+
+    try {
+        // Fetch Families
+        const { data: famData, error: famError } = await supabase
+            .from('families')
+            .select('*')
+            .eq('student_id', studentId);
+
+        if (famError) throw famError;
+        families = famData || [];
+
+        // Fetch Members and Visits if families exist
+        if (families.length > 0) {
+            const familyIds = families.map(f => f.id);
+
+            const { data: memData } = await supabase.from('family_members').select('*').in('family_id', familyIds);
+            members = memData || [];
+
+            const { data: visData } = await supabase.from('family_visits').select('*').in('family_id', familyIds);
+            visits = visData || [];
+        }
+    } catch (error) {
+        console.error("Analytics Error:", error);
+    }
+
+    // Process Members to attach 'assessments' from visits (virtual join for backwards compatibility)
+    // Actually, we pass 'visits' to new calculators, but old calculators (maternal/child) used 'member.assessments'.
+    // We should map visits to member.assessments for compatibility OR update those functions.
+    // Updating functions is cleaner but 'calculateMaternalIndicators' iterates members.
+    // Let's attach assessments to members temporarily.
+
+    const membersWithAssessments = members.map(m => {
+        const memberVisits = visits.filter(v => v.data?.member_id === m.id);
+        const assessments = memberVisits.map(v => ({
+            formId: v.data.protocol,
+            data: v.data,
+            date: v.visit_date
+        }));
+
+        // Normalize health_data for legacy calculators
+        const health = m.health_data || {};
+
+        return {
+            ...m,
+            assessments,
+            problems: health.problems || [],
+            interventions: health.interventions || []
+        };
+    });
 
     const report = {
         demographics: {
@@ -14,11 +63,11 @@ export const generateCommunityHealthReport = async () => {
             dependencyRatio: calculateDependencyRatio(members),
             ageDistribution: calculateAgeDistribution(members)
         },
-        maternalHealth: calculateMaternalIndicators(members),
-        childHealth: calculateChildHealthIndicators(members),
-        morbidity: calculateMorbidityProfile(members),
-        socioEconomic: calculateSES(families),
-        environmental: calculateEnvironmentalStats(families)
+        maternalHealth: calculateMaternalIndicators(membersWithAssessments),
+        childHealth: calculateChildHealthIndicators(membersWithAssessments),
+        morbidity: calculateMorbidityProfile(membersWithAssessments),
+        socioEconomic: calculateSES(families, visits),
+        environmental: calculateEnvironmentalStats(families, visits)
     };
 
     return report;
@@ -127,22 +176,51 @@ const calculateMorbidityProfile = (members) => {
     return diseases;
 };
 
-const calculateSES = (families) => {
-    // In a real app, this would process Kuppuswamy form data
-    // For now, we mock distribution for the demo if real data missing
-    return {
-        upper: 2,
-        upperMiddle: 5,
-        lowerMiddle: 10,
-        upperLower: 8,
-        lower: 3
-    };
+const calculateSES = (families, visits) => {
+    const classes = { upper: 0, upperMiddle: 0, lowerMiddle: 0, upperLower: 0, lower: 0 };
+
+    families.forEach(f => {
+        // Find latest SES visit for this family
+        const famVisits = visits.filter(v => v.family_id === f.id && v.data?.protocol === 'socio_economic_v1');
+        if (famVisits.length > 0) {
+            // Sort by date desc
+            famVisits.sort((a, b) => new Date(b.visit_date) - new Date(a.visit_date));
+            const latest = famVisits[0].data;
+            const income = parseFloat(latest.monthly_income || 0);
+
+            // Simple Kuppuswamy Logic (Income based approx for 2024)
+            if (income > 80000) classes.upper++;
+            else if (income > 40000) classes.upperMiddle++;
+            else if (income > 25000) classes.lowerMiddle++;
+            else if (income > 10000) classes.upperLower++;
+            else classes.lower++;
+        }
+    });
+    return classes;
 };
 
-const calculateEnvironmentalStats = (families) => {
+const calculateEnvironmentalStats = (families, visits) => {
+    let total = 0;
+    let safeWater = 0;
+    let sanitaryLatrine = 0;
+    let wasteSegregation = 0;
+
+    families.forEach(f => {
+        const famVisits = visits.filter(v => v.family_id === f.id && v.data?.protocol === 'environment_sanitation_v1');
+        if (famVisits.length > 0) {
+            total++;
+            famVisits.sort((a, b) => new Date(b.visit_date) - new Date(a.visit_date));
+            const data = famVisits[0].data;
+
+            if (['Piped Water', 'RO System'].includes(data.water_source)) safeWater++;
+            if (data.latrine_available === 'Yes') sanitaryLatrine++;
+            if (data.waste_disposal === 'Segregated') wasteSegregation++;
+        }
+    });
+
     return {
-        safeWater: 85, // %
-        sanitaryLatrine: 92, // %
-        wasteSegregation: 60 // %
+        safeWater: total > 0 ? ((safeWater / total) * 100).toFixed(0) : 0,
+        sanitaryLatrine: total > 0 ? ((sanitaryLatrine / total) * 100).toFixed(0) : 0,
+        wasteSegregation: total > 0 ? ((wasteSegregation / total) * 100).toFixed(0) : 0
     };
 };
