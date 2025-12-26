@@ -313,88 +313,90 @@ const TeacherStudentAssignment = () => {
                         No assignments yet. Assign students to teachers above.
                     </p>
                 ) : (
-                    <div style={{ display: 'grid', gap: '1rem' }}>
-                        {mappings.map((mapping, index) => (
-                            <motion.div
-                                key={mapping.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                                style={{
-                                    padding: '1rem',
-                                    border: '1px solid #E5E7EB',
-                                    borderRadius: '8px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between'
-                                }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-                                    {/* Student Info */}
-                                    <div style={{
-                                        padding: '0.75rem 1rem',
-                                        backgroundColor: '#DBEAFE',
+                    <div style={{ overflowX: 'auto', paddingBottom: '0.5rem' }}>
+                        <div style={{ display: 'grid', gap: '1rem', minWidth: '700px' }}>
+                            {mappings.map((mapping, index) => (
+                                <motion.div
+                                    key={mapping.id}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: index * 0.05 }}
+                                    style={{
+                                        padding: '1rem',
+                                        border: '1px solid #E5E7EB',
                                         borderRadius: '8px',
-                                        flex: 1
-                                    }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                                            <GraduationCap size={16} color="#1E40AF" />
-                                            <span style={{ fontWeight: '600', color: '#1E40AF' }}>
-                                                {mapping.student?.full_name}
-                                            </span>
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+                                        {/* Student Info */}
+                                        <div style={{
+                                            padding: '0.75rem 1rem',
+                                            backgroundColor: '#DBEAFE',
+                                            borderRadius: '8px',
+                                            flex: 1
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                                                <GraduationCap size={16} color="#1E40AF" />
+                                                <span style={{ fontWeight: '600', color: '#1E40AF' }}>
+                                                    {mapping.student?.full_name}
+                                                </span>
+                                            </div>
+                                            <p style={{ fontSize: '0.75rem', color: '#1E40AF' }}>
+                                                Year {mapping.student?.year} • {mapping.student?.registration_number}
+                                            </p>
                                         </div>
-                                        <p style={{ fontSize: '0.75rem', color: '#1E40AF' }}>
-                                            Year {mapping.student?.year} • {mapping.student?.registration_number}
-                                        </p>
+
+                                        <ArrowRight size={20} color="#9CA3AF" />
+
+                                        {/* Teacher Info */}
+                                        <div style={{
+                                            padding: '0.75rem 1rem',
+                                            backgroundColor: '#FEF3C7',
+                                            borderRadius: '8px',
+                                            flex: 1
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                                                <BookOpen size={16} color="#92400E" />
+                                                <span style={{ fontWeight: '600', color: '#92400E' }}>
+                                                    {mapping.teacher?.full_name}
+                                                </span>
+                                            </div>
+                                            <p style={{ fontSize: '0.75rem', color: '#92400E' }}>
+                                                {mapping.teacher?.department}
+                                            </p>
+                                        </div>
                                     </div>
 
-                                    <ArrowRight size={20} color="#9CA3AF" />
-
-                                    {/* Teacher Info */}
-                                    <div style={{
-                                        padding: '0.75rem 1rem',
-                                        backgroundColor: '#FEF3C7',
-                                        borderRadius: '8px',
-                                        flex: 1
-                                    }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                                            <BookOpen size={16} color="#92400E" />
-                                            <span style={{ fontWeight: '600', color: '#92400E' }}>
-                                                {mapping.teacher?.full_name}
+                                    {/* Notes and Actions */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                        {mapping.notes && (
+                                            <span style={{ fontSize: '0.875rem', color: '#6B7280', fontStyle: 'italic' }}>
+                                                {mapping.notes}
                                             </span>
-                                        </div>
-                                        <p style={{ fontSize: '0.75rem', color: '#92400E' }}>
-                                            {mapping.teacher?.department}
-                                        </p>
+                                        )}
+                                        <button
+                                            onClick={() => handleRemove(mapping.id)}
+                                            style={{
+                                                padding: '0.5rem',
+                                                border: '1px solid #FCA5A5',
+                                                borderRadius: '6px',
+                                                backgroundColor: '#FEE2E2',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}
+                                            title="Remove assignment"
+                                        >
+                                            <Trash2 size={16} color="#DC2626" />
+                                        </button>
                                     </div>
-                                </div>
-
-                                {/* Notes and Actions */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                    {mapping.notes && (
-                                        <span style={{ fontSize: '0.875rem', color: '#6B7280', fontStyle: 'italic' }}>
-                                            {mapping.notes}
-                                        </span>
-                                    )}
-                                    <button
-                                        onClick={() => handleRemove(mapping.id)}
-                                        style={{
-                                            padding: '0.5rem',
-                                            border: '1px solid #FCA5A5',
-                                            borderRadius: '6px',
-                                            backgroundColor: '#FEE2E2',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                        }}
-                                        title="Remove assignment"
-                                    >
-                                        <Trash2 size={16} color="#DC2626" />
-                                    </button>
-                                </div>
-                            </motion.div>
-                        ))}
+                                </motion.div>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>
