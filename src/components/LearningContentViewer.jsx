@@ -1,3 +1,4 @@
+// Cache bust: 2024-12-27-02:41
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, CheckCircle, AlertCircle, Lightbulb, FileText, Video, Download, ChevronDown, ChevronUp } from 'lucide-react';
