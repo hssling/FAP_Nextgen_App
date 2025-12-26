@@ -912,10 +912,39 @@
                     "explanation": "Using growth charts, BP logs, and sugar logs to visualize progress over 3 years."
                 }
             ],
+            "clinical_application": {
+                "in_fap": "Visit your adopted family regularly over 3 years and maintain comprehensive longitudinal records.",
+                "assessment_points": [
+                    "Have you maintained continuity over 3 years?",
+                    "Do you have baseline and follow-up data?",
+                    "Can you demonstrate health trend analysis?",
+                    "Have you built a trusting relationship?"
+                ]
+            },
             "case_study": {
                 "scenario": "A student visits a hypertensive patient for 3 years. Year 1: BP 160/100, irregular meds. Year 2: BP 150/90, better diet. Year 3: BP 130/80, regular meds.",
-                "analysis": "This success was only possible due to the sustained relationship and gradual behavior change support."
-            }
+                "analysis": "Continuity enabled behavior change:",
+                "determinants_identified": [
+                    "Year 1: Poor medication adherence due to cost",
+                    "Year 2: Dietary counseling led to salt reduction",
+                    "Year 3: Linked to free medication scheme, regular follow-up"
+                ],
+                "intervention_approach": "Sustained relationship, gradual behavior change support, scheme linkage, regular monitoring"
+            },
+            "learning_resources": [
+                {
+                    "type": "Reading",
+                    "title": "Continuity of Care in Family Medicine",
+                    "description": "Principles and practice of longitudinal care"
+                }
+            ],
+            "assessment_questions": [
+                {
+                    "question": "Demonstrate continuity of care for one family member over 3 years using your logbook data",
+                    "type": "Practical",
+                    "points": 20
+                }
+            ]
         }
     },
     "CM_3.2": {
@@ -935,12 +964,31 @@
             ],
             "clinical_application": {
                 "in_fap": "Use your logbook data to compare family health status from first visit to last visit.",
+                "assessment_points": [
+                    "Have you documented baseline data?",
+                    "Have you documented endline data?",
+                    "Can you demonstrate measurable change?",
+                    "Have you analyzed the reasons for change/no change?"
+                ],
                 "examples": [
                     "Change in BMI",
                     "Improvement in Anemia status",
                     "Adoption of family planning"
                 ]
-            }
+            },
+            "learning_resources": [
+                {
+                    "type": "Guide",
+                    "title": "Monitoring and Evaluation in Community Health"
+                }
+            ],
+            "assessment_questions": [
+                {
+                    "question": "Evaluate one health intervention you implemented and demonstrate its outcome",
+                    "type": "Case-based",
+                    "points": 15
+                }
+            ]
         }
     },
     "CM_3.3": {
@@ -963,8 +1011,27 @@
                 }
             ],
             "clinical_application": {
-                "in_fap": "Identify a common problem (e.g., anemia in adolescent girls) and conduct a small survey."
-            }
+                "in_fap": "Identify a common problem (e.g., anemia in adolescent girls) and conduct a small survey.",
+                "assessment_points": [
+                    "Have you formulated a clear research question?",
+                    "Have you collected data systematically?",
+                    "Have you obtained informed consent?",
+                    "Have you analyzed and presented findings?"
+                ]
+            },
+            "learning_resources": [
+                {
+                    "type": "Guide",
+                    "title": "Community-Based Participatory Research Handbook"
+                }
+            ],
+            "assessment_questions": [
+                {
+                    "question": "Design and conduct a small community-based study on a health problem you identified",
+                    "type": "Practical",
+                    "points": 20
+                }
+            ]
         }
     },
     "CM_3.4": {
@@ -983,8 +1050,27 @@
                 }
             ],
             "clinical_application": {
-                "in_fap": "Organize a small health awareness event or screening camp in your adopted village."
-            }
+                "in_fap": "Organize a small health awareness event or screening camp in your adopted village.",
+                "assessment_points": [
+                    "Did you plan the event systematically?",
+                    "Did you engage relevant stakeholders?",
+                    "Did you demonstrate leadership?",
+                    "Did you document the event and outcomes?"
+                ]
+            },
+            "learning_resources": [
+                {
+                    "type": "Guide",
+                    "title": "Community Health Event Planning Toolkit"
+                }
+            ],
+            "assessment_questions": [
+                {
+                    "question": "Document a health event you organized, including planning, execution, and outcomes",
+                    "type": "Practical",
+                    "points": 15
+                }
+            ]
         }
     },
     "CM_3.5": {
@@ -1003,8 +1089,27 @@
                 }
             ],
             "clinical_application": {
-                "in_fap": "Compile your final report using data from all 3 years of logbook entries."
-            }
+                "in_fap": "Compile your final report using data from all 3 years of logbook entries.",
+                "assessment_points": [
+                    "Is the report comprehensive and well-structured?",
+                    "Does it include baseline and endline data?",
+                    "Does it demonstrate continuity of care?",
+                    "Does it include critical reflection?"
+                ]
+            },
+            "learning_resources": [
+                {
+                    "type": "Template",
+                    "title": "FAP Final Report Template"
+                }
+            ],
+            "assessment_questions": [
+                {
+                    "question": "Submit your comprehensive family health report covering all 3 years",
+                    "type": "Practical",
+                    "points": 30
+                }
+            ]
         }
     }
 }
