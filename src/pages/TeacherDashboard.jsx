@@ -163,13 +163,15 @@ const TeacherDashboard = () => {
         else grade = 'D';
 
         try {
-            const { error } = await supabase.from('reflections').update({
-                ...scores,
-                teacher_feedback: gradeFeedback,
-                grade,
-                status: 'Graded',
-                graded_at: new Date().toISOString()
-            }).eq('id', gradingTarget.id);
+            // Use RPC for robust security-definer execution (Bypasses flakey RLS)
+            const { data, error } = await supabase.rpc('grade_reflection', {
+                p_reflection_id: gradingTarget.id,
+                p_teacher_id: profile.id,
+                p_scores: scores,
+                p_feedback: gradeFeedback,
+                p_grade: grade,
+                p_total_score: total
+            });
 
             if (error) throw error;
 
@@ -180,11 +182,9 @@ const TeacherDashboard = () => {
             setStats(prev => ({ ...prev, pendingReviews: Math.max(0, prev.pendingReviews - 1) }));
             setGradingTarget(null);
 
-            // Show success toast or alert?
-            // For now, silent success as the modal closes
         } catch (err) {
-            console.error("Grading Failed:", err);
-            alert("Failed to save grade. Check your connection or permissions.");
+            console.error("Grading RPC Failed:", err);
+            alert(`Grading Error: ${err.message || 'Check console details'}`);
         }
     };
 
@@ -471,6 +471,7 @@ const TeacherDashboard = () => {
                                     marginBottom: '1rem',
                                     border: '1px solid #E2E8F0'
                                 }}>
+
                                     {gradingTarget.reflection_type === 'file' ? (
                                         <div style={{ textAlign: 'center', padding: '1rem' }}>
                                             <p style={{ marginBottom: '0.5rem', fontWeight: 600 }}>{gradingTarget.file_name}</p>
@@ -524,7 +525,6 @@ const TeacherDashboard = () => {
                                         </div>
                                     ))}
                                 </div>
-
                                 <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '1rem', marginTop: '1rem' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                                         <span style={{ fontWeight: 700, color: '#64748B' }}>Total Score</span>
