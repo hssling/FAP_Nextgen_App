@@ -50,12 +50,40 @@ const Reflections = () => {
 
     useEffect(() => { if (profile) loadData(); }, [profile]);
 
-    const loadData = async () => {
-        setLoading(true);
+    // Cache Helper
+    const getCachedData = (id) => {
+        const cache = sessionStorage.getItem(`reflections_cache_${id}`);
+        if (cache) {
+            const { timestamp, data } = JSON.parse(cache);
+            if (Date.now() - timestamp < 60000) return data; // 1 min cache for journal (stricter)
+        }
+        return null;
+    };
+
+    const loadData = async (forceRefresh = false) => {
+        if (!forceRefresh) {
+            const cached = getCachedData(profile.id);
+            if (cached) {
+                setFamilies(cached.families);
+                setReflections(cached.reflections);
+                setLoading(false);
+                return; // Return early if cache hit
+            }
+        }
+
+        if (forceRefresh) setLoading(true); // Only show spinner on force refresh or initial load if no cache
+
         const { data: fams } = await supabase.from('families').select('id, head_name').eq('student_id', profile.id);
         const { data: refs } = await supabase.from('reflections').select('*').eq('student_id', profile.id).order('created_at', { ascending: false });
-        setFamilies(fams || []);
-        setReflections(refs || []);
+
+        const result = { families: fams || [], reflections: refs || [] };
+
+        setFamilies(result.families);
+        setReflections(result.reflections);
+
+        // Save to cache
+        sessionStorage.setItem(`reflections_cache_${profile.id}`, JSON.stringify({ timestamp: Date.now(), data: result }));
+
         setLoading(false);
     };
 
@@ -115,6 +143,7 @@ const Reflections = () => {
             const { error } = await supabase.from('reflections').delete().eq('id', id);
             if (error) throw error;
             setReflections(prev => prev.filter(r => r.id !== id));
+            sessionStorage.removeItem(`reflections_cache_${profile.id}`);
         } catch (err) {
             console.error(err);
             alert("Failed to delete entry.");
@@ -228,7 +257,7 @@ const Reflections = () => {
                 setSelectedFile(null);
                 setActiveTab('write');
                 setCurrentStage(0);
-                loadData();
+                loadData(true);
             }, 1500);
 
         } catch (e) {
