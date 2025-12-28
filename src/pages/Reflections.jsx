@@ -195,6 +195,10 @@ const Reflections = () => {
                 // 4. Final Attempt: Use the most basic SDK upload which defaults to TUS (resumable)
                 // We remove almost all custom options to let the SDK decide the best path.
 
+                // 0. PRE-FLIGHT AUTH CHECK
+                console.log("Pre-flight: Refreshing session...");
+                await supabase.auth.refreshSession();
+
                 console.log("Starting Robust Upload: ", path);
 
                 const uploadPromise = supabase.storage
