@@ -8,7 +8,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
-import './TeacherDashboard.css'; // Import the new CSS
+import './TeacherDashboard.css';
 
 const REFLECT_CRITERIA = [
     { id: 'score_exploration', label: 'Exploration', desc: 'Breadth/depth', max: 2 },
@@ -81,7 +81,6 @@ const TeacherDashboard = () => {
 
     return (
         <div className="dashboard-page">
-            {/* Header */}
             <header className="dashboard-header">
                 <div className="header-content">
                     <div className="brand">
@@ -99,7 +98,6 @@ const TeacherDashboard = () => {
                 </div>
             </header>
 
-            {/* Main Content */}
             <main className="dashboard-main">
                 {loading ? <div style={{ textAlign: 'center', padding: '4rem', color: '#94A3B8' }}>Loading classroom...</div> : (
                     <div className="student-grid">
@@ -127,7 +125,7 @@ const TeacherDashboard = () => {
                 )}
             </main>
 
-            {/* Student Drawer (Slide Over) */}
+            {/* Student Drawer */}
             <AnimatePresence>
                 {activeStudent && (
                     <>
@@ -159,7 +157,7 @@ const TeacherDashboard = () => {
                                                 <div>
                                                     <span className="ref-date">{new Date(ref.created_at).toLocaleDateString()}</span>
                                                     <h4 className="ref-title">
-                                                        {ref.gibbs_description ? "Reflection: " + ref.gibbs_description.substring(0, 30) + "..." : ref.file_name || "Journal Entry"}
+                                                        {ref.gibbs_description ? "Reflection on " + ref.gibbs_description.substring(0, 30) + "..." : ref.file_name || "Journal Entry"}
                                                     </h4>
                                                 </div>
                                                 {ref.status === 'Graded' ? (
@@ -174,9 +172,23 @@ const TeacherDashboard = () => {
                                                 )}
                                             </div>
 
-                                            <p className="ref-preview">
-                                                {ref.gibbs_analysis || ref.content || "No preview available."}
-                                            </p>
+                                            {/* Content Preview / File Link */}
+                                            {ref.reflection_type === 'file' ? (
+                                                <div style={{ background: '#F1F5F9', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                    <FileText size={20} color="#64748B" />
+                                                    <span style={{ fontSize: '0.875rem', fontWeight: 600, flex: 1 }}>{ref.file_name}</span>
+                                                    <a href={ref.file_url} target="_blank" rel="noopener noreferrer" style={{ color: '#0EA5E9' }}><Download size={18} /></a>
+                                                </div>
+                                            ) : (
+                                                <div className="ref-preview">
+                                                    {['description', 'feelings', 'evaluation', 'analysis', 'conclusion', 'action_plan'].map(stage => {
+                                                        const val = ref[`gibbs_${stage}`];
+                                                        if (!val) return null;
+                                                        return <p key={stage} style={{ marginBottom: '0.5rem' }}><strong style={{ textTransform: 'capitalize', fontSize: '0.75rem', color: '#64748B' }}>{stage.replace('_', ' ')}:</strong> {val}</p>
+                                                    })}
+                                                    {!ref.gibbs_description && <p>{ref.content}</p>}
+                                                </div>
+                                            )}
 
                                             <button
                                                 onClick={() => startGrading(ref)}
@@ -193,7 +205,7 @@ const TeacherDashboard = () => {
                 )}
             </AnimatePresence>
 
-            {/* Grading Modal */}
+            {/* Grading Modal - Reusing CSS classes */}
             <AnimatePresence>
                 {gradingTarget && (
                     <motion.div
@@ -207,10 +219,20 @@ const TeacherDashboard = () => {
                             </div>
 
                             <div className="grading-body">
+
+                                {/* Reference text for grading context */}
+                                <div style={{ maxHeight: '100px', overflowY: 'auto', background: '#F8FAFC', padding: '0.75rem', borderRadius: '8px', fontSize: '0.8rem', color: '#64748B', marginBottom: '1rem' }}>
+                                    <strong>Content Preview:</strong><br />
+                                    {gradingTarget.gibbs_analysis || gradingTarget.content || gradingTarget.file_name || "No text content."}
+                                </div>
+
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     {REFLECT_CRITERIA.map(crit => (
                                         <div key={crit.id} className="criteria-row">
-                                            <div className="criteria-label">{crit.label}</div>
+                                            <div className="criteria-label">
+                                                {crit.label}
+                                                <span style={{ display: 'block', fontSize: '0.65rem', fontWeight: 400 }}>{crit.desc}</span>
+                                            </div>
                                             <div className="score-group">
                                                 {[0, 1, 2].map(val => (
                                                     <button
@@ -229,7 +251,7 @@ const TeacherDashboard = () => {
                                     <textarea
                                         className="feedback-area"
                                         rows={3}
-                                        placeholder="Constructive feedback..."
+                                        placeholder="Constructive feedback for the student..."
                                         value={gradeFeedback}
                                         onChange={e => setGradeFeedback(e.target.value)}
                                     />

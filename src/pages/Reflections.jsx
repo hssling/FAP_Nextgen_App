@@ -7,7 +7,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
-import './Reflections.css'; // Import the new CSS
+import './Reflections.css';
 
 // --- Configuration ---
 const GIBBS_STAGES = [
@@ -25,8 +25,9 @@ const Reflections = () => {
     const [reflections, setReflections] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Modal State
+    // UI State
     const [isWriting, setIsWriting] = useState(false);
+    const [viewingEntry, setViewingEntry] = useState(null);
 
     // Form State
     const [activeTab, setActiveTab] = useState('write');
@@ -62,48 +63,93 @@ const Reflections = () => {
         }, 1500);
     };
 
+    const handleFileSelect = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            setSelectedFile(e.target.files[0]);
+        }
+    };
+
     const handleSubmit = async () => {
+        if (!profile) {
+            alert("Session expired. Please log in again.");
+            return;
+        }
+
         setSubmitting(true);
         try {
+            console.log("Submitting reflection for user:", profile.id);
+
             let fileData = null;
-            if (activeTab === 'upload' && selectedFile) {
-                const fileName = `${profile.id}/${Date.now()}_${selectedFile.name}`;
+            // 1. Handle File Upload if active
+            if (activeTab === 'upload') {
+                if (!selectedFile) {
+                    alert("Please select a file to upload.");
+                    setSubmitting(false);
+                    return;
+                }
+                const fileName = `${profile.id}/${Date.now()}_${selectedFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`; // Sanitize name
                 const { error: uploadError } = await supabase.storage.from('reflection-files').upload(fileName, selectedFile);
-                if (uploadError) throw uploadError;
+
+                if (uploadError) {
+                    console.error("Upload Error:", uploadError);
+                    throw new Error("File upload failed: " + uploadError.message);
+                }
+
                 const { data } = supabase.storage.from('reflection-files').getPublicUrl(fileName);
-                fileData = { url: data.publicUrl, name: selectedFile.name, size: selectedFile.size, type: selectedFile.name.split('.').pop() };
+                fileData = {
+                    url: data.publicUrl,
+                    name: selectedFile.name,
+                    size: selectedFile.size,
+                    type: selectedFile.name.split('.').pop() || 'file'
+                };
             }
 
-            const legacyContent = Object.entries(formData.gibbs).map(([k, v]) => `[${k.toUpperCase()}]: ${v}`).join('\n\n');
+            // 2. Prepare Payload
+            const legacyContent = activeTab === 'write'
+                ? Object.entries(formData.gibbs).map(([k, v]) => `[${k.toUpperCase()}]: ${v}`).join('\n\n')
+                : `[FILE UPLOAD]: ${selectedFile?.name}`;
+
             const payload = {
                 student_id: profile.id,
-                family_id: formData.familyId || null,
+                family_id: formData.familyId || null, // Ensure empty string becomes null
                 phase: formData.phase,
-                content: activeTab === 'write' ? legacyContent : (legacyContent + "\n[FILE ATTACHED]"),
+                content: legacyContent,
+
+                // Detailed Gibbs Stages
                 gibbs_description: formData.gibbs.description,
                 gibbs_feelings: formData.gibbs.feelings,
                 gibbs_evaluation: formData.gibbs.evaluation,
                 gibbs_analysis: formData.gibbs.analysis,
                 gibbs_conclusion: formData.gibbs.conclusion,
                 gibbs_action_plan: formData.gibbs.actionPlan,
+
+                // File Metadata
                 reflection_type: activeTab === 'upload' ? 'file' : 'structured',
                 file_url: fileData?.url,
                 file_name: fileData?.name,
                 file_size: fileData?.size,
                 file_type: fileData?.type,
+
                 status: 'Pending'
             };
 
-            const { error } = await supabase.from('reflections').insert([payload]);
-            if (error) throw error;
+            const { error: insertError } = await supabase.from('reflections').insert([payload]);
+            if (insertError) {
+                console.error("Insert Error:", insertError);
+                throw insertError;
+            }
 
+            // 3. Reset & Reload
             setIsWriting(false);
             setFormData({ familyId: '', phase: 'Phase I', gibbs: { description: '', feelings: '', evaluation: '', analysis: '', conclusion: '', actionPlan: '' } });
             setSelectedFile(null);
+            setActiveTab('write');
+            setCurrentStage(0);
             loadData();
+
         } catch (e) {
-            console.error(e);
-            alert("Error saving. Please try again.");
+            console.error("Full Submission Error:", e);
+            alert(`Error saving reflection: ${e.message || "Unknown error"}`);
         } finally {
             setSubmitting(false);
         }
@@ -111,13 +157,11 @@ const Reflections = () => {
 
     return (
         <div className="reflections-page">
-            {/* Ambient Background globs */}
             <div className="ambient-orb orb-1"></div>
             <div className="ambient-orb orb-2"></div>
 
             <div className="container" style={{ paddingTop: '3rem' }}>
 
-                {/* Header Section */}
                 <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                     <div>
                         <h1 className="page-title">My Journal</h1>
@@ -128,7 +172,6 @@ const Reflections = () => {
                     </button>
                 </div>
 
-                {/* Stats Row */}
                 <div className="stats-grid">
                     <div className="stat-card">
                         <div className="stat-icon" style={{ background: '#3B82F6' }}><BookOpen size={24} /></div>
@@ -153,7 +196,6 @@ const Reflections = () => {
                     </div>
                 </div>
 
-                {/* Entries Stream */}
                 <div className="timeline-container">
                     {loading ? <p style={{ textAlign: 'center', color: '#64748B' }}>Loading your journey...</p> :
                         reflections.length === 0 ? (
@@ -170,6 +212,7 @@ const Reflections = () => {
                                     key={ref.id}
                                     className="timeline-entry"
                                     style={{ animationDelay: `${idx * 0.1}s` }}
+                                    onClick={() => setViewingEntry(ref)}
                                 >
                                     <div className="date-block">
                                         <span className="date-day">{new Date(ref.created_at).getDate()}</span>
@@ -211,11 +254,13 @@ const Reflections = () => {
                                                 {ref.reflection_type === 'file' && <span className="phase-badge" style={{ background: '#EEF2FF', color: '#4F46E5', display: 'flex', alignItems: 'center', gap: '4px' }}><Paperclip size={12} /> Attachment</span>}
                                             </div>
                                             {ref.file_url ? (
-                                                <a href={ref.file_url} target="_blank" rel="noopener noreferrer" className="download-link">
+                                                <a href={ref.file_url}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    target="_blank" rel="noopener noreferrer" className="download-link">
                                                     Download <Download size={16} />
                                                 </a>
                                             ) : (
-                                                <span style={{ fontSize: '0.8rem', color: '#94A3B8', fontWeight: 600 }}>Read Full Entry &rarr;</span>
+                                                <button className="read-more-btn">Read Full Entry &rarr;</button>
                                             )}
                                         </div>
                                     </div>
@@ -236,95 +281,235 @@ const Reflections = () => {
                             initial={{ y: 50, scale: 0.95 }} animate={{ y: 0, scale: 1 }} exit={{ y: 50, scale: 0.95 }}
                             className="modal-content"
                         >
-                            {/* Left: Sidebar */}
+                            {/* Sidebar w/ Context Selectors */}
                             <div className="modal-sidebar">
                                 <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '2rem', color: '#0F172A' }}>New Entry</h2>
-                                {GIBBS_STAGES.map((stage, idx) => (
-                                    <div
-                                        key={stage.id}
-                                        onClick={() => setCurrentStage(idx)}
-                                        className={`sidebar-step ${currentStage === idx ? 'active' : ''}`}
-                                    >
-                                        <div className="step-dot"></div>
-                                        <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: currentStage === idx ? '#0F766E' : '#64748B' }}>{stage.title}</h4>
+
+                                <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.5rem' }}>Phase</label>
+                                        <select
+                                            value={formData.phase} onChange={e => setFormData({ ...formData, phase: e.target.value })}
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #E2E8F0', background: 'white' }}
+                                        >
+                                            <option>Phase I</option><option>Phase II</option><option>Phase III</option>
+                                        </select>
                                     </div>
-                                ))}
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.5rem' }}>Family (Optional)</label>
+                                        <select
+                                            value={formData.familyId} onChange={e => setFormData({ ...formData, familyId: e.target.value })}
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #E2E8F0', background: 'white' }}
+                                        >
+                                            <option value="">-- General --</option>
+                                            {families.map(f => <option key={f.id} value={f.id}>{f.head_name}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '2rem' }}>
+                                    {activeTab === 'write' ? (
+                                        GIBBS_STAGES.map((stage, idx) => (
+                                            <div
+                                                key={stage.id}
+                                                onClick={() => setCurrentStage(idx)}
+                                                className={`sidebar-step ${currentStage === idx ? 'active' : ''}`}
+                                            >
+                                                <div className="step-dot"></div>
+                                                <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: currentStage === idx ? '#0F766E' : '#64748B' }}>{stage.title}</h4>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div style={{ color: '#64748B' }}>
+                                            <p style={{ marginBottom: '1rem' }}>Upload your reflection document.</p>
+                                            <p style={{ fontSize: '0.875rem' }}>Supported formats: PDF, DOCX, JPG.</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
-                            {/* Right: Input Area */}
+                            {/* Main Input Area */}
                             <div className="modal-main">
                                 <button onClick={() => setIsWriting(false)} className="modal-close"><X size={20} /></button>
 
+                                <div className="tabs-header">
+                                    <button
+                                        className={`tab-btn ${activeTab === 'write' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('write')}
+                                    >
+                                        <BookOpen size={16} style={{ display: 'inline', marginRight: '5px' }} />
+                                        Structured Entry
+                                    </button>
+                                    <button
+                                        className={`tab-btn ${activeTab === 'upload' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('upload')}
+                                    >
+                                        <Upload size={16} style={{ display: 'inline', marginRight: '5px' }} />
+                                        File Upload
+                                    </button>
+                                </div>
+
                                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                                    <AnimatePresence mode="wait">
-                                        <motion.div
-                                            key={currentStage}
-                                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                                            style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-                                        >
-                                            <div style={{ marginBottom: '1.5rem' }}>
-                                                <h3 className="stage-title">
-                                                    <span>{GIBBS_STAGES[currentStage].icon}</span>
-                                                    {GIBBS_STAGES[currentStage].title}
-                                                </h3>
-                                                <p className="stage-prompt">{GIBBS_STAGES[currentStage].prompt}</p>
+
+                                    {/* --- WRITE MODE --- */}
+                                    {activeTab === 'write' && (
+                                        <AnimatePresence mode="wait">
+                                            <motion.div
+                                                key={currentStage}
+                                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                                                style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+                                            >
+                                                <div style={{ marginBottom: '1.5rem' }}>
+                                                    <h3 className="stage-title">
+                                                        <span>{GIBBS_STAGES[currentStage].icon}</span>
+                                                        {GIBBS_STAGES[currentStage].title}
+                                                    </h3>
+                                                    <p className="stage-prompt">{GIBBS_STAGES[currentStage].prompt}</p>
+                                                </div>
+
+                                                <textarea
+                                                    className="journal-input"
+                                                    placeholder="Type your reflection here..."
+                                                    value={formData.gibbs[GIBBS_STAGES[currentStage].id]}
+                                                    onChange={e => setFormData(prev => ({ ...prev, gibbs: { ...prev.gibbs, [GIBBS_STAGES[currentStage].id]: e.target.value } }))}
+                                                    autoFocus
+                                                />
+
+                                                <div className="modal-actions">
+                                                    <button onClick={handleAICoach} disabled={isAnalyzing} className="ai-btn">
+                                                        <Sparkles size={16} className={isAnalyzing ? "animate-spin" : ""} /> {isAnalyzing ? "Thinking..." : "AI Insight"}
+                                                    </button>
+
+                                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                                        <button
+                                                            onClick={() => setCurrentStage(p => Math.max(0, p - 1))} disabled={currentStage === 0}
+                                                            className="nav-btn"
+                                                        >
+                                                            <ChevronLeft size={24} />
+                                                        </button>
+                                                        {currentStage < GIBBS_STAGES.length - 1 ? (
+                                                            <button
+                                                                onClick={() => setCurrentStage(p => Math.min(GIBBS_STAGES.length - 1, p + 1))}
+                                                                className="nav-btn primary"
+                                                            >
+                                                                Next <ChevronRight size={20} />
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                onClick={handleSubmit} disabled={submitting}
+                                                                className="nav-btn primary"
+                                                                style={{ background: 'linear-gradient(to right, #2563EB, #4F46E5)' }}
+                                                            >
+                                                                {submitting ? 'Saving...' : <><Save size={20} style={{ marginRight: '8px' }} /> Finish</>}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        </AnimatePresence>
+                                    )}
+
+                                    {/* --- UPLOAD MODE --- */}
+                                    {activeTab === 'upload' && (
+                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ flex: 1 }}>
+                                            <input
+                                                type="file"
+                                                ref={fileInputRef}
+                                                onChange={handleFileSelect}
+                                                style={{ display: 'none' }}
+                                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                            />
+                                            <div className="upload-area" onClick={() => fileInputRef.current.click()}>
+                                                <Upload size={48} style={{ marginBottom: '1rem', color: '#94A3B8' }} />
+                                                <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#475569' }}>Click to upload file</h3>
+                                                <p style={{ color: '#94A3B8' }}>PDF, Word, or Image (Max 10MB)</p>
                                             </div>
 
-                                            <textarea
-                                                className="journal-input"
-                                                placeholder="Type your reflection here..."
-                                                value={formData.gibbs[GIBBS_STAGES[currentStage].id]}
-                                                onChange={e => setFormData(prev => ({ ...prev, gibbs: { ...prev.gibbs, [GIBBS_STAGES[currentStage].id]: e.target.value } }))}
-                                                autoFocus
-                                            />
-
-                                            <div className="modal-actions">
-                                                <button
-                                                    onClick={handleAICoach}
-                                                    disabled={isAnalyzing}
-                                                    className="ai-btn"
-                                                >
-                                                    <Sparkles size={16} className={isAnalyzing ? "animate-spin" : ""} /> {isAnalyzing ? "Thinking..." : "AI Insight"}
-                                                </button>
-
-                                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                                    <button
-                                                        onClick={() => setCurrentStage(p => Math.max(0, p - 1))} disabled={currentStage === 0}
-                                                        className="nav-btn"
-                                                    >
-                                                        <ChevronLeft size={24} />
-                                                    </button>
-                                                    {currentStage < GIBBS_STAGES.length - 1 ? (
-                                                        <button
-                                                            onClick={() => setCurrentStage(p => Math.min(GIBBS_STAGES.length - 1, p + 1))}
-                                                            className="nav-btn primary"
-                                                        >
-                                                            Next <ChevronRight size={20} />
-                                                        </button>
-                                                    ) : (
-                                                        <button
-                                                            onClick={handleSubmit} disabled={submitting}
-                                                            className="nav-btn primary"
-                                                            style={{ background: 'linear-gradient(to right, #2563EB, #4F46E5)' }}
-                                                        >
-                                                            {submitting ? 'Saving...' : <><Save size={20} style={{ marginRight: '8px' }} /> Finish</>}
-                                                        </button>
-                                                    )}
+                                            {selectedFile && (
+                                                <div className="file-preview">
+                                                    <FileText size={20} style={{ color: '#475569' }} />
+                                                    <div className="file-info">{selectedFile.name}</div>
+                                                    <button onClick={() => setSelectedFile(null)} className="remove-file">Remove</button>
                                                 </div>
+                                            )}
+
+                                            <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', paddingTop: '2rem' }}>
+                                                <button
+                                                    onClick={handleSubmit} disabled={submitting}
+                                                    className="nav-btn primary"
+                                                    style={{ background: 'linear-gradient(to right, #2563EB, #4F46E5)' }}
+                                                >
+                                                    {submitting ? 'Uploading...' : <><Save size={20} style={{ marginRight: '8px' }} /> Submit File</>}
+                                                </button>
                                             </div>
                                         </motion.div>
-                                    </AnimatePresence>
-
-                                    {/* AI Toast */}
-                                    <AnimatePresence>
-                                        {aiFeedback && (
-                                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="ai-toast">
-                                                <p>{aiFeedback}</p>
-                                                <button onClick={() => setAiFeedback(null)} style={{ position: 'absolute', top: '5px', right: '5px' }}><X size={14} /></button>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                                    )}
                                 </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* --- READ ENTRY MODAL --- */}
+            <AnimatePresence>
+                {viewingEntry && (
+                    <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="modal-overlay"
+                        onClick={() => setViewingEntry(null)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
+                            className="modal-content view-mode"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="modal-header" style={{ padding: '1.5rem', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <span style={{ fontSize: '0.875rem', color: '#64748B' }}>{new Date(viewingEntry.created_at).toLocaleDateString()}</span>
+                                    <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Reflection Details</h2>
+                                </div>
+                                <button onClick={() => setViewingEntry(null)}><X size={20} /></button>
+                            </div>
+
+                            <div className="view-modal-body">
+                                {viewingEntry.reflection_type === 'file' ? (
+                                    <div style={{ textAlign: 'center', padding: '3rem' }}>
+                                        <p style={{ marginBottom: '1rem' }}>This reflection was submitted as a file.</p>
+                                        <a href={viewingEntry.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
+                                            Download {viewingEntry.file_name} <Download size={16} />
+                                        </a>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        {GIBBS_STAGES.map(stage => {
+                                            const content = viewingEntry[`gibbs_${stage.id.replace('actionPlan', 'action_plan')}`];
+                                            if (!content) return null;
+                                            return (
+                                                <div key={stage.id} className="view-section">
+                                                    <div className="view-label">{stage.title}</div>
+                                                    <p className="view-text">{content}</p>
+                                                </div>
+                                            );
+                                        })}
+                                        {!viewingEntry.gibbs_description && viewingEntry.content && (
+                                            <div className="view-section">
+                                                <div className="view-label">Content</div>
+                                                <p className="view-text">{viewingEntry.content}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {viewingEntry.status === 'Graded' && (
+                                    <div className="view-feedback">
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                            <h4 style={{ fontWeight: 700, color: '#D97706' }}>Mentor Feedback</h4>
+                                            <span style={{ fontWeight: 800, fontSize: '1.25rem' }}>Grade: {viewingEntry.grade}</span>
+                                        </div>
+                                        <p style={{ color: '#92400E' }}>{viewingEntry.teacher_feedback || "No written feedback provided."}</p>
+                                    </div>
+                                )}
                             </div>
                         </motion.div>
                     </motion.div>

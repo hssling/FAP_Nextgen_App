@@ -1,5 +1,7 @@
 /* Reflections.css */
 
+/* ... (Previous Styles Interact) ... */
+
 /* Ambient Background */
 .reflections-page {
     position: relative;
@@ -146,6 +148,8 @@
     overflow: hidden;
     transition: transform 0.2s, box-shadow 0.2s;
     position: relative;
+    cursor: pointer;
+    /* Clickable */
 }
 
 .entry-card:hover {
@@ -240,6 +244,20 @@
     font-size: 0.875rem;
 }
 
+.read-more-btn {
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.875rem;
+    padding: 0;
+}
+
+.read-more-btn:hover {
+    text-decoration: underline;
+}
+
 /* Modal Styling */
 .modal-overlay {
     position: fixed;
@@ -262,6 +280,13 @@
     display: flex;
     overflow: hidden;
     box-shadow: var(--shadow-glass);
+}
+
+.modal-content.view-mode {
+    max-width: 700px;
+    height: auto;
+    max-height: 90vh;
+    flex-direction: column;
 }
 
 .modal-sidebar {
@@ -326,6 +351,7 @@
     border-radius: 50%;
     background: #F1F5F9;
     color: var(--color-text-muted);
+    cursor: pointer;
 }
 
 .stage-title {
@@ -436,4 +462,98 @@ textarea.journal-input::placeholder {
     border: 2px dashed var(--color-border);
     border-radius: var(--radius-xl);
     color: var(--color-text-muted);
+}
+
+/* Upload UI */
+.tabs-header {
+    display: flex;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 2rem;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 1rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.tab-btn.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    background: #F0FDFA;
+}
+
+.upload-area {
+    border: 2px dashed var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 4rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #F8FAFC;
+    color: var(--color-text-muted);
+}
+
+.upload-area:hover {
+    border-color: var(--color-primary);
+    background: #F0FDFA;
+    color: var(--color-primary);
+}
+
+.file-preview {
+    background: #F1F5F9;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.file-info {
+    flex: 1;
+    font-weight: 600;
+    color: var(--color-text-main);
+}
+
+.remove-file {
+    color: var(--color-accent);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+/* View Modal */
+.view-modal-body {
+    padding: 2rem;
+    overflow-y: auto;
+    max-height: 80vh;
+}
+
+.view-section {
+    margin-bottom: 1.5rem;
+}
+
+.view-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.view-text {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--color-text-main);
+}
+
+.view-feedback {
+    background: #FFFBEB;
+    border: 1px solid #FEF3C7;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    margin-top: 2rem;
 }
