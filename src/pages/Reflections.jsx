@@ -3,7 +3,7 @@ import {
     BookOpen, Save, Sparkles, X,
     Upload, FileText, CheckCircle, ChevronRight, ChevronLeft,
     Paperclip, Download, Plus, Calendar, TrendingUp, Trash2,
-    AlertCircle, Info
+    AlertCircle, Info, Loader2, Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
@@ -34,6 +34,7 @@ const Reflections = () => {
     const [activeTab, setActiveTab] = useState('write');
     const [currentStage, setCurrentStage] = useState(0);
     const [submitting, setSubmitting] = useState(false);
+    const [submissionStatus, setSubmissionStatus] = useState(null); // 'uploading', 'saving', 'success', 'error'
     const [uploadError, setUploadError] = useState(null);
 
     const [formData, setFormData] = useState({
@@ -93,21 +94,28 @@ const Reflections = () => {
 
     const handleSubmit = async () => {
         setUploadError(null);
+        setSubmissionStatus('processing');
+
         if (!profile) {
             alert("Session expired. Please log in again.");
+            setSubmissionStatus(null);
             return;
         }
 
         setSubmitting(true);
         try {
             let fileData = null;
+
             // 1. Handle File Upload if active
             if (activeTab === 'upload') {
                 if (!selectedFile) {
                     alert("Please select a file to upload.");
                     setSubmitting(false);
+                    setSubmissionStatus(null);
                     return;
                 }
+
+                setSubmissionStatus('uploading'); // UI Feedback
 
                 // Sanitize filename
                 const safeName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
@@ -122,12 +130,8 @@ const Reflections = () => {
                     });
 
                 if (uploadError) {
-                    // Specific check for bucket error
                     if (uploadError.message.includes('bucket') || uploadError.message.includes('not found')) {
-                        throw new Error("Storage bucket 'reflection-files' not found. Please contact administrator to run setup SQL.");
-                    }
-                    if (uploadError.message.includes('security') || uploadError.message.includes('policy')) {
-                        throw new Error("Permission denied. Database policies may be missing.");
+                        throw new Error("Storage bucket 'reflection-files' not found. Please contact administrator.");
                     }
                     throw new Error(`Upload Failed: ${uploadError.message}`);
                 }
@@ -142,6 +146,8 @@ const Reflections = () => {
                     type: selectedFile.name.split('.').pop() || 'file'
                 };
             }
+
+            setSubmissionStatus('saving'); // UI Feedback
 
             // 2. Prepare Payload
             const legacyContent = activeTab === 'write'
@@ -175,19 +181,28 @@ const Reflections = () => {
             const { error: insertError } = await supabase.from('reflections').insert([payload]);
             if (insertError) throw insertError;
 
-            // 3. Reset & Reload
-            setIsWriting(false);
-            setFormData({ familyId: '', phase: 'Phase I', gibbs: { description: '', feelings: '', evaluation: '', analysis: '', conclusion: '', actionPlan: '' } });
-            setSelectedFile(null);
-            setActiveTab('write');
-            setCurrentStage(0);
-            loadData();
+            // 3. Success State
+            setSubmissionStatus('success');
+
+            // Wait 1.5s then close
+            setTimeout(() => {
+                setIsWriting(false);
+                setSubmissionStatus(null);
+                setFormData({ familyId: '', phase: 'Phase I', gibbs: { description: '', feelings: '', evaluation: '', analysis: '', conclusion: '', actionPlan: '' } });
+                setSelectedFile(null);
+                setActiveTab('write');
+                setCurrentStage(0);
+                loadData();
+            }, 1500);
 
         } catch (e) {
             console.error("Full Submission Error:", e);
             setUploadError(e.message);
+            setSubmissionStatus('error');
         } finally {
-            setSubmitting(false);
+            if (submissionStatus !== 'success') {
+                setSubmitting(false);
+            }
         }
     };
 
@@ -329,7 +344,21 @@ const Reflections = () => {
                         <motion.div
                             initial={{ y: 50, scale: 0.95 }} animate={{ y: 0, scale: 1 }} exit={{ y: 50, scale: 0.95 }}
                             className="modal-content"
+                            style={{ position: 'relative' }} // for absolute loader
                         >
+                            {/* OVERLAY for Submission Status */}
+                            {submissionStatus && (
+                                <div style={{
+                                    position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.95)', zIndex: 50,
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+                                }}>
+                                    {submissionStatus === 'uploading' && <><Loader2 className="animate-spin" size={48} color="#3B82F6" /><p style={{ marginTop: '1rem', fontWeight: 600 }}>Uploading File...</p></>}
+                                    {submissionStatus === 'saving' && <><Loader2 className="animate-spin" size={48} color="#10B981" /><p style={{ marginTop: '1rem', fontWeight: 600 }}>Saving Entry...</p></>}
+                                    {submissionStatus === 'success' && <><div style={{ background: '#10B981', borderRadius: '50%', padding: '1rem' }}><Check size={48} color="white" /></div><p style={{ marginTop: '1rem', fontWeight: 700, fontSize: '1.2rem', color: '#10B981' }}>Success!</p></>}
+                                    {submissionStatus === 'error' && <><div style={{ background: '#EF4444', borderRadius: '50%', padding: '1rem' }}><X size={48} color="white" /></div><p style={{ marginTop: '1rem', fontWeight: 700, color: '#EF4444' }}>Failed!</p></>}
+                                </div>
+                            )}
+
                             <div className="modal-sidebar">
                                 <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '2rem', color: '#0F172A' }}>New Entry</h2>
                                 <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '2rem' }}>
@@ -466,7 +495,6 @@ const Reflections = () => {
                                     {activeTab === 'upload' && (
                                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ flex: 1 }}>
 
-                                            {/* DIRECT FILE INPUT - No hidden refs */}
                                             <div className="upload-container" style={{ padding: '2rem', border: '2px dashed #E2E8F0', borderRadius: '1rem', textAlign: 'center', background: '#F8FAFC' }}>
                                                 <input
                                                     type="file"
