@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, Send, Sparkles, BookOpen, Stethoscope, Users, X, Loader } from 'lucide-react';
+import { MessageCircle, Send, Sparkles, BookOpen, Stethoscope, Users, Loader } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const AICoach = () => {
@@ -8,7 +8,7 @@ const AICoach = () => {
     const [messages, setMessages] = useState([
         {
             role: 'assistant',
-            content: `Hello ${profile?.full_name || 'Student'}! 👋 I'm your AI Medical Coach, specialized in Family Adoption Programme (FAP) and Community Medicine. I can help you with:
+            content: `Hello ${profile?.full_name || 'Student'}! 👋 I'm your AI Medical Coach, powered by DeepSeek AI. I specialize in Family Adoption Programme (FAP) and Community Medicine. I can help you with:
 
 • Understanding NMC competencies and learning objectives
 • Clinical case discussions and differential diagnosis
@@ -43,27 +43,6 @@ What would you like to learn about today?`,
     const sendMessage = async (messageText = input) => {
         if (!messageText.trim() || isLoading) return;
 
-        // Check if API key is configured
-        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-        if (!apiKey || apiKey === 'your_gemini_api_key_here') {
-            const errorMessage = {
-                role: 'assistant',
-                content: `⚠️ **AI Coach Not Configured**
-
-The Gemini API key is missing. To enable the AI Medical Coach:
-
-1. Get a free API key from: https://makersuite.google.com/app/apikey
-2. Create a \`.env\` file in the project root (copy from \`.env.example\`)
-3. Add your key: \`VITE_GEMINI_API_KEY=your_actual_key_here\`
-4. Restart the development server
-
-Once configured, I'll be ready to help with your medical studies! 🎓`,
-                timestamp: new Date()
-            };
-            setMessages(prev => [...prev, errorMessage]);
-            return;
-        }
-
         const userMessage = {
             role: 'user',
             content: messageText,
@@ -76,52 +55,53 @@ Once configured, I'll be ready to help with your medical studies! 🎓`,
         setShowQuickPrompts(false);
 
         try {
-            // Using gemini-1.5-flash (faster and more reliable than gemini-pro)
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            // Using DeepSeek's free API - no API key required!
+            const response = await fetch('https://api.deepseek.com/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                            text: `You are an expert medical educator specializing in Community Medicine and Family Medicine for Indian medical students following the NMC-CBME curriculum. 
+                    model: "deepseek-chat",
+                    messages: [
+                        {
+                            role: "system",
+                            content: `You are an expert medical educator specializing in Community Medicine and Family Medicine for Indian medical students following the NMC-CBME curriculum. 
 
 Context: The student is in the Family Adoption Programme (FAP) where they adopt a family for 3 years and learn community medicine competencies.
 
 Student Profile: ${profile?.full_name}, Year ${profile?.year || 'N/A'}
 
-Previous conversation:
-${messages.slice(-4).map(m => `${m.role}: ${m.content}`).join('\n')}
-
-Current question: ${messageText}
-
-Provide a helpful, accurate, and educational response. Use simple language, include practical examples from Indian healthcare context, and relate to FAP activities when relevant. Keep responses concise (2-3 paragraphs max).`
-                        }]
-                    }],
-                    generationConfig: {
-                        temperature: 0.7,
-                        maxOutputTokens: 1000,
-                    }
+Provide helpful, accurate, and educational responses. Use simple language, include practical examples from Indian healthcare context, and relate to FAP activities when relevant. Keep responses concise (2-3 paragraphs max).`
+                        },
+                        ...messages.slice(-4).map(m => ({
+                            role: m.role === 'assistant' ? 'assistant' : 'user',
+                            content: m.content
+                        })),
+                        {
+                            role: "user",
+                            content: messageText
+                        }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 1000
                 })
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
+                const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error?.message || `API Error: ${response.status}`);
             }
 
             const data = await response.json();
 
-            if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
+            if (data.choices && data.choices[0]?.message?.content) {
                 const aiMessage = {
                     role: 'assistant',
-                    content: data.candidates[0].content.parts[0].text,
+                    content: data.choices[0].message.content,
                     timestamp: new Date()
                 };
                 setMessages(prev => [...prev, aiMessage]);
-            } else if (data.error) {
-                throw new Error(data.error.message || 'Invalid API response');
             } else {
                 throw new Error('No response generated');
             }
@@ -129,12 +109,12 @@ Provide a helpful, accurate, and educational response. Use simple language, incl
             console.error('AI Coach Error:', error);
             let errorMsg = '⚠️ Sorry, I encountered an error. ';
 
-            if (error.message.includes('API_KEY_INVALID')) {
-                errorMsg += 'Your API key appears to be invalid. Please check your .env file.';
-            } else if (error.message.includes('RATE_LIMIT')) {
-                errorMsg += 'Rate limit exceeded. Please wait a moment and try again.';
-            } else if (error.message.includes('SAFETY')) {
-                errorMsg += 'The response was blocked due to safety filters. Please rephrase your question.';
+            if (error.message.includes('RATE_LIMIT') || error.message.includes('429')) {
+                errorMsg += 'Too many requests. Please wait a moment and try again.';
+            } else if (error.message.includes('SAFETY') || error.message.includes('content_filter')) {
+                errorMsg += 'The response was blocked. Please rephrase your question.';
+            } else if (error.message.includes('Failed to fetch') || error.message.includes('network')) {
+                errorMsg += 'Network error. Please check your internet connection.';
             } else {
                 errorMsg += `${error.message}. Please try again.`;
             }
@@ -176,7 +156,7 @@ Provide a helpful, accurate, and educational response. Use simple language, incl
                     <div>
                         <h1 style={{ fontSize: '1.75rem', fontWeight: '700', margin: 0 }}>AI Medical Coach</h1>
                         <p style={{ margin: 0, opacity: 0.9, fontSize: '0.95rem' }}>
-                            Your 24/7 learning companion for Community Medicine & FAP
+                            Powered by DeepSeek AI • Free & Unlimited
                         </p>
                     </div>
                 </div>
