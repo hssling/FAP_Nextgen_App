@@ -133,11 +133,16 @@ export const AuthProvider = ({ children }) => {
 
     // Sign out
     const signOut = async () => {
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
+        // Optimistically clear state immediately so the user doesn't feel stuck
         setProfile(null);
         setUser(null);
         setSession(null);
+        localStorage.removeItem('supabase.auth.token'); // Force clean if using local storage
+        try {
+            await supabase.auth.signOut();
+        } catch (error) {
+            console.error("Error signing out (network?):", error);
+        }
     };
 
     const value = {

@@ -326,10 +326,13 @@
 .grading-box {
     background: white;
     width: 100%;
-    max-width: 500px;
+    max-width: 600px;
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-lg);
-    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    /* Critical for Desktop */
 }
 
 .grading-header {
@@ -347,6 +350,8 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    overflow-y: auto;
+    /* Allow scrolling within body */
 }
 
 .criteria-row {

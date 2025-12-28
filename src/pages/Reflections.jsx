@@ -152,7 +152,7 @@ const Reflections = () => {
                 // Convert to ArrayBuffer for robust upload
                 const fileBuffer = await selectedFile.arrayBuffer();
 
-                // Add Timeout Race (Increased to 90s)
+                // Add Timeout Race (Increased to 300s / 5 mins for slow connections)
                 const uploadPromise = supabase.storage
                     .from('reflection-files')
                     .upload(path, fileBuffer, {
@@ -160,7 +160,7 @@ const Reflections = () => {
                         upsert: true
                     });
 
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Upload timed out (>90s). Firewall issue?")), 90000));
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Upload timed out (>5 mins). Network issue?")), 300000));
 
                 const response = await Promise.race([uploadPromise, timeoutPromise]);
                 const { data, error: uploadError } = response || {};
