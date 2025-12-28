@@ -48,7 +48,7 @@ serve(async (req) => {
                 'X-Title': 'FAP Medical Coach'
             },
             body: JSON.stringify({
-                model: 'meta-llama/llama-3.1-8b-instruct:free',
+                model: 'meta-llama/llama-3.2-3b-instruct:free',
                 messages: messages,
                 temperature: 0.7,
                 max_tokens: 1000
