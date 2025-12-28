@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
-    PieChart, TrendingUp, AlertTriangle, Baby, BookOpen, UserCheck, RefreshCw
+    BarChart, Activity, Users, Droplets, Heart, FileText, Download,
+    PieChart, TrendingUp, AlertTriangle, Baby, BookOpen, UserCheck
 } from 'lucide-react';
 import { generateCommunityHealthReport } from '../services/analytics';
 import { useAuth } from '../contexts/AuthContext';
@@ -29,54 +30,16 @@ const Reports = () => {
     const [activeTab, setActiveTab] = useState('community');
     const [feedback, setFeedback] = useState(null);
 
-    // Cache Helper
-    const getCachedReport = (id) => {
-        const cache = sessionStorage.getItem(`analytics_${id}`);
-        if (cache) {
-            const { timestamp, data } = JSON.parse(cache);
-            if (Date.now() - timestamp < 300000) return data; // 5 min cache
-        }
-        return null;
-    };
-
     useEffect(() => {
         if (!profile) return;
-
-        const fetchData = async () => {
-            try {
-                // Check cache first
-                const cached = getCachedReport(profile.id);
-                if (cached) {
-                    setData(cached);
-                    setLoading(false);
-                    return;
-                }
-
-                const result = await generateCommunityHealthReport(profile.id);
-                if (result) {
-                    setData(result);
-                    sessionStorage.setItem(`analytics_${profile.id}`, JSON.stringify({ timestamp: Date.now(), data: result }));
-                }
-                setLoading(false);
-            } catch (error) {
-                console.error('Error loading report:', error);
-                setLoading(false);
-                // Set minimal data structure to prevent crashes
-                setData({
-                    demographics: { totalFamilies: 0, totalPopulation: 0, genderRatio: { ratio: 0 }, dependencyRatio: 0, ageDistribution: {} },
-                    maternalHealth: { registeredPregnancies: 0, highRiskPregnancies: 0 },
-                    childHealth: { totalUnder5: 0, fullyImmunized: 0 },
-                    morbidity: {},
-                    socioEconomic: {},
-                    environmental: { safeWater: 0, sanitaryLatrine: 0, wasteSegregation: 0 },
-                    logbook: { visits: 0, reflections: 0 }
-                });
-            }
+        const loadReport = async () => {
+            const result = await generateCommunityHealthReport(profile.id);
+            setData(result);
+            setLoading(false);
         };
+        loadReport();
 
-        fetchData();
-
-        // Load feedback (Lightweight, no aggressive caching needed)
+        // Load feedback for students
         if (profile?.role === 'student') {
             const loadFeedback = async () => {
                 const { data } = await supabase
@@ -87,59 +50,20 @@ const Reports = () => {
                     `)
                     .eq('student_id', profile.id)
                     .eq('is_active', true)
-                    .maybeSingle();
+                    .maybeSingle(); // Use maybeSingle to avoid error if no mentor
                 setFeedback(data);
             };
             loadFeedback();
         }
     }, [profile]);
 
-    const refreshReport = async () => {
-        setLoading(true);
-        const result = await generateCommunityHealthReport(profile.id);
-        setData(result);
-        sessionStorage.setItem(`analytics_${profile.id}`, JSON.stringify({ timestamp: Date.now(), data: result }));
-        setLoading(false);
-    };
-
     const handlePrint = () => {
         window.print();
     };
 
-    if (loading) return (
-        <div className="container" style={{ padding: '2rem' }}>
-            <div className="animate-pulse">
-                <div style={{ height: '40px', width: '200px', background: '#E2E8F0', borderRadius: '8px', marginBottom: '1rem' }}></div>
-                <div style={{ height: '20px', width: '300px', background: '#F1F5F9', borderRadius: '4px', marginBottom: '3rem' }}></div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
-                    {[1, 2, 3, 4].map(i => <div key={i} style={{ height: '120px', background: 'white', borderRadius: '12px', border: '1px solid #E2E8F0' }}></div>)}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                    <div style={{ height: '300px', background: 'white', borderRadius: '12px', border: '1px solid #E2E8F0' }}></div>
-                    <div style={{ height: '300px', background: 'white', borderRadius: '12px', border: '1px solid #E2E8F0' }}></div>
-                </div>
-            </div>
-        </div>
-    );
+    if (loading) return <div className="container" style={{ padding: '2rem' }}>Generating Analytics...</div>;
 
-    // Safety check - if data is still null, show loading
-    if (!data) return (
-        <div className="container" style={{ padding: '2rem' }}>
-            <div className="animate-pulse">
-                <div style={{ height: '40px', width: '200px', background: '#E2E8F0', borderRadius: '8px', marginBottom: '1rem' }}></div>
-                <div style={{ height: '20px', width: '300px', background: '#F1F5F9', borderRadius: '4px', marginBottom: '3rem' }}></div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
-                    {[1, 2, 3, 4].map(i => <div key={i} style={{ height: '120px', background: 'white', borderRadius: '12px', border: '1px solid #E2E8F0' }}></div>)}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                    <div style={{ height: '300px', background: 'white', borderRadius: '12px', border: '1px solid #E2E8F0' }}></div>
-                    <div style={{ height: '300px', background: 'white', borderRadius: '12px', border: '1px solid #E2E8F0' }}></div>
-                </div>
-            </div>
-        </div>
-    );
-
-    const { demographics, maternalHealth, childHealth, morbidity, socioEconomic, environmental } = data;
+    const { demographics, MaternalHealth, childHealth, morbidity, socioEconomic, environmental } = data;
 
     return (
         <div>
@@ -148,9 +72,6 @@ const Reports = () => {
                     <h1 className="page-title">Reports & Logbook</h1>
                     <p className="page-subtitle">Track community health status and your personal progress</p>
                 </div>
-                <button className="btn btn-outline" onClick={refreshReport} style={{ marginRight: '1rem' }}>
-                    <RefreshCw size={18} /> Refresh Data
-                </button>
                 <button className="btn btn-primary" onClick={handlePrint}>
                     <Download size={18} /> Export / Print
                 </button>
@@ -262,10 +183,10 @@ const Reports = () => {
                             <div>
                                 <h4 style={{ fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.5rem', color: '#9D174D' }}>Antenatal Care</h4>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: '#FCE7F3', borderRadius: 'var(--radius-md)' }}>
-                                    <span>Registered</span> <span style={{ fontWeight: '700' }}>{maternalHealth.registeredPregnancies}</span>
+                                    <span>Registered</span> <span style={{ fontWeight: '700' }}>{data.maternalHealth.registeredPregnancies}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: '#FCE7F3', borderRadius: 'var(--radius-md)', marginTop: '0.5rem' }}>
-                                    <span>High Risk</span> <span style={{ fontWeight: '700', color: '#BE123C' }}>{maternalHealth.highRiskPregnancies}</span>
+                                    <span>High Risk</span> <span style={{ fontWeight: '700', color: '#BE123C' }}>{data.maternalHealth.highRiskPregnancies}</span>
                                 </div>
                             </div>
                             <div>
