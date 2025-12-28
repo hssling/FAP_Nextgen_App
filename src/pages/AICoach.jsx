@@ -8,7 +8,7 @@ const AICoach = () => {
     const [messages, setMessages] = useState([
         {
             role: 'assistant',
-            content: `Hello ${profile?.full_name || 'Student'}! 👋 I'm your AI Medical Coach, powered by Groq's ultra-fast Llama AI. I specialize in Family Adoption Programme (FAP) and Community Medicine. I can help you with:
+            content: `Hello ${profile?.full_name || 'Student'}! 👋 I'm your AI Medical Coach. I specialize in Family Adoption Programme (FAP) and Community Medicine. I can help you with:
 
 • Understanding NMC competencies and learning objectives
 • Clinical case discussions and differential diagnosis
@@ -55,21 +55,23 @@ What would you like to learn about today?`,
         setShowQuickPrompts(false);
 
         try {
-            // Check for API key
-            const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+            // Using OpenRouter - supports multiple free models
+            const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
 
-            if (!apiKey || apiKey === 'your_groq_api_key_here') {
+            if (!apiKey || apiKey === 'YOUR_OPENROUTER_API_KEY_HERE') {
                 throw new Error('API_KEY_REQUIRED');
             }
 
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
+                    'Authorization': `Bearer ${apiKey}`,
+                    'HTTP-Referer': window.location.origin,
+                    'X-Title': 'FAP Medical Coach'
                 },
                 body: JSON.stringify({
-                    model: "llama-3.1-70b-versatile",
+                    model: "meta-llama/llama-3.1-8b-instruct:free", // Free model
                     messages: [
                         {
                             role: "system",
@@ -124,13 +126,15 @@ Provide helpful, accurate, and educational responses. Use simple language, inclu
 
 To enable the AI Medical Coach:
 
-1. Get a FREE API key from: **https://console.groq.com/keys**
-2. Add to your \`.env\` file: 
-   \`VITE_GROQ_API_KEY=gsk_your_key_here\`
-3. Restart the dev server
+1. Get a FREE API key from: **https://openrouter.ai/keys**
+2. Sign up with Google (no credit card needed)
+3. Add to your \`.env\` file: 
+   \`VITE_OPENROUTER_API_KEY=sk-or-v1-your_key_here\`
+4. Restart the dev server
 
-✨ Groq is completely free with generous limits!
-⚡ Lightning-fast responses powered by Llama 3.1`;
+✨ OpenRouter is free for students!
+🌐 Access to multiple AI models
+⚡ Fast and reliable`;
             } else if (error.message.includes('RATE_LIMIT') || error.message.includes('429')) {
                 errorMsg = '⚠️ Too many requests. Please wait a moment and try again.';
             } else if (error.message.includes('Failed to fetch') || error.message.includes('network')) {
@@ -176,7 +180,7 @@ To enable the AI Medical Coach:
                     <div>
                         <h1 style={{ fontSize: '1.75rem', fontWeight: '700', margin: 0 }}>AI Medical Coach</h1>
                         <p style={{ margin: 0, opacity: 0.9, fontSize: '0.95rem' }}>
-                            Powered by Groq ⚡ Lightning-Fast & Free
+                            Powered by OpenRouter • Free for Students
                         </p>
                     </div>
                 </div>
