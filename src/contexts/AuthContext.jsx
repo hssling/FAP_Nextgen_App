@@ -100,9 +100,19 @@ export const AuthProvider = ({ children }) => {
             }
         );
 
+        // Refresh session every 30 minutes to prevent expiry
+        const refreshInterval = setInterval(async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                console.log('[Auth] Refreshing session...');
+                await supabase.auth.refreshSession();
+            }
+        }, 30 * 60 * 1000); // 30 minutes
+
         return () => {
             mounted = false;
             subscription.unsubscribe();
+            clearInterval(refreshInterval);
         };
     }, []);
 
