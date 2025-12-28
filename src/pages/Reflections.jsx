@@ -275,20 +275,45 @@ const Reflections = () => {
                             <p>{reflections.length}</p>
                         </div>
                     </div>
-                    <div className="stat-card">
-                        <div className="stat-icon" style={{ background: '#10B981' }}><TrendingUp size={24} /></div>
-                        <div className="stat-content">
-                            <h4>Avg. Score</h4>
-                            <p>{(reflections.filter(r => r.total_score).reduce((acc, curr) => acc + curr.total_score, 0) / (reflections.filter(r => r.total_score).length || 1)).toFixed(1)}</p>
-                        </div>
-                    </div>
-                    <div className="stat-card">
-                        <div className="stat-icon" style={{ background: '#F59E0B' }}><Calendar size={24} /></div>
-                        <div className="stat-content">
-                            <h4>This Month</h4>
-                            <p>{reflections.filter(r => new Date(r.created_at).getMonth() === new Date().getMonth()).length}</p>
-                        </div>
-                    </div>
+
+                    {(() => {
+                        const gradedRefs = reflections.filter(r => r.total_score !== null && r.total_score !== undefined);
+                        const avgScore = gradedRefs.length > 0
+                            ? (gradedRefs.reduce((acc, curr) => acc + curr.total_score, 0) / gradedRefs.length).toFixed(1)
+                            : 'N/A';
+
+                        let avgGrade = '-';
+                        if (avgScore !== 'N/A') {
+                            const s = parseFloat(avgScore);
+                            if (s >= 90) avgGrade = 'A+';
+                            else if (s >= 80) avgGrade = 'A';
+                            else if (s >= 70) avgGrade = 'B';
+                            else if (s >= 60) avgGrade = 'C';
+                            else avgGrade = 'D';
+                        }
+
+                        return (
+                            <>
+                                <div className="stat-card">
+                                    <div className="stat-icon" style={{ background: '#10B981' }}><TrendingUp size={24} /></div>
+                                    <div className="stat-content">
+                                        <h4>Avg. Score</h4>
+                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                                            <p>{avgScore}</p>
+                                            {avgGrade !== '-' && <span style={{ fontSize: '1rem', fontWeight: 700, color: '#059669' }}>({avgGrade})</span>}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="stat-card">
+                                    <div className="stat-icon" style={{ background: '#F59E0B' }}><Calendar size={24} /></div>
+                                    <div className="stat-content">
+                                        <h4>This Month</h4>
+                                        <p>{reflections.filter(r => new Date(r.created_at).getMonth() === new Date().getMonth()).length}</p>
+                                    </div>
+                                </div>
+                            </>
+                        );
+                    })()}
                 </div>
 
                 <div className="timeline-container">
@@ -325,9 +350,9 @@ const Reflections = () => {
                                                 <span style={{ fontSize: '0.8rem', color: '#64748B' }}>{ref.families?.head_name || 'General Reflection'}</span>
                                             </div>
                                             {ref.status === 'Graded' && (
-                                                <div className="grade-badge">
+                                                <div className="grade-badge" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                                     <span className="grade-score">{ref.grade}</span>
-                                                    <span className="grade-label">Graded</span>
+                                                    {ref.total_score && <span style={{ fontSize: '0.7rem', color: 'white', fontWeight: 500 }}>{ref.total_score} pts</span>}
                                                 </div>
                                             )}
                                         </div>
@@ -651,12 +676,41 @@ const Reflections = () => {
                                 )}
 
                                 {viewingEntry.status === 'Graded' && (
-                                    <div className="view-feedback">
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                            <h4 style={{ fontWeight: 700, color: '#D97706' }}>Mentor Feedback</h4>
-                                            <span style={{ fontWeight: 800, fontSize: '1.25rem' }}>Grade: {viewingEntry.grade}</span>
+                                    <div className="view-feedback" style={{ marginTop: '2rem', padding: '1.5rem', background: '#FFF7ED', border: '1px solid #FFEDD5', borderRadius: '12px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                                            <div>
+                                                <h4 style={{ fontWeight: 800, color: '#9A3412', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <Sparkles size={18} /> Mentor Assessment
+                                                </h4>
+                                                <p style={{ fontSize: '0.85rem', color: '#C2410C' }}>Graded on {new Date(viewingEntry.graded_at || Date.now()).toLocaleDateString()}</p>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <span style={{ display: 'block', fontSize: '2rem', fontWeight: 800, color: '#EA580C', lineHeight: 1 }}>{viewingEntry.grade}</span>
+                                                <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#C2410C' }}>{viewingEntry.total_score || 0} / 100</span>
+                                            </div>
                                         </div>
-                                        <p style={{ color: '#92400E' }}>{viewingEntry.teacher_feedback || "No written feedback provided."}</p>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                                            {[
+                                                { label: 'Exploration', val: viewingEntry.score_exploration },
+                                                { label: 'Voice', val: viewingEntry.score_voice },
+                                                { label: 'Description', val: viewingEntry.score_description },
+                                                { label: 'Emotions', val: viewingEntry.score_emotions },
+                                                { label: 'Analysis', val: viewingEntry.score_analysis }
+                                            ].map((s, i) => (
+                                                <div key={i} style={{ background: 'white', padding: '0.5rem', borderRadius: '6px', border: '1px solid #FED7AA', textAlign: 'center' }}>
+                                                    <div style={{ fontSize: '0.7rem', color: '#9A3412', fontWeight: 600, textTransform: 'uppercase' }}>{s.label}</div>
+                                                    <div style={{ fontWeight: 700, color: '#EA580C' }}>{s.val || 0}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div>
+                                            <h5 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#9A3412', marginBottom: '0.5rem' }}>Mentor Notes</h5>
+                                            <p style={{ color: '#7C2D12', fontSize: '0.95rem', lineHeight: 1.6, background: 'rgba(255,255,255,0.5)', padding: '1rem', borderRadius: '8px' }}>
+                                                {viewingEntry.teacher_feedback || "No written feedback provided."}
+                                            </p>
+                                        </div>
                                     </div>
                                 )}
                             </div>
