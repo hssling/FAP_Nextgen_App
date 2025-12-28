@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
+import { invalidateAnalyticsCache } from '../utils/cacheUtils';
 
 const Families = () => {
     const { profile } = useAuth();
@@ -45,6 +46,9 @@ const Families = () => {
             }]);
 
             if (error) throw error;
+
+            // Invalidate analytics cache so Reports page shows updated data
+            invalidateAnalyticsCache(profile.id);
 
             setShowAddModal(false);
             setNewFamily({ head_name: '', village: '', members_count: 1 });
