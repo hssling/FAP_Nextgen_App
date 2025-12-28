@@ -144,8 +144,8 @@ const Reflections = () => {
                         upsert: false
                     });
 
-                // Timeout after 15 seconds
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Upload timed out. Check connection.")), 15000));
+                // Timeout after 60 seconds
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Upload timed out. Check connection.")), 60000));
 
                 const response = await Promise.race([uploadPromise, timeoutPromise]);
                 const { data, error: uploadError } = response || {}; // Safe destructure if race returns weirdly
@@ -370,7 +370,7 @@ const Reflections = () => {
                         <motion.div
                             initial={{ y: 50, scale: 0.95 }} animate={{ y: 0, scale: 1 }} exit={{ y: 50, scale: 0.95 }}
                             className="modal-content"
-                            style={{ position: 'relative' }}
+                            style={{ position: 'relative', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}
                         >
                             {/* OVERLAY for Submission Status */}
                             {submissionStatus && (
@@ -382,6 +382,7 @@ const Reflections = () => {
                                         <>
                                             <Loader2 className="animate-spin" size={48} color="#3B82F6" />
                                             <p style={{ marginTop: '1rem', fontWeight: 600 }}>Uploading File...</p>
+                                            <p style={{ fontSize: '0.8rem', color: '#64748B' }}>Please wait, this may take a minute...</p>
                                             <button onClick={cancelUpload} style={{ marginTop: '1rem', color: '#64748B', fontSize: '0.8rem', textDecoration: 'underline' }}>Cancel</button>
                                         </>
                                     )}
@@ -398,175 +399,177 @@ const Reflections = () => {
                                 </div>
                             )}
 
-                            <div className="modal-sidebar">
-                                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '2rem', color: '#0F172A' }}>New Entry</h2>
-                                <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '2rem' }}>
-                                    {activeTab === 'write' ? (
-                                        GIBBS_STAGES.map((stage, idx) => (
-                                            <div
-                                                key={stage.id}
-                                                onClick={() => setCurrentStage(idx)}
-                                                className={`sidebar-step ${currentStage === idx ? 'active' : ''}`}
-                                            >
-                                                <div className="step-dot"></div>
-                                                <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: currentStage === idx ? '#0F766E' : '#64748B' }}>{stage.title}</h4>
+                            <div style={{ display: 'flex', flex: 1, minHeight: 0 }}> {/* wrapper for sidebar+main */}
+                                <div className="modal-sidebar" style={{ overflowY: 'auto' }}>
+                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '2rem', color: '#0F172A' }}>New Entry</h2>
+                                    <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '2rem' }}>
+                                        {activeTab === 'write' ? (
+                                            GIBBS_STAGES.map((stage, idx) => (
+                                                <div
+                                                    key={stage.id}
+                                                    onClick={() => setCurrentStage(idx)}
+                                                    className={`sidebar-step ${currentStage === idx ? 'active' : ''}`}
+                                                >
+                                                    <div className="step-dot"></div>
+                                                    <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: currentStage === idx ? '#0F766E' : '#64748B' }}>{stage.title}</h4>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div style={{ color: '#64748B' }}>
+                                                <p style={{ marginBottom: '1rem' }}>Upload your reflection document.</p>
+                                                <button onClick={runDiagnostics} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.75rem', color: '#64748B', marginTop: '2rem', border: '1px solid #E2E8F0', padding: '0.5rem', borderRadius: '4px' }}>
+                                                    <RefreshCw size={12} /> Check System
+                                                </button>
+                                                {sysStatus && <div style={{ fontSize: '0.7rem', color: (sysStatus.includes('Error') ? 'red' : 'green'), marginTop: '0.5rem' }}>{sysStatus}</div>}
                                             </div>
-                                        ))
-                                    ) : (
-                                        <div style={{ color: '#64748B' }}>
-                                            <p style={{ marginBottom: '1rem' }}>Upload your reflection document.</p>
-                                            <button onClick={runDiagnostics} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.75rem', color: '#64748B', marginTop: '2rem', border: '1px solid #E2E8F0', padding: '0.5rem', borderRadius: '4px' }}>
-                                                <RefreshCw size={12} /> Check System
-                                            </button>
-                                            {sysStatus && <div style={{ fontSize: '0.7rem', color: (sysStatus.includes('Error') ? 'red' : 'green'), marginTop: '0.5rem' }}>{sysStatus}</div>}
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="modal-main" style={{ overflowY: 'auto', flex: 1 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                            <button onClick={() => setIsWriting(false)} style={{ padding: '0.5rem', borderRadius: '50%', background: '#F1F5F9' }}><X size={20} /></button>
+                                            <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0F172A' }}>New Entry</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="form-context-row" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                                        <div style={{ flex: 1, minWidth: '140px' }}>
+                                            <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.5rem' }}>Phase</label>
+                                            <select
+                                                value={formData.phase} onChange={e => setFormData({ ...formData, phase: e.target.value })}
+                                                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #E2E8F0', background: 'white' }}
+                                            >
+                                                <option>Phase I</option><option>Phase II</option><option>Phase III</option>
+                                            </select>
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: '140px' }}>
+                                            <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.5rem' }}>Family (Optional)</label>
+                                            <select
+                                                value={formData.familyId} onChange={e => setFormData({ ...formData, familyId: e.target.value })}
+                                                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #E2E8F0', background: 'white' }}
+                                            >
+                                                <option value="">-- General --</option>
+                                                {families.map(f => <option key={f.id} value={f.id}>{f.head_name}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="tabs-header">
+                                        <button
+                                            className={`tab-btn ${activeTab === 'write' ? 'active' : ''}`}
+                                            onClick={() => setActiveTab('write')}
+                                        >
+                                            <BookOpen size={16} style={{ display: 'inline', marginRight: '5px' }} />
+                                            Structured
+                                        </button>
+                                        <button
+                                            className={`tab-btn ${activeTab === 'upload' ? 'active' : ''}`}
+                                            onClick={() => setActiveTab('upload')}
+                                        >
+                                            <Upload size={16} style={{ display: 'inline', marginRight: '5px' }} />
+                                            Upload
+                                        </button>
+                                    </div>
+
+                                    {uploadError && (
+                                        <div style={{ background: '#FEF2F2', color: '#B91C1C', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.875rem' }}>
+                                            <AlertCircle size={16} /> {uploadError}
                                         </div>
                                     )}
-                                </div>
-                            </div>
 
-                            <div className="modal-main">
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                        <button onClick={() => setIsWriting(false)} style={{ padding: '0.5rem', borderRadius: '50%', background: '#F1F5F9' }}><X size={20} /></button>
-                                        <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0F172A' }}>New Entry</span>
-                                    </div>
-                                </div>
-
-                                <div className="form-context-row" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                                    <div style={{ flex: 1, minWidth: '140px' }}>
-                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.5rem' }}>Phase</label>
-                                        <select
-                                            value={formData.phase} onChange={e => setFormData({ ...formData, phase: e.target.value })}
-                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #E2E8F0', background: 'white' }}
-                                        >
-                                            <option>Phase I</option><option>Phase II</option><option>Phase III</option>
-                                        </select>
-                                    </div>
-                                    <div style={{ flex: 1, minWidth: '140px' }}>
-                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.5rem' }}>Family (Optional)</label>
-                                        <select
-                                            value={formData.familyId} onChange={e => setFormData({ ...formData, familyId: e.target.value })}
-                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #E2E8F0', background: 'white' }}
-                                        >
-                                            <option value="">-- General --</option>
-                                            {families.map(f => <option key={f.id} value={f.id}>{f.head_name}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="tabs-header">
-                                    <button
-                                        className={`tab-btn ${activeTab === 'write' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('write')}
-                                    >
-                                        <BookOpen size={16} style={{ display: 'inline', marginRight: '5px' }} />
-                                        Structured
-                                    </button>
-                                    <button
-                                        className={`tab-btn ${activeTab === 'upload' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('upload')}
-                                    >
-                                        <Upload size={16} style={{ display: 'inline', marginRight: '5px' }} />
-                                        Upload
-                                    </button>
-                                </div>
-
-                                {uploadError && (
-                                    <div style={{ background: '#FEF2F2', color: '#B91C1C', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.875rem' }}>
-                                        <AlertCircle size={16} /> {uploadError}
-                                    </div>
-                                )}
-
-                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                                    {activeTab === 'write' && (
-                                        <AnimatePresence mode="wait">
-                                            <motion.div
-                                                key={currentStage}
-                                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                                                style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-                                            >
-                                                <div className="mobile-stepper" style={{ marginBottom: '1rem', fontSize: '0.75rem', fontWeight: 700, color: '#0F766E', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                                    Step {currentStage + 1} of {GIBBS_STAGES.length}: {GIBBS_STAGES[currentStage].title}
-                                                </div>
-
-                                                <div style={{ marginBottom: '1rem' }}>
-                                                    <h3 className="stage-prompt">{GIBBS_STAGES[currentStage].prompt}</h3>
-                                                </div>
-
-                                                <textarea
-                                                    className="journal-input"
-                                                    placeholder="Type your reflection here..."
-                                                    value={formData.gibbs[GIBBS_STAGES[currentStage].id]}
-                                                    onChange={e => setFormData(prev => ({ ...prev, gibbs: { ...prev.gibbs, [GIBBS_STAGES[currentStage].id]: e.target.value } }))}
-                                                    autoFocus
-                                                />
-
-                                                <div className="modal-actions">
-                                                    <button onClick={handleAICoach} disabled={isAnalyzing} className="ai-btn">
-                                                        <Sparkles size={16} className={isAnalyzing ? "animate-spin" : ""} /> {isAnalyzing ? "..." : "AI Tip"}
-                                                    </button>
-
-                                                    <div style={{ display: 'flex', gap: '1rem' }}>
-                                                        <button
-                                                            onClick={() => setCurrentStage(p => Math.max(0, p - 1))} disabled={currentStage === 0}
-                                                            className="nav-btn"
-                                                        >
-                                                            <ChevronLeft size={24} />
-                                                        </button>
-                                                        {currentStage < GIBBS_STAGES.length - 1 ? (
-                                                            <button
-                                                                onClick={() => setCurrentStage(p => Math.min(GIBBS_STAGES.length - 1, p + 1))}
-                                                                className="nav-btn primary"
-                                                            >
-                                                                Next <ChevronRight size={20} />
-                                                            </button>
-                                                        ) : (
-                                                            <button
-                                                                onClick={handleSubmit} disabled={submitting}
-                                                                className="nav-btn primary"
-                                                                style={{ background: 'linear-gradient(to right, #2563EB, #4F46E5)' }}
-                                                            >
-                                                                {submitting ? '...' : <><Save size={20} style={{ marginRight: '8px' }} /> Finish</>}
-                                                            </button>
-                                                        )}
+                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                        {activeTab === 'write' && (
+                                            <AnimatePresence mode="wait">
+                                                <motion.div
+                                                    key={currentStage}
+                                                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                                                    style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+                                                >
+                                                    <div className="mobile-stepper" style={{ marginBottom: '1rem', fontSize: '0.75rem', fontWeight: 700, color: '#0F766E', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                        Step {currentStage + 1} of {GIBBS_STAGES.length}: {GIBBS_STAGES[currentStage].title}
                                                     </div>
+
+                                                    <div style={{ marginBottom: '1rem' }}>
+                                                        <h3 className="stage-prompt">{GIBBS_STAGES[currentStage].prompt}</h3>
+                                                    </div>
+
+                                                    <textarea
+                                                        className="journal-input"
+                                                        placeholder="Type your reflection here..."
+                                                        value={formData.gibbs[GIBBS_STAGES[currentStage].id]}
+                                                        onChange={e => setFormData(prev => ({ ...prev, gibbs: { ...prev.gibbs, [GIBBS_STAGES[currentStage].id]: e.target.value } }))}
+                                                        autoFocus
+                                                    />
+
+                                                    <div className="modal-actions">
+                                                        <button onClick={handleAICoach} disabled={isAnalyzing} className="ai-btn">
+                                                            <Sparkles size={16} className={isAnalyzing ? "animate-spin" : ""} /> {isAnalyzing ? "..." : "AI Tip"}
+                                                        </button>
+
+                                                        <div style={{ display: 'flex', gap: '1rem' }}>
+                                                            <button
+                                                                onClick={() => setCurrentStage(p => Math.max(0, p - 1))} disabled={currentStage === 0}
+                                                                className="nav-btn"
+                                                            >
+                                                                <ChevronLeft size={24} />
+                                                            </button>
+                                                            {currentStage < GIBBS_STAGES.length - 1 ? (
+                                                                <button
+                                                                    onClick={() => setCurrentStage(p => Math.min(GIBBS_STAGES.length - 1, p + 1))}
+                                                                    className="nav-btn primary"
+                                                                >
+                                                                    Next <ChevronRight size={20} />
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={handleSubmit} disabled={submitting}
+                                                                    className="nav-btn primary"
+                                                                    style={{ background: 'linear-gradient(to right, #2563EB, #4F46E5)' }}
+                                                                >
+                                                                    {submitting ? '...' : <><Save size={20} style={{ marginRight: '8px' }} /> Finish</>}
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            </AnimatePresence>
+                                        )}
+
+                                        {activeTab === 'upload' && (
+                                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ flex: 1 }}>
+
+                                                <div className="upload-container" style={{ padding: '2rem', border: '2px dashed #E2E8F0', borderRadius: '1rem', textAlign: 'center', background: '#F8FAFC' }}>
+                                                    <input
+                                                        type="file"
+                                                        onChange={handleFileSelect}
+                                                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                        style={{ width: '100%' }}
+                                                    />
+                                                    <p style={{ marginTop: '1rem', color: '#94A3B8', fontSize: '0.875rem' }}>Supported: PDF, Doc, Image (Max 10MB)</p>
+                                                </div>
+
+                                                {selectedFile && (
+                                                    <div className="file-preview" style={{ marginTop: '1.5rem' }}>
+                                                        <FileText size={20} style={{ color: '#475569' }} />
+                                                        <div className="file-info">{selectedFile.name}</div>
+                                                        <button onClick={() => setSelectedFile(null)} className="remove-file">Remove</button>
+                                                    </div>
+                                                )}
+
+                                                <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', paddingTop: '2rem' }}>
+                                                    <button
+                                                        onClick={handleSubmit} disabled={submitting}
+                                                        className="nav-btn primary"
+                                                        style={{ background: 'linear-gradient(to right, #2563EB, #4F46E5)' }}
+                                                    >
+                                                        {submitting ? '...' : <><Save size={20} style={{ marginRight: '8px' }} /> Submit File</>}
+                                                    </button>
                                                 </div>
                                             </motion.div>
-                                        </AnimatePresence>
-                                    )}
-
-                                    {activeTab === 'upload' && (
-                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ flex: 1 }}>
-
-                                            <div className="upload-container" style={{ padding: '2rem', border: '2px dashed #E2E8F0', borderRadius: '1rem', textAlign: 'center', background: '#F8FAFC' }}>
-                                                <input
-                                                    type="file"
-                                                    onChange={handleFileSelect}
-                                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                                    style={{ width: '100%' }}
-                                                />
-                                                <p style={{ marginTop: '1rem', color: '#94A3B8', fontSize: '0.875rem' }}>Supported: PDF, Doc, Image (Max 10MB)</p>
-                                            </div>
-
-                                            {selectedFile && (
-                                                <div className="file-preview" style={{ marginTop: '1.5rem' }}>
-                                                    <FileText size={20} style={{ color: '#475569' }} />
-                                                    <div className="file-info">{selectedFile.name}</div>
-                                                    <button onClick={() => setSelectedFile(null)} className="remove-file">Remove</button>
-                                                </div>
-                                            )}
-
-                                            <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', paddingTop: '2rem' }}>
-                                                <button
-                                                    onClick={handleSubmit} disabled={submitting}
-                                                    className="nav-btn primary"
-                                                    style={{ background: 'linear-gradient(to right, #2563EB, #4F46E5)' }}
-                                                >
-                                                    {submitting ? '...' : <><Save size={20} style={{ marginRight: '8px' }} /> Submit File</>}
-                                                </button>
-                                            </div>
-                                        </motion.div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>
