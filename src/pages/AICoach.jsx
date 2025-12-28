@@ -43,6 +43,27 @@ What would you like to learn about today?`,
     const sendMessage = async (messageText = input) => {
         if (!messageText.trim() || isLoading) return;
 
+        // Check if API key is configured
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        if (!apiKey || apiKey === 'your_gemini_api_key_here') {
+            const errorMessage = {
+                role: 'assistant',
+                content: `⚠️ **AI Coach Not Configured**
+
+The Gemini API key is missing. To enable the AI Medical Coach:
+
+1. Get a free API key from: https://makersuite.google.com/app/apikey
+2. Create a \`.env\` file in the project root (copy from \`.env.example\`)
+3. Add your key: \`VITE_GEMINI_API_KEY=your_actual_key_here\`
+4. Restart the development server
+
+Once configured, I'll be ready to help with your medical studies! 🎓`,
+                timestamp: new Date()
+            };
+            setMessages(prev => [...prev, errorMessage]);
+            return;
+        }
+
         const userMessage = {
             role: 'user',
             content: messageText,
@@ -55,7 +76,8 @@ What would you like to learn about today?`,
         setShowQuickPrompts(false);
 
         try {
-            const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=' + import.meta.env.VITE_GEMINI_API_KEY, {
+            // Using gemini-1.5-flash (faster and more reliable than gemini-pro)
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -79,10 +101,15 @@ Provide a helpful, accurate, and educational response. Use simple language, incl
                     }],
                     generationConfig: {
                         temperature: 0.7,
-                        maxOutputTokens: 800,
+                        maxOutputTokens: 1000,
                     }
                 })
             });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || `API Error: ${response.status}`);
+            }
 
             const data = await response.json();
 
@@ -93,14 +120,28 @@ Provide a helpful, accurate, and educational response. Use simple language, incl
                     timestamp: new Date()
                 };
                 setMessages(prev => [...prev, aiMessage]);
+            } else if (data.error) {
+                throw new Error(data.error.message || 'Invalid API response');
             } else {
-                throw new Error('Invalid response from AI');
+                throw new Error('No response generated');
             }
         } catch (error) {
             console.error('AI Coach Error:', error);
+            let errorMsg = '⚠️ Sorry, I encountered an error. ';
+
+            if (error.message.includes('API_KEY_INVALID')) {
+                errorMsg += 'Your API key appears to be invalid. Please check your .env file.';
+            } else if (error.message.includes('RATE_LIMIT')) {
+                errorMsg += 'Rate limit exceeded. Please wait a moment and try again.';
+            } else if (error.message.includes('SAFETY')) {
+                errorMsg += 'The response was blocked due to safety filters. Please rephrase your question.';
+            } else {
+                errorMsg += `${error.message}. Please try again.`;
+            }
+
             const errorMessage = {
                 role: 'assistant',
-                content: '⚠️ Sorry, I encountered an error. Please try again or rephrase your question.',
+                content: errorMsg,
                 timestamp: new Date()
             };
             setMessages(prev => [...prev, errorMessage]);
