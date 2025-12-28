@@ -41,6 +41,10 @@
     flex-direction: column;
     gap: 0.5rem;
     flex: 1;
+    overflow-y: auto;
+    /* Allow scrolling if menu is tall */
+    padding-bottom: 3rem;
+    /* Extra space at bottom */
 }
 
 .navItem {

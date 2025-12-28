@@ -64,8 +64,23 @@ const Reflections = () => {
         try {
             const { data, error } = await supabase.storage.getBucket('reflection-files');
             if (error) {
-                setSysStatus(`Storage Error: ${error.message}`);
-                console.error("Diag Error:", error);
+                console.error("Bucket Check Error:", error);
+                if (error.message.includes("not found")) {
+                    setSysStatus("Bucket Missing. Attempting Fix...");
+                    // ATTEMPT TO CREATE BUCKET
+                    const { data: newData, error: createError } = await supabase.storage.createBucket('reflection-files', {
+                        public: true,
+                        fileSizeLimit: 10485760,
+                        allowedMimeTypes: ['image/png', 'image/jpeg', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+                    });
+                    if (createError) {
+                        setSysStatus(`Fix Failed: ${createError.message}. Run SQL Script.`);
+                    } else {
+                        setSysStatus("Bucket Created! Try uploading now.");
+                    }
+                } else {
+                    setSysStatus(`Storage Error: ${error.message}`);
+                }
             } else {
                 setSysStatus(`Ready. Bucket: ${data?.name || 'Found'}`);
             }
