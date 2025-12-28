@@ -141,7 +141,7 @@ const Reflections = () => {
                     .from('reflection-files')
                     .upload(path, selectedFile, {
                         cacheControl: '3600',
-                        upsert: false
+                        upsert: true // Changed to TRUE to avoid conflicts
                     });
 
                 // Timeout after 60 seconds
@@ -155,7 +155,7 @@ const Reflections = () => {
                     if (uploadError.statusCode === "404" || uploadError.message.includes("not found")) {
                         throw new Error("System Error: Storage bucket missing. Ask admin to run setup SQL.");
                     }
-                    throw new Error(`Upload Failed: ${uploadError.message}`);
+                    throw uploadError; // Throw raw error for catch block to format
                 }
 
                 const urlData = supabase.storage.from('reflection-files').getPublicUrl(path);
@@ -214,9 +214,12 @@ const Reflections = () => {
         } catch (e) {
             console.error("Full Submission Error:", e);
             // Construct a very detailed error message for the user to report
-            let msg = e.message;
+            let msg = e.message || "Unknown Error";
             if (e.statusCode) msg += ` (Status: ${e.statusCode})`;
             if (e.error) msg += ` (Details: ${e.error})`;
+            if (typeof e === 'object' && e !== null && !e.message) {
+                try { msg = JSON.stringify(e); } catch (err) { msg = "Unknown Object Error"; }
+            }
             setUploadError(msg);
             setSubmissionStatus('error');
         } finally {
@@ -392,7 +395,9 @@ const Reflections = () => {
                                         <>
                                             <div style={{ background: '#EF4444', borderRadius: '50%', padding: '1rem' }}><X size={48} color="white" /></div>
                                             <p style={{ marginTop: '1rem', fontWeight: 700, color: '#EF4444' }}>Failed!</p>
-                                            <p style={{ marginTop: '0.5rem', color: '#B91C1C', maxWidth: '80%', textAlign: 'center', fontSize: '0.8rem' }}>{uploadError}</p>
+                                            <div style={{ marginTop: '0.5rem', color: '#B91C1C', maxWidth: '80%', textAlign: 'center', fontSize: '0.8rem', maxHeight: '150px', overflowY: 'auto', border: '1px solid #FECACA', padding: '0.5rem', background: '#FEF2F2', borderRadius: '4px' }}>
+                                                {uploadError}
+                                            </div>
                                             <button onClick={() => setSubmissionStatus(null)} style={{ marginTop: '1rem', border: '1px solid #E2E8F0', padding: '0.5rem 1rem', borderRadius: '8px' }}>Close</button>
                                         </>
                                     )}
@@ -417,16 +422,12 @@ const Reflections = () => {
                                         ) : (
                                             <div style={{ color: '#64748B' }}>
                                                 <p style={{ marginBottom: '1rem' }}>Upload your reflection document.</p>
-                                                <button onClick={runDiagnostics} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.75rem', color: '#64748B', marginTop: '2rem', border: '1px solid #E2E8F0', padding: '0.5rem', borderRadius: '4px' }}>
-                                                    <RefreshCw size={12} /> Check System
-                                                </button>
-                                                {sysStatus && <div style={{ fontSize: '0.7rem', color: (sysStatus.includes('Error') ? 'red' : 'green'), marginTop: '0.5rem' }}>{sysStatus}</div>}
                                             </div>
                                         )}
                                     </div>
                                 </div>
 
-                                <div className="modal-main" style={{ overflowY: 'auto', flex: 1 }}>
+                                <div className="modal-main" style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                             <button onClick={() => setIsWriting(false)} style={{ padding: '0.5rem', borderRadius: '50%', background: '#F1F5F9' }}><X size={20} /></button>
@@ -474,8 +475,8 @@ const Reflections = () => {
                                     </div>
 
                                     {uploadError && (
-                                        <div style={{ background: '#FEF2F2', color: '#B91C1C', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.875rem' }}>
-                                            <AlertCircle size={16} /> {uploadError}
+                                        <div style={{ background: '#FEF2F2', color: '#B91C1C', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.8rem', wordBreak: 'break-word' }}>
+                                            <AlertCircle size={16} style={{ minWidth: '16px' }} /> <span style={{ marginLeft: '0.5rem' }}>{uploadError}</span>
                                         </div>
                                     )}
 
@@ -538,7 +539,7 @@ const Reflections = () => {
                                         )}
 
                                         {activeTab === 'upload' && (
-                                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ flex: 1 }}>
+                                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
 
                                                 <div className="upload-container" style={{ padding: '2rem', border: '2px dashed #E2E8F0', borderRadius: '1rem', textAlign: 'center', background: '#F8FAFC' }}>
                                                     <input
@@ -548,6 +549,13 @@ const Reflections = () => {
                                                         style={{ width: '100%' }}
                                                     />
                                                     <p style={{ marginTop: '1rem', color: '#94A3B8', fontSize: '0.875rem' }}>Supported: PDF, Doc, Image (Max 10MB)</p>
+                                                </div>
+
+                                                <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: '0.5rem' }}>
+                                                    <button onClick={runDiagnostics} className="btn-text" style={{ fontSize: '0.75rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                        <RefreshCw size={12} /> Check Connection Status
+                                                    </button>
+                                                    {sysStatus && <span style={{ fontSize: '0.75rem', color: sysStatus.includes('Error') ? '#EF4444' : '#10B981', fontWeight: 600 }}>{sysStatus}</span>}
                                                 </div>
 
                                                 {selectedFile && (
