@@ -15,10 +15,7 @@ export const supabase = supabaseUrl && supabaseAnonKey
         auth: {
             autoRefreshToken: true,
             persistSession: true,
-            detectSessionInUrl: false, // Disable this to prevent potential hangs
-            storage: window.localStorage, // Explicitly use localStorage
-            storageKey: 'fap-auth-token', // Custom storage key
-            flowType: 'pkce' // More secure auth flow
+            detectSessionInUrl: true // Default behavior is safer generally
         },
         global: {
             headers: {
