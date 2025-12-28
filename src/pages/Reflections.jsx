@@ -149,26 +149,28 @@ const Reflections = () => {
                 const safeName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
                 const path = `${profile.id}/${Date.now()}_${safeName}`;
 
-                // Add Timeout Race
+                // Convert to ArrayBuffer for robust upload
+                const fileBuffer = await selectedFile.arrayBuffer();
+
+                // Add Timeout Race (Increased to 90s)
                 const uploadPromise = supabase.storage
                     .from('reflection-files')
-                    .upload(path, selectedFile, {
-                        cacheControl: '3600',
-                        upsert: true // Changed to TRUE to avoid conflicts
+                    .upload(path, fileBuffer, {
+                        contentType: selectedFile.type || 'application/octet-stream',
+                        upsert: true
                     });
 
-                // Timeout after 60 seconds
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Upload timed out. Check connection.")), 60000));
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Upload timed out (>90s). Firewall issue?")), 90000));
 
                 const response = await Promise.race([uploadPromise, timeoutPromise]);
-                const { data, error: uploadError } = response || {}; // Safe destructure if race returns weirdly
+                const { data, error: uploadError } = response || {};
 
                 if (uploadError) {
                     console.error("Upload Error Details:", uploadError);
                     if (uploadError.statusCode === "404" || uploadError.message.includes("not found")) {
                         throw new Error("System Error: Storage bucket missing. Ask admin to run setup SQL.");
                     }
-                    throw uploadError; // Throw raw error for catch block to format
+                    throw uploadError;
                 }
 
                 const urlData = supabase.storage.from('reflection-files').getPublicUrl(path);
