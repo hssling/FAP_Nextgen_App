@@ -100,7 +100,7 @@ const Reflections = () => {
 
             const { data, error } = await supabase.storage
                 .from('reflection-files')
-                .upload(testPath, dummyBlob, { upsert: true });
+                .upload(testPath, dummyBlob, { upsert: false });
 
             if (error) {
                 console.error("Diagnostic Upload Failed:", error);
@@ -183,20 +183,37 @@ const Reflections = () => {
                 console.log("Target Path:", path);
                 console.log("Profile ID:", profile.id);
 
-                // Convert to ArrayBuffer for robust upload
-                const fileBuffer = await selectedFile.arrayBuffer();
+                // 3. Fallback to FormData (Multipart) is sometimes more stable on mobile
+                // However, Supabase client prefers Blob/File. 
+                // Let's try explicit 'file' body with standard fetch if Supabase SDK is stubborn,
+                // But first, let's try the most robust Supabase option: TUS resumeable upload is default in v2.
+                // WE WILL USE A SIMPLER FETCH TO DEBUG if SDK is the issue.
 
-                // Add Timeout Race (Increased to 300s / 5 mins for slow connections)
+                // NEW STRATEGY: Use standard POST for reliability if SDK fails, or stick to SDK with minimal args.
+                // Let's stick to SDK but remove 'upsert' which sometimes causes lock issues, and ensure simple path.
+
                 const uploadPromise = supabase.storage
                     .from('reflection-files')
-                    .upload(path, fileBuffer, {
-                        contentType: selectedFile.type || 'application/octet-stream',
-                        upsert: true
+                    .upload(path, selectedFile, {
+                        cacheControl: '3600',
+                        upsert: false // Disable upsert to avoid lock contention
                     });
 
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Upload timed out (>5 mins). Network issue?")), 300000));
+                // const formData = new FormData();
+                // formData.append('path', path);
+                // formData.append('file', selectedFile);
+                // ... implementing raw fetch is complex due to auth headers. Stuck with SDK for now.
 
-                const response = await Promise.race([uploadPromise, timeoutPromise]);
+                // Let's try: ArrayBuffer again BUT small chunk. 
+                // Actually, 'File' object should work.
+
+                // DIAGNOSTIC LOG
+                console.log("Starting Upload: ", path);
+
+                const response = await Promise.race([
+                    uploadPromise,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 60000)) // 60s timeout
+                ]);
                 const { data, error: uploadError } = response || {};
 
                 if (uploadError) {
@@ -619,7 +636,7 @@ const Reflections = () => {
                                                     <input
                                                         type="file"
                                                         onChange={handleFileSelect}
-                                                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                        accept="image/*,application/pdf,.doc,.docx,.txt"
                                                         style={{ width: '100%' }}
                                                     />
                                                     <p style={{ marginTop: '1rem', color: '#94A3B8', fontSize: '0.875rem' }}>Supported: PDF, Doc, Image (Max 10MB)</p>

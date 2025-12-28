@@ -100,19 +100,27 @@ export const AuthProvider = ({ children }) => {
             }
         );
 
-        // Refresh session every 30 minutes to prevent expiry
-        const refreshInterval = setInterval(async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                console.log('[Auth] Refreshing session...');
-                await supabase.auth.refreshSession();
+        // Check session status periodically, but rely on auto-refresh for the heavy lifting
+        const checkSessionInterval = setInterval(async () => {
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+
+            if (currentSession) {
+                // Only manually refresh if we are close to expiry (e.g., within 10 mins)
+                const expiresAt = currentSession.expires_at; // unix timestamp in seconds
+                const now = Math.floor(Date.now() / 1000);
+                const timeRemaining = expiresAt - now;
+
+                if (timeRemaining < 600 && timeRemaining > 0) {
+                    console.log('[Auth] Token expiring soon, refreshing...');
+                    await supabase.auth.refreshSession();
+                }
             }
-        }, 30 * 60 * 1000); // 30 minutes
+        }, 5 * 60 * 1000); // Check every 5 minutes
 
         return () => {
             mounted = false;
             subscription.unsubscribe();
-            clearInterval(refreshInterval);
+            clearInterval(checkSessionInterval);
         };
     }, []);
 
@@ -147,7 +155,7 @@ export const AuthProvider = ({ children }) => {
         setProfile(null);
         setUser(null);
         setSession(null);
-        localStorage.removeItem('supabase.auth.token'); // Force clean if using local storage
+        localStorage.removeItem('fap-auth-token'); // Force clean the correct custom key
         try {
             await supabase.auth.signOut();
         } catch (error) {
