@@ -55,6 +55,27 @@
     box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
 }
 
+/* Stats Pill */
+.stat-pill {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--color-text-main);
+    line-height: 1;
+}
+
 /* Student Grid */
 .dashboard-main {
     max-width: 1200px;

@@ -4,7 +4,7 @@ import {
     Search, Filter, LayoutGrid, List, ChevronRight,
     MoreVertical, Mail, Phone, Calendar, ArrowRight,
     TrendingUp, FileText, X, GraduationCap, Clock,
-    Home, Edit3, Save, Trash2
+    Home, Edit3, Save, Trash2, PieChart, Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
@@ -19,11 +19,21 @@ const REFLECT_CRITERIA = [
     { id: 'score_analysis', label: 'Analysis', desc: 'Critical thought', max: 2 }
 ];
 
+const TARGET_REFLECTIONS = 10; // Nominal target for progress bar calculation
+
 const TeacherDashboard = () => {
     const { profile } = useAuth();
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Aggregate Stats
+    const [stats, setStats] = useState({
+        totalStudents: 0,
+        totalReflections: 0,
+        pendingReviews: 0,
+        classAverage: 0
+    });
 
     // Slide-Over State
     const [activeStudent, setActiveStudent] = useState(null);
@@ -33,35 +43,84 @@ const TeacherDashboard = () => {
     const [notesSaving, setNotesSaving] = useState(false);
 
     // Drawer Tab State
-    const [drawerTab, setDrawerTab] = useState('reflections'); // 'reflections' or 'profile'
+    const [drawerTab, setDrawerTab] = useState('reflections');
 
     // Grading State
     const [gradingTarget, setGradingTarget] = useState(null);
     const [scores, setScores] = useState({ score_exploration: 0, score_voice: 0, score_description: 0, score_emotions: 0, score_analysis: 0 });
     const [gradeFeedback, setGradeFeedback] = useState('');
 
-    useEffect(() => { if (profile?.id) fetchStudents(); }, [profile]);
+    useEffect(() => { if (profile?.id) fetchClassroomData(); }, [profile]);
 
-    const fetchStudents = async () => {
-        const { data: mappings } = await supabase.from('teacher_student_mappings').select('student:profiles!student_id(id, full_name, registration_number, email)').eq('teacher_id', profile.id).eq('is_active', true);
-        const enhanced = await Promise.all((mappings || []).map(async (m) => {
-            const { count: refCount } = await supabase.from('reflections').select('*', { count: 'exact', head: true }).eq('student_id', m.student.id);
-            return { ...m.student, reflectionCount: refCount || 0 };
+    const fetchClassroomData = async () => {
+        setLoading(true);
+        // 1. Get My Students
+        const { data: mappings } = await supabase.from('teacher_student_mappings')
+            .select('student:profiles!student_id(id, full_name, registration_number, email)')
+            .eq('teacher_id', profile.id)
+            .eq('is_active', true);
+
+        if (!mappings) {
+            setStudents([]);
+            setLoading(false);
+            return;
+        }
+
+        // 2. Enhance with Stats (Promise.all for speed)
+        let totalRefs = 0;
+        let pending = 0;
+        let totalScoreSum = 0;
+        let gradedCount = 0;
+
+        const enhanced = await Promise.all(mappings.map(async (m) => {
+            const student = m.student;
+
+            // Fetch reflections brief (for stats)
+            const { data: refs } = await supabase.from('reflections').select('status, total_score').eq('student_id', student.id);
+            const { count: famCount } = await supabase.from('families').select('*', { count: 'exact', head: true }).eq('student_id', student.id);
+
+            const studentRefs = refs || [];
+            const sTotalRefs = studentRefs.length;
+            const sPending = studentRefs.filter(r => r.status === 'Pending').length;
+            const sGraded = studentRefs.filter(r => r.status === 'Graded');
+            const sAvg = sGraded.length > 0
+                ? (sGraded.reduce((a, b) => a + (b.total_score || 0), 0) / sGraded.length).toFixed(1)
+                : 0;
+
+            // Update Class Totals
+            totalRefs += sTotalRefs;
+            pending += sPending;
+            sGraded.forEach(r => { totalScoreSum += (r.total_score || 0); gradedCount++; });
+
+            return {
+                ...student,
+                reflectionCount: sTotalRefs,
+                pendingCount: sPending,
+                familyCount: famCount || 0,
+                avgGrade: sAvg,
+                progress: Math.min(100, Math.round((sTotalRefs / TARGET_REFLECTIONS) * 100))
+            };
         }));
+
         setStudents(enhanced);
+        setStats({
+            totalStudents: enhanced.length,
+            totalReflections: totalRefs,
+            pendingReviews: pending,
+            classAverage: gradedCount > 0 ? (totalScoreSum / gradedCount).toFixed(1) : 0
+        });
         setLoading(false);
     };
 
     const openStudent = async (student) => {
         setActiveStudent(student);
-        setDrawerTab('reflections'); // Default to reflections view
+        setDrawerTab('reflections');
 
-        // Parallel Fetching
-        const reflectionsPromise = supabase.from('reflections').select('*').eq('student_id', student.id).order('created_at', { ascending: false });
-        const familiesPromise = supabase.from('families').select('*').eq('student_id', student.id);
+        const refsPromise = supabase.from('reflections').select('*').eq('student_id', student.id).order('created_at', { ascending: false });
+        const famsPromise = supabase.from('families').select('*').eq('student_id', student.id);
         const notesPromise = supabase.from('teacher_student_mappings').select('notes').eq('teacher_id', profile.id).eq('student_id', student.id).single();
 
-        const [refs, fams, notesRes] = await Promise.all([reflectionsPromise, familiesPromise, notesPromise]);
+        const [refs, fams, notesRes] = await Promise.all([refsPromise, famsPromise, notesPromise]);
 
         setStudentReflections(refs.data || []);
         setStudentFamilies(fams.data || []);
@@ -75,9 +134,7 @@ const TeacherDashboard = () => {
                 .update({ notes: studentNotes })
                 .eq('teacher_id', profile.id)
                 .eq('student_id', activeStudent.id);
-
             if (error) throw error;
-            // Notes saved feedback could trigger here
         } catch (e) {
             console.error("Error saving notes:", e);
             alert("Failed to save notes.");
@@ -111,6 +168,11 @@ const TeacherDashboard = () => {
         }).eq('id', gradingTarget.id);
 
         setStudentReflections(prev => prev.map(r => r.id === gradingTarget.id ? { ...r, ...scores, teacher_feedback: gradeFeedback, grade, total_score: total, status: 'Graded' } : r));
+        const oldPending = activeStudent.pendingCount > 0 ? activeStudent.pendingCount - 1 : 0;
+
+        // Update local stats lightly without full refetch
+        setStats(prev => ({ ...prev, pendingReviews: Math.max(0, prev.pendingReviews - 1) }));
+
         setGradingTarget(null);
     };
 
@@ -133,6 +195,28 @@ const TeacherDashboard = () => {
                 </div>
             </header>
 
+            {/* CLASSROOM ANALYTICS BAR */}
+            <div style={{ background: 'white', borderBottom: '1px solid #E2E8F0', padding: '1rem 0' }}>
+                <div className="header-content" style={{ display: 'flex', gap: '2rem', height: 'auto' }}>
+                    <div className="stat-pill">
+                        <span className="stat-label">Total Students</span>
+                        <span className="stat-value">{stats.totalStudents}</span>
+                    </div>
+                    <div className="stat-pill">
+                        <span className="stat-label">Pending Reviews</span>
+                        <span className="stat-value" style={{ color: stats.pendingReviews > 0 ? '#D97706' : '#10B981' }}>{stats.pendingReviews}</span>
+                    </div>
+                    <div className="stat-pill">
+                        <span className="stat-label">Total Reflections</span>
+                        <span className="stat-value">{stats.totalReflections}</span>
+                    </div>
+                    <div className="stat-pill">
+                        <span className="stat-label">Class Avg. Score</span>
+                        <span className="stat-value">{stats.classAverage}</span>
+                    </div>
+                </div>
+            </div>
+
             <main className="dashboard-main">
                 {loading ? <div style={{ textAlign: 'center', padding: '4rem', color: '#94A3B8' }}>Loading classroom...</div> : (
                     <div className="student-grid">
@@ -147,12 +231,34 @@ const TeacherDashboard = () => {
                                     <div className="avatar">
                                         {student.full_name.charAt(0)}
                                     </div>
-                                    <span className="count-badge">{student.reflectionCount} Entries</span>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: student.pendingCount > 0 ? '#D97706' : '#0F172A' }}>
+                                            {student.pendingCount > 0 ? `${student.pendingCount} Pending` : 'All Caught Up'}
+                                        </div>
+                                    </div>
                                 </div>
                                 <h3 className="student-name">{student.full_name}</h3>
                                 <p className="student-id">{student.registration_number}</p>
-                                <div className="view-link">
-                                    View Portfolio <ArrowRight size={16} />
+
+                                <div style={{ marginTop: '1.5rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, color: '#64748B', marginBottom: '0.25rem' }}>
+                                        <span>Progress</span>
+                                        <span>{student.progress}%</span>
+                                    </div>
+                                    <div style={{ width: '100%', height: '6px', background: '#F1F5F9', borderRadius: '3px', overflow: 'hidden' }}>
+                                        <div style={{ width: `${student.progress}%`, height: '100%', background: student.progress >= 100 ? '#10B981' : '#3B82F6' }}></div>
+                                    </div>
+                                </div>
+
+                                <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid #F1F5F9' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <span style={{ display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', color: '#94A3B8', fontWeight: 700 }}>Families</span>
+                                        <span style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A' }}>{student.familyCount}</span>
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <span style={{ display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', color: '#94A3B8', fontWeight: 700 }}>Avg Grade</span>
+                                        <span style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A' }}>{student.avgGrade || '-'}</span>
+                                    </div>
                                 </div>
                             </motion.div>
                         ))}
@@ -183,7 +289,6 @@ const TeacherDashboard = () => {
                                     <button onClick={() => setActiveStudent(null)} style={{ padding: '0.5rem', borderRadius: '50%', border: '1px solid #E2E8F0' }}><X size={20} /></button>
                                 </div>
 
-                                {/* Tabs */}
                                 <div style={{ display: 'flex', gap: '1rem', width: '100%', borderBottom: '1px solid #E2E8F0' }}>
                                     <button
                                         onClick={() => setDrawerTab('reflections')}
@@ -227,7 +332,6 @@ const TeacherDashboard = () => {
                                                         )}
                                                     </div>
 
-                                                    {/* Content Preview */}
                                                     {ref.reflection_type === 'file' ? (
                                                         <div style={{ background: '#F1F5F9', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                                             <FileText size={20} color="#64748B" />
@@ -256,10 +360,7 @@ const TeacherDashboard = () => {
                                         )}
                                     </>
                                 ) : (
-                                    /* --- PROFILE & NOTES TAB --- */
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-
-                                        {/* Assigned Families */}
                                         <div className="bg-white p-4 rounded-xl border border-slate-200">
                                             <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                 <Home size={18} /> Assigned Families
@@ -278,7 +379,6 @@ const TeacherDashboard = () => {
                                             )}
                                         </div>
 
-                                        {/* Mentor Notes */}
                                         <div className="bg-white p-4 rounded-xl border border-slate-200">
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -298,7 +398,6 @@ const TeacherDashboard = () => {
                                                 placeholder="Keep private notes about this student's progress here..."
                                                 style={{ width: '100%', height: '150px', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #E2E8F0', resize: 'none', fontFamily: 'inherit' }}
                                             />
-                                            <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: '0.5rem' }}>These notes are only visible to you.</p>
                                         </div>
                                     </div>
                                 )}
