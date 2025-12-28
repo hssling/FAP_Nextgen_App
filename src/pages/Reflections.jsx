@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     BookOpen, Save, Sparkles, X,
     Upload, FileText, CheckCircle, ChevronRight, ChevronLeft,
-    Paperclip, Download, Plus, Calendar, TrendingUp, Trash2
+    Paperclip, Download, Plus, Calendar, TrendingUp, Trash2,
+    AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
@@ -33,6 +34,8 @@ const Reflections = () => {
     const [activeTab, setActiveTab] = useState('write');
     const [currentStage, setCurrentStage] = useState(0);
     const [submitting, setSubmitting] = useState(false);
+    const [uploadError, setUploadError] = useState(null); // Explicit error state
+
     const [formData, setFormData] = useState({
         familyId: '',
         phase: 'Phase I',
@@ -64,8 +67,15 @@ const Reflections = () => {
     };
 
     const handleFileSelect = (e) => {
+        setUploadError(null);
         if (e.target.files && e.target.files[0]) {
-            setSelectedFile(e.target.files[0]);
+            const file = e.target.files[0];
+            // Basic validation
+            if (file.size > 10 * 1024 * 1024) {
+                setUploadError("File size exceeds 10MB limit.");
+                return;
+            }
+            setSelectedFile(file);
         }
     };
 
@@ -84,6 +94,7 @@ const Reflections = () => {
     };
 
     const handleSubmit = async () => {
+        setUploadError(null);
         if (!profile) {
             alert("Session expired. Please log in again.");
             return;
@@ -99,17 +110,32 @@ const Reflections = () => {
                     setSubmitting(false);
                     return;
                 }
-                const fileName = `${profile.id}/${Date.now()}_${selectedFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-                const { error: uploadError } = await supabase.storage.from('reflection-files').upload(fileName, selectedFile);
+
+                // Sanitize filename: use timestamp + safe alphanumeric name
+                const safeName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+                const path = `${profile.id}/${Date.now()}_${safeName}`;
+
+                console.log("Attempting upload to:", path);
+
+                // Standard Upload
+                const { data, error: uploadError } = await supabase.storage
+                    .from('reflection-files')
+                    .upload(path, selectedFile, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
 
                 if (uploadError) {
-                    console.error("Upload Error:", uploadError);
-                    throw new Error("File upload failed: " + uploadError.message);
+                    console.error("Supabase Storage Error:", uploadError);
+                    throw new Error(`Storage Error: ${uploadError.message}. (Contact admin if bucket is missing)`);
                 }
 
-                const { data } = supabase.storage.from('reflection-files').getPublicUrl(fileName);
+                // Get Public URL
+                const urlData = supabase.storage.from('reflection-files').getPublicUrl(path);
+                if (!urlData.data) throw new Error("Could not retrieve public URL for file.");
+
                 fileData = {
-                    url: data.publicUrl,
+                    url: urlData.data.publicUrl,
                     name: selectedFile.name,
                     size: selectedFile.size,
                     type: selectedFile.name.split('.').pop() || 'file'
@@ -125,7 +151,7 @@ const Reflections = () => {
                 student_id: profile.id,
                 family_id: formData.familyId || null,
                 phase: formData.phase,
-                content: legacyContent,
+                content: legacyContent || "File Upload",
 
                 // Detailed Gibbs Stages
                 gibbs_description: formData.gibbs.description,
@@ -147,7 +173,7 @@ const Reflections = () => {
 
             const { error: insertError } = await supabase.from('reflections').insert([payload]);
             if (insertError) {
-                console.error("Insert Error:", insertError);
+                console.error("Database Insert Error:", insertError);
                 throw insertError;
             }
 
@@ -161,7 +187,8 @@ const Reflections = () => {
 
         } catch (e) {
             console.error("Full Submission Error:", e);
-            alert(`Error saving reflection: ${e.message || "Unknown error"}`);
+            setUploadError(e.message); // Show error in UI
+            // alert(`Error saving reflection: ${e.message || "Unknown error"}`);
         } finally {
             setSubmitting(false);
         }
@@ -169,6 +196,15 @@ const Reflections = () => {
 
     return (
         <div className="reflections-page">
+            {/* Always rendered, hidden file input for stability */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                style={{ display: 'none' }}
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+            />
+
             <div className="ambient-orb orb-1"></div>
             <div className="ambient-orb orb-2"></div>
 
@@ -310,10 +346,6 @@ const Reflections = () => {
                             <div className="modal-sidebar">
                                 <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '2rem', color: '#0F172A' }}>New Entry</h2>
 
-                                <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    {/* Sidebar Content is now mostly visual reference in desktop, moving functional inputs to main area for mobile compatibility */}
-                                </div>
-
                                 <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '2rem' }}>
                                     {activeTab === 'write' ? (
                                         GIBBS_STAGES.map((stage, idx) => (
@@ -343,7 +375,6 @@ const Reflections = () => {
                                     </div>
                                 </div>
 
-                                {/* MOVED INPUTS: Context Selectors - Visible on ALL screens now */}
                                 <div className="form-context-row" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
                                     <div style={{ flex: 1, minWidth: '140px' }}>
                                         <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.5rem' }}>Phase</label>
@@ -382,6 +413,15 @@ const Reflections = () => {
                                         Upload
                                     </button>
                                 </div>
+
+
+                                {/* Error Banner */}
+                                {uploadError && (
+                                    <div style={{ background: '#FEF2F2', color: '#B91C1C', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.875rem' }}>
+                                        <AlertCircle size={16} /> {uploadError}
+                                    </div>
+                                )}
+
 
                                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
 
@@ -447,13 +487,7 @@ const Reflections = () => {
                                     {/* --- UPLOAD MODE --- */}
                                     {activeTab === 'upload' && (
                                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ flex: 1 }}>
-                                            <input
-                                                type="file"
-                                                ref={fileInputRef}
-                                                onChange={handleFileSelect}
-                                                style={{ display: 'none' }}
-                                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                            />
+
                                             <div className="upload-area" onClick={() => fileInputRef.current.click()}>
                                                 <Upload size={48} style={{ marginBottom: '1rem', color: '#94A3B8' }} />
                                                 <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#475569' }}>Click to upload file</h3>
