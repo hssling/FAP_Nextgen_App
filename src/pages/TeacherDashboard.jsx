@@ -540,14 +540,15 @@ const TeacherDashboard = () => {
                                         onChange={e => setGradeFeedback(e.target.value)}
                                         style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #CBD5E1' }}
                                     />
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                                        <button onClick={saveGrade} className="save-grade-btn" style={{ padding: '0.75rem 1.5rem', background: 'black', color: 'white', borderRadius: '8px', fontWeight: 600 }}>
-                                            Save Grade
-                                        </button>
-                                    </div>
-                                </div>
+                                </div> {/* Closes borderTop div */}
+                            </div> {/* Closes grading-body */}
+
+                            <div className="grading-footer" style={{ padding: '1rem', borderTop: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+                                <button onClick={saveGrade} className="save-grade-btn" style={{ padding: '0.75rem 1.5rem', background: 'black', color: 'white', borderRadius: '8px', fontWeight: 600, width: '100%' }}>
+                                    Save Grade
+                                </button>
                             </div>
-                        </div>
+                        </div> {/* Closes grading-box */}
                     </motion.div>
                 )}
             </AnimatePresence>

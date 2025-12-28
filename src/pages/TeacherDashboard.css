@@ -351,7 +351,10 @@
     flex-direction: column;
     gap: 1.5rem;
     overflow-y: auto;
-    /* Allow scrolling within body */
+    flex: 1;
+    /* Consume available space */
+    min-height: 0;
+    /* Crucial for nested flex scrolling */
 }
 
 .criteria-row {
