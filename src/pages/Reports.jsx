@@ -43,17 +43,34 @@ const Reports = () => {
         if (!profile) return;
 
         const fetchData = async () => {
-            // Check cache first
-            const cached = getCachedReport(profile.id);
-            if (cached) {
-                setData(cached);
-                setLoading(false);
-                // Background refresh if needed, or just trust cache
-            } else {
+            try {
+                // Check cache first
+                const cached = getCachedReport(profile.id);
+                if (cached) {
+                    setData(cached);
+                    setLoading(false);
+                    return;
+                }
+
                 const result = await generateCommunityHealthReport(profile.id);
-                setData(result);
-                sessionStorage.setItem(`analytics_${profile.id}`, JSON.stringify({ timestamp: Date.now(), data: result }));
+                if (result) {
+                    setData(result);
+                    sessionStorage.setItem(`analytics_${profile.id}`, JSON.stringify({ timestamp: Date.now(), data: result }));
+                }
                 setLoading(false);
+            } catch (error) {
+                console.error('Error loading report:', error);
+                setLoading(false);
+                // Set minimal data structure to prevent crashes
+                setData({
+                    demographics: { totalFamilies: 0, totalPopulation: 0, genderRatio: { ratio: 0 }, dependencyRatio: 0, ageDistribution: {} },
+                    maternalHealth: { registeredPregnancies: 0, highRiskPregnancies: 0 },
+                    childHealth: { totalUnder5: 0, fullyImmunized: 0 },
+                    morbidity: {},
+                    socioEconomic: {},
+                    environmental: { safeWater: 0, sanitaryLatrine: 0, wasteSegregation: 0 },
+                    logbook: { visits: 0, reflections: 0 }
+                });
             }
         };
 
@@ -90,6 +107,23 @@ const Reports = () => {
     };
 
     if (loading) return (
+        <div className="container" style={{ padding: '2rem' }}>
+            <div className="animate-pulse">
+                <div style={{ height: '40px', width: '200px', background: '#E2E8F0', borderRadius: '8px', marginBottom: '1rem' }}></div>
+                <div style={{ height: '20px', width: '300px', background: '#F1F5F9', borderRadius: '4px', marginBottom: '3rem' }}></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
+                    {[1, 2, 3, 4].map(i => <div key={i} style={{ height: '120px', background: 'white', borderRadius: '12px', border: '1px solid #E2E8F0' }}></div>)}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div style={{ height: '300px', background: 'white', borderRadius: '12px', border: '1px solid #E2E8F0' }}></div>
+                    <div style={{ height: '300px', background: 'white', borderRadius: '12px', border: '1px solid #E2E8F0' }}></div>
+                </div>
+            </div>
+        </div>
+    );
+
+    // Safety check - if data is still null, show loading
+    if (!data) return (
         <div className="container" style={{ padding: '2rem' }}>
             <div className="animate-pulse">
                 <div style={{ height: '40px', width: '200px', background: '#E2E8F0', borderRadius: '8px', marginBottom: '1rem' }}></div>
