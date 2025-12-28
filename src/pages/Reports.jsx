@@ -262,10 +262,10 @@ const Reports = () => {
                             <div>
                                 <h4 style={{ fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.5rem', color: '#9D174D' }}>Antenatal Care</h4>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: '#FCE7F3', borderRadius: 'var(--radius-md)' }}>
-                                    <span>Registered</span> <span style={{ fontWeight: '700' }}>{data.maternalHealth.registeredPregnancies}</span>
+                                    <span>Registered</span> <span style={{ fontWeight: '700' }}>{maternalHealth.registeredPregnancies}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: '#FCE7F3', borderRadius: 'var(--radius-md)', marginTop: '0.5rem' }}>
-                                    <span>High Risk</span> <span style={{ fontWeight: '700', color: '#BE123C' }}>{data.maternalHealth.highRiskPregnancies}</span>
+                                    <span>High Risk</span> <span style={{ fontWeight: '700', color: '#BE123C' }}>{maternalHealth.highRiskPregnancies}</span>
                                 </div>
                             </div>
                             <div>
