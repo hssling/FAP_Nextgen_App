@@ -3,7 +3,7 @@ import {
     BookOpen, Save, Sparkles, X,
     Upload, FileText, CheckCircle, ChevronRight, ChevronLeft,
     Paperclip, Download, Plus, Calendar, TrendingUp, Trash2,
-    AlertCircle, Info, Loader2, Check
+    AlertCircle, Info, Loader2, Check, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
@@ -36,6 +36,7 @@ const Reflections = () => {
     const [submitting, setSubmitting] = useState(false);
     const [submissionStatus, setSubmissionStatus] = useState(null); // 'uploading', 'saving', 'success', 'error'
     const [uploadError, setUploadError] = useState(null);
+    const [sysStatus, setSysStatus] = useState(null);
 
     const [formData, setFormData] = useState({
         familyId: '',
@@ -56,6 +57,21 @@ const Reflections = () => {
         setFamilies(fams || []);
         setReflections(refs || []);
         setLoading(false);
+    };
+
+    const runDiagnostics = async () => {
+        setSysStatus('Checking system...');
+        try {
+            const { data, error } = await supabase.storage.getBucket('reflection-files');
+            if (error) {
+                setSysStatus(`Storage Error: ${error.message}`);
+                console.error("Diag Error:", error);
+            } else {
+                setSysStatus(`Ready. Bucket: ${data?.name || 'Found'}`);
+            }
+        } catch (e) {
+            setSysStatus(`Sys Error: ${e.message}`);
+        }
     };
 
     const handleAICoach = () => {
@@ -115,30 +131,34 @@ const Reflections = () => {
                     return;
                 }
 
-                setSubmissionStatus('uploading'); // UI Feedback
+                setSubmissionStatus('uploading');
 
-                // Sanitize filename
                 const safeName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
                 const path = `${profile.id}/${Date.now()}_${safeName}`;
 
-                // Standard Upload
-                const { data, error: uploadError } = await supabase.storage
+                // Add Timeout Race
+                const uploadPromise = supabase.storage
                     .from('reflection-files')
                     .upload(path, selectedFile, {
                         cacheControl: '3600',
                         upsert: false
                     });
 
+                // Timeout after 15 seconds
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Upload timed out. Check connection.")), 15000));
+
+                const response = await Promise.race([uploadPromise, timeoutPromise]);
+                const { data, error: uploadError } = response || {}; // Safe destructure if race returns weirdly
+
                 if (uploadError) {
-                    if (uploadError.message.includes('bucket') || uploadError.message.includes('not found')) {
-                        throw new Error("Storage bucket 'reflection-files' not found. Please contact administrator.");
+                    console.error("Upload Error Details:", uploadError);
+                    if (uploadError.statusCode === "404" || uploadError.message.includes("not found")) {
+                        throw new Error("System Error: Storage bucket missing. Ask admin to run setup SQL.");
                     }
                     throw new Error(`Upload Failed: ${uploadError.message}`);
                 }
 
-                // Get Public URL
                 const urlData = supabase.storage.from('reflection-files').getPublicUrl(path);
-
                 fileData = {
                     url: urlData.data.publicUrl,
                     name: selectedFile.name,
@@ -147,7 +167,7 @@ const Reflections = () => {
                 };
             }
 
-            setSubmissionStatus('saving'); // UI Feedback
+            setSubmissionStatus('saving');
 
             // 2. Prepare Payload
             const legacyContent = activeTab === 'write'
@@ -160,7 +180,6 @@ const Reflections = () => {
                 phase: formData.phase,
                 content: legacyContent || "File Upload",
 
-                // Detailed Gibbs Stages
                 gibbs_description: formData.gibbs.description,
                 gibbs_feelings: formData.gibbs.feelings,
                 gibbs_evaluation: formData.gibbs.evaluation,
@@ -168,7 +187,6 @@ const Reflections = () => {
                 gibbs_conclusion: formData.gibbs.conclusion,
                 gibbs_action_plan: formData.gibbs.actionPlan,
 
-                // File Metadata
                 reflection_type: activeTab === 'upload' ? 'file' : 'structured',
                 file_url: fileData?.url,
                 file_name: fileData?.name,
@@ -181,10 +199,8 @@ const Reflections = () => {
             const { error: insertError } = await supabase.from('reflections').insert([payload]);
             if (insertError) throw insertError;
 
-            // 3. Success State
             setSubmissionStatus('success');
 
-            // Wait 1.5s then close
             setTimeout(() => {
                 setIsWriting(false);
                 setSubmissionStatus(null);
@@ -205,6 +221,12 @@ const Reflections = () => {
             }
         }
     };
+
+    const cancelUpload = () => {
+        setSubmitting(false);
+        setSubmissionStatus(null);
+        setUploadError("Cancelled by user.");
+    }
 
     return (
         <div className="reflections-page">
@@ -344,7 +366,7 @@ const Reflections = () => {
                         <motion.div
                             initial={{ y: 50, scale: 0.95 }} animate={{ y: 0, scale: 1 }} exit={{ y: 50, scale: 0.95 }}
                             className="modal-content"
-                            style={{ position: 'relative' }} // for absolute loader
+                            style={{ position: 'relative' }}
                         >
                             {/* OVERLAY for Submission Status */}
                             {submissionStatus && (
@@ -352,10 +374,22 @@ const Reflections = () => {
                                     position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.95)', zIndex: 50,
                                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
                                 }}>
-                                    {submissionStatus === 'uploading' && <><Loader2 className="animate-spin" size={48} color="#3B82F6" /><p style={{ marginTop: '1rem', fontWeight: 600 }}>Uploading File...</p></>}
+                                    {submissionStatus === 'uploading' && (
+                                        <>
+                                            <Loader2 className="animate-spin" size={48} color="#3B82F6" />
+                                            <p style={{ marginTop: '1rem', fontWeight: 600 }}>Uploading File...</p>
+                                            <button onClick={cancelUpload} style={{ marginTop: '1rem', color: '#64748B', fontSize: '0.8rem', textDecoration: 'underline' }}>Cancel</button>
+                                        </>
+                                    )}
                                     {submissionStatus === 'saving' && <><Loader2 className="animate-spin" size={48} color="#10B981" /><p style={{ marginTop: '1rem', fontWeight: 600 }}>Saving Entry...</p></>}
                                     {submissionStatus === 'success' && <><div style={{ background: '#10B981', borderRadius: '50%', padding: '1rem' }}><Check size={48} color="white" /></div><p style={{ marginTop: '1rem', fontWeight: 700, fontSize: '1.2rem', color: '#10B981' }}>Success!</p></>}
-                                    {submissionStatus === 'error' && <><div style={{ background: '#EF4444', borderRadius: '50%', padding: '1rem' }}><X size={48} color="white" /></div><p style={{ marginTop: '1rem', fontWeight: 700, color: '#EF4444' }}>Failed!</p></>}
+                                    {submissionStatus === 'error' && (
+                                        <>
+                                            <div style={{ background: '#EF4444', borderRadius: '50%', padding: '1rem' }}><X size={48} color="white" /></div>
+                                            <p style={{ marginTop: '1rem', fontWeight: 700, color: '#EF4444' }}>Failed!</p>
+                                            <button onClick={() => setSubmissionStatus(null)} style={{ marginTop: '1rem', border: '1px solid #E2E8F0', padding: '0.5rem 1rem', borderRadius: '8px' }}>Close</button>
+                                        </>
+                                    )}
                                 </div>
                             )}
 
@@ -376,6 +410,10 @@ const Reflections = () => {
                                     ) : (
                                         <div style={{ color: '#64748B' }}>
                                             <p style={{ marginBottom: '1rem' }}>Upload your reflection document.</p>
+                                            <button onClick={runDiagnostics} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.75rem', color: '#64748B', marginTop: '2rem', border: '1px solid #E2E8F0', padding: '0.5rem', borderRadius: '4px' }}>
+                                                <RefreshCw size={12} /> Check System
+                                            </button>
+                                            {sysStatus && <div style={{ fontSize: '0.7rem', color: (sysStatus.includes('Error') ? 'red' : 'green'), marginTop: '0.5rem' }}>{sysStatus}</div>}
                                         </div>
                                     )}
                                 </div>
