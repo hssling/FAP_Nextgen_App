@@ -192,11 +192,16 @@ const Reflections = () => {
                 // NEW STRATEGY: Use standard POST for reliability if SDK fails, or stick to SDK with minimal args.
                 // Let's stick to SDK but remove 'upsert' which sometimes causes lock issues, and ensure simple path.
 
+                // 4. Final Attempt: Use the most basic SDK upload which defaults to TUS (resumable)
+                // We remove almost all custom options to let the SDK decide the best path.
+
+                console.log("Starting Robust Upload: ", path);
+
                 const uploadPromise = supabase.storage
                     .from('reflection-files')
                     .upload(path, selectedFile, {
                         cacheControl: '3600',
-                        upsert: false // Disable upsert to avoid lock contention
+                        upsert: false
                     });
 
                 // const formData = new FormData();
@@ -212,7 +217,7 @@ const Reflections = () => {
 
                 const response = await Promise.race([
                     uploadPromise,
-                    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 60000)) // 60s timeout
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("Upload timed out (>3 mins). Please check your internet connection.")), 180000))
                 ]);
                 const { data, error: uploadError } = response || {};
 
