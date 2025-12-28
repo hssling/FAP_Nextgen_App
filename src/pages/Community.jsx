@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import DynamicForm from '../components/DynamicForm';
+import { invalidateAnalyticsCache } from '../utils/cacheUtils';
 import formRegistry from '../data/forms/registry.json';
 
 const Community = () => {
@@ -65,6 +66,9 @@ const Community = () => {
                     .insert([payload]);
                 if (error) throw error;
             }
+
+            // Invalidate analytics cache
+            invalidateAnalyticsCache(profile.id);
 
             setIsEditing(false);
             loadData();
