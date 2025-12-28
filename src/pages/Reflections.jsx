@@ -195,43 +195,48 @@ const Reflections = () => {
                 // 4. Final Attempt: Use the most basic SDK upload which defaults to TUS (resumable)
                 // We remove almost all custom options to let the SDK decide the best path.
 
-                // 0. PRE-FLIGHT AUTH CHECK
-                console.log("Pre-flight: Refreshing session...");
-                await supabase.auth.refreshSession();
+                // 0. AUTH CHECK & TOKEN RETRIEVAL
+                console.log("Pre-flight process...");
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-                console.log("Starting Robust Upload: ", path);
-
-                const uploadPromise = supabase.storage
-                    .from('reflection-files')
-                    .upload(path, selectedFile, {
-                        cacheControl: '3600',
-                        upsert: false
-                    });
-
-                // const formData = new FormData();
-                // formData.append('path', path);
-                // formData.append('file', selectedFile);
-                // ... implementing raw fetch is complex due to auth headers. Stuck with SDK for now.
-
-                // Let's try: ArrayBuffer again BUT small chunk. 
-                // Actually, 'File' object should work.
-
-                // DIAGNOSTIC LOG
-                console.log("Starting Upload: ", path);
-
-                const response = await Promise.race([
-                    uploadPromise,
-                    new Promise((_, reject) => setTimeout(() => reject(new Error("Upload timed out (>3 mins). Please check your internet connection.")), 180000))
-                ]);
-                const { data, error: uploadError } = response || {};
-
-                if (uploadError) {
-                    console.error("Upload Error Details:", uploadError);
-                    if (uploadError.statusCode === "404" || uploadError.message.includes("not found")) {
-                        throw new Error("System Error: Storage bucket missing. Ask admin to run setup SQL.");
-                    }
-                    throw uploadError;
+                if (sessionError || !session) {
+                    console.error("Session missing during upload:", sessionError);
+                    throw new Error("You appear to be logged out. Please refresh and login again.");
                 }
+
+                const token = session.access_token;
+                console.log("Token retrieved. Starting Raw Upload to:", path);
+
+                // 5. NUCLEAR OPTION: Raw Fetch (Bypass SDK)
+                // We construct the URL manually. standard supabase storage URL format.
+                const projectId = import.meta.env.VITE_SUPABASE_URL;
+                const uploadUrl = `${projectId}/storage/v1/object/reflection-files/${path}`;
+
+                const response = await fetch(uploadUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`, // Explicit Auth header
+                        'x-client-info': 'fap-raw-upload',
+                        'Content-Type': selectedFile.type || 'application/octet-stream',
+                        'cache-control': '3600',
+                        'x-upsert': 'false'
+                    },
+                    body: selectedFile
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error("Raw Upload Failed:", response.status, errorText);
+                    if (response.status === 401) {
+                        throw new Error("Upload Rejected: Auth Token Invalid. Please Log out and Log in.");
+                    }
+                    throw new Error(`Server Error (${response.status}): ${errorText}`);
+                }
+
+                // MOCK SDK RESPONSE so downstream code works
+                const uploadError = null;
+
+                /* LEGACY SDK CODE REMOVED */
 
                 const urlData = supabase.storage.from('reflection-files').getPublicUrl(path);
                 fileData = {
