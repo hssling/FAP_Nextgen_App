@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     BookOpen, Save, Sparkles, X,
     Upload, FileText, CheckCircle, ChevronRight, ChevronLeft,
-    Paperclip, Download, Plus, Calendar, TrendingUp
+    Paperclip, Download, Plus, Calendar, TrendingUp, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
@@ -69,6 +69,20 @@ const Reflections = () => {
         }
     };
 
+    const handleDelete = async (e, id) => {
+        e.stopPropagation(); // Stop bubble so it doesn't open modal
+        if (!window.confirm("Are you sure you want to delete this reflection?")) return;
+
+        try {
+            const { error } = await supabase.from('reflections').delete().eq('id', id);
+            if (error) throw error;
+            setReflections(prev => prev.filter(r => r.id !== id));
+        } catch (err) {
+            console.error(err);
+            alert("Failed to delete entry.");
+        }
+    };
+
     const handleSubmit = async () => {
         if (!profile) {
             alert("Session expired. Please log in again.");
@@ -77,8 +91,6 @@ const Reflections = () => {
 
         setSubmitting(true);
         try {
-            console.log("Submitting reflection for user:", profile.id);
-
             let fileData = null;
             // 1. Handle File Upload if active
             if (activeTab === 'upload') {
@@ -87,7 +99,7 @@ const Reflections = () => {
                     setSubmitting(false);
                     return;
                 }
-                const fileName = `${profile.id}/${Date.now()}_${selectedFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`; // Sanitize name
+                const fileName = `${profile.id}/${Date.now()}_${selectedFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
                 const { error: uploadError } = await supabase.storage.from('reflection-files').upload(fileName, selectedFile);
 
                 if (uploadError) {
@@ -111,7 +123,7 @@ const Reflections = () => {
 
             const payload = {
                 student_id: profile.id,
-                family_id: formData.familyId || null, // Ensure empty string becomes null
+                family_id: formData.familyId || null,
                 phase: formData.phase,
                 content: legacyContent,
 
@@ -253,15 +265,29 @@ const Reflections = () => {
                                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                 {ref.reflection_type === 'file' && <span className="phase-badge" style={{ background: '#EEF2FF', color: '#4F46E5', display: 'flex', alignItems: 'center', gap: '4px' }}><Paperclip size={12} /> Attachment</span>}
                                             </div>
-                                            {ref.file_url ? (
-                                                <a href={ref.file_url}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    target="_blank" rel="noopener noreferrer" className="download-link">
-                                                    Download <Download size={16} />
-                                                </a>
-                                            ) : (
-                                                <button className="read-more-btn">Read Full Entry &rarr;</button>
-                                            )}
+
+                                            {/* Action Area */}
+                                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                                {ref.status !== 'Graded' && (
+                                                    <button
+                                                        onClick={(e) => handleDelete(e, ref.id)}
+                                                        className="icon-btn-danger"
+                                                        style={{ color: '#EF4444', padding: '0.25rem' }}
+                                                        title="Delete Entry"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                )}
+                                                {ref.file_url ? (
+                                                    <a href={ref.file_url}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        target="_blank" rel="noopener noreferrer" className="download-link">
+                                                        Download <Download size={16} />
+                                                    </a>
+                                                ) : (
+                                                    <button className="read-more-btn">Read Full Entry &rarr;</button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </motion.div>

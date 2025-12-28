@@ -3,7 +3,8 @@ import {
     Users, BookOpen, CheckCircle, Download, Star,
     Search, Filter, LayoutGrid, List, ChevronRight,
     MoreVertical, Mail, Phone, Calendar, ArrowRight,
-    TrendingUp, FileText, X, GraduationCap, Clock
+    TrendingUp, FileText, X, GraduationCap, Clock,
+    Home, Edit3, Save, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
@@ -27,6 +28,12 @@ const TeacherDashboard = () => {
     // Slide-Over State
     const [activeStudent, setActiveStudent] = useState(null);
     const [studentReflections, setStudentReflections] = useState([]);
+    const [studentFamilies, setStudentFamilies] = useState([]);
+    const [studentNotes, setStudentNotes] = useState('');
+    const [notesSaving, setNotesSaving] = useState(false);
+
+    // Drawer Tab State
+    const [drawerTab, setDrawerTab] = useState('reflections'); // 'reflections' or 'profile'
 
     // Grading State
     const [gradingTarget, setGradingTarget] = useState(null);
@@ -47,8 +54,36 @@ const TeacherDashboard = () => {
 
     const openStudent = async (student) => {
         setActiveStudent(student);
-        const { data } = await supabase.from('reflections').select('*').eq('student_id', student.id).order('created_at', { ascending: false });
-        setStudentReflections(data || []);
+        setDrawerTab('reflections'); // Default to reflections view
+
+        // Parallel Fetching
+        const reflectionsPromise = supabase.from('reflections').select('*').eq('student_id', student.id).order('created_at', { ascending: false });
+        const familiesPromise = supabase.from('families').select('*').eq('student_id', student.id);
+        const notesPromise = supabase.from('teacher_student_mappings').select('notes').eq('teacher_id', profile.id).eq('student_id', student.id).single();
+
+        const [refs, fams, notesRes] = await Promise.all([reflectionsPromise, familiesPromise, notesPromise]);
+
+        setStudentReflections(refs.data || []);
+        setStudentFamilies(fams.data || []);
+        setStudentNotes(notesRes.data?.notes || '');
+    };
+
+    const saveNotes = async () => {
+        setNotesSaving(true);
+        try {
+            const { error } = await supabase.from('teacher_student_mappings')
+                .update({ notes: studentNotes })
+                .eq('teacher_id', profile.id)
+                .eq('student_id', activeStudent.id);
+
+            if (error) throw error;
+            // Notes saved feedback could trigger here
+        } catch (e) {
+            console.error("Error saving notes:", e);
+            alert("Failed to save notes.");
+        } finally {
+            setNotesSaving(false);
+        }
     };
 
     const startGrading = (ref) => {
@@ -139,65 +174,133 @@ const TeacherDashboard = () => {
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                             className="drawer-panel"
                         >
-                            <div className="drawer-header">
-                                <div>
-                                    <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0F172A' }}>{activeStudent.full_name}</h2>
-                                    <p style={{ color: '#64748B', fontSize: '0.875rem' }}>{activeStudent.registration_number}</p>
+                            <div className="drawer-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '1rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                                    <div>
+                                        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0F172A' }}>{activeStudent.full_name}</h2>
+                                        <p style={{ color: '#64748B', fontSize: '0.875rem' }}>{activeStudent.registration_number}</p>
+                                    </div>
+                                    <button onClick={() => setActiveStudent(null)} style={{ padding: '0.5rem', borderRadius: '50%', border: '1px solid #E2E8F0' }}><X size={20} /></button>
                                 </div>
-                                <button onClick={() => setActiveStudent(null)} style={{ padding: '0.5rem', borderRadius: '50%', border: '1px solid #E2E8F0' }}><X size={20} /></button>
+
+                                {/* Tabs */}
+                                <div style={{ display: 'flex', gap: '1rem', width: '100%', borderBottom: '1px solid #E2E8F0' }}>
+                                    <button
+                                        onClick={() => setDrawerTab('reflections')}
+                                        style={{ paddingBottom: '0.5rem', fontWeight: 600, color: drawerTab === 'reflections' ? '#0F766E' : '#64748B', borderBottom: drawerTab === 'reflections' ? '2px solid #0F766E' : 'none' }}
+                                    >
+                                        Reflections
+                                    </button>
+                                    <button
+                                        onClick={() => setDrawerTab('profile')}
+                                        style={{ paddingBottom: '0.5rem', fontWeight: 600, color: drawerTab === 'profile' ? '#0F766E' : '#64748B', borderBottom: drawerTab === 'profile' ? '2px solid #0F766E' : 'none' }}
+                                    >
+                                        Profile & Notes
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="drawer-content">
-                                {studentReflections.length === 0 ? (
-                                    <div style={{ textAlign: 'center', padding: '3rem', color: '#94A3B8' }}>No reflections submitted yet.</div>
-                                ) : (
-                                    studentReflections.map(ref => (
-                                        <div key={ref.id} className="ref-card">
-                                            <div className="ref-header">
-                                                <div>
-                                                    <span className="ref-date">{new Date(ref.created_at).toLocaleDateString()}</span>
-                                                    <h4 className="ref-title">
-                                                        {ref.gibbs_description ? "Reflection on " + ref.gibbs_description.substring(0, 30) + "..." : ref.file_name || "Journal Entry"}
-                                                    </h4>
-                                                </div>
-                                                {ref.status === 'Graded' ? (
-                                                    <div className="status-graded">
-                                                        <span className="grade-display">{ref.grade}</span>
-                                                        <span className="status-label">Graded</span>
+                                {drawerTab === 'reflections' ? (
+                                    <>
+                                        {studentReflections.length === 0 ? (
+                                            <div style={{ textAlign: 'center', padding: '3rem', color: '#94A3B8' }}>No reflections submitted yet.</div>
+                                        ) : (
+                                            studentReflections.map(ref => (
+                                                <div key={ref.id} className="ref-card">
+                                                    <div className="ref-header">
+                                                        <div>
+                                                            <span className="ref-date">{new Date(ref.created_at).toLocaleDateString()}</span>
+                                                            <h4 className="ref-title">
+                                                                {ref.gibbs_description ? "Reflection on " + ref.gibbs_description.substring(0, 30) + "..." : ref.file_name || "Journal Entry"}
+                                                            </h4>
+                                                        </div>
+                                                        {ref.status === 'Graded' ? (
+                                                            <div className="status-graded">
+                                                                <span className="grade-display">{ref.grade}</span>
+                                                                <span className="status-label">Graded</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="status-pending">
+                                                                <Clock size={12} /> Pending
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                ) : (
-                                                    <span className="status-pending">
-                                                        <Clock size={12} /> Pending
-                                                    </span>
-                                                )}
-                                            </div>
 
-                                            {/* Content Preview / File Link */}
-                                            {ref.reflection_type === 'file' ? (
-                                                <div style={{ background: '#F1F5F9', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                    <FileText size={20} color="#64748B" />
-                                                    <span style={{ fontSize: '0.875rem', fontWeight: 600, flex: 1 }}>{ref.file_name}</span>
-                                                    <a href={ref.file_url} target="_blank" rel="noopener noreferrer" style={{ color: '#0EA5E9' }}><Download size={18} /></a>
+                                                    {/* Content Preview */}
+                                                    {ref.reflection_type === 'file' ? (
+                                                        <div style={{ background: '#F1F5F9', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                            <FileText size={20} color="#64748B" />
+                                                            <span style={{ fontSize: '0.875rem', fontWeight: 600, flex: 1 }}>{ref.file_name}</span>
+                                                            <a href={ref.file_url} target="_blank" rel="noopener noreferrer" style={{ color: '#0EA5E9' }}><Download size={18} /></a>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="ref-preview">
+                                                            {['description', 'feelings', 'evaluation', 'analysis', 'conclusion', 'action_plan'].map(stage => {
+                                                                const val = ref[`gibbs_${stage}`];
+                                                                if (!val) return null;
+                                                                return <p key={stage} style={{ marginBottom: '0.5rem' }}><strong style={{ textTransform: 'capitalize', fontSize: '0.75rem', color: '#64748B' }}>{stage.replace('_', ' ')}:</strong> {val}</p>
+                                                            })}
+                                                            {!ref.gibbs_description && <p>{ref.content}</p>}
+                                                        </div>
+                                                    )}
+
+                                                    <button
+                                                        onClick={() => startGrading(ref)}
+                                                        className="assess-btn"
+                                                    >
+                                                        {ref.status === 'Graded' ? 'Edit Assessment' : 'Start Assessment'} <ChevronRight size={14} />
+                                                    </button>
                                                 </div>
+                                            ))
+                                        )}
+                                    </>
+                                ) : (
+                                    /* --- PROFILE & NOTES TAB --- */
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+
+                                        {/* Assigned Families */}
+                                        <div className="bg-white p-4 rounded-xl border border-slate-200">
+                                            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <Home size={18} /> Assigned Families
+                                            </h3>
+                                            {studentFamilies.length === 0 ? (
+                                                <p style={{ color: '#94A3B8', fontSize: '0.9rem' }}>No families assigned.</p>
                                             ) : (
-                                                <div className="ref-preview">
-                                                    {['description', 'feelings', 'evaluation', 'analysis', 'conclusion', 'action_plan'].map(stage => {
-                                                        const val = ref[`gibbs_${stage}`];
-                                                        if (!val) return null;
-                                                        return <p key={stage} style={{ marginBottom: '0.5rem' }}><strong style={{ textTransform: 'capitalize', fontSize: '0.75rem', color: '#64748B' }}>{stage.replace('_', ' ')}:</strong> {val}</p>
-                                                    })}
-                                                    {!ref.gibbs_description && <p>{ref.content}</p>}
+                                                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                                                    {studentFamilies.map(fam => (
+                                                        <div key={fam.id} style={{ padding: '0.75rem', background: '#F8FAFC', borderRadius: '0.5rem', border: '1px solid #E2E8F0' }}>
+                                                            <div style={{ fontWeight: 600, color: '#0F172A' }}>{fam.head_name}</div>
+                                                            <div style={{ fontSize: '0.8rem', color: '#64748B' }}>{fam.village_name} • {fam.members_count || 0} Members</div>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             )}
-
-                                            <button
-                                                onClick={() => startGrading(ref)}
-                                                className="assess-btn"
-                                            >
-                                                {ref.status === 'Graded' ? 'Edit Assessment' : 'Start Assessment'} <ChevronRight size={14} />
-                                            </button>
                                         </div>
-                                    ))
+
+                                        {/* Mentor Notes */}
+                                        <div className="bg-white p-4 rounded-xl border border-slate-200">
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <Edit3 size={18} /> Private Notes
+                                                </h3>
+                                                <button
+                                                    onClick={saveNotes}
+                                                    disabled={notesSaving}
+                                                    style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0F766E', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                                >
+                                                    {notesSaving ? 'Saving...' : <><Save size={14} /> Save</>}
+                                                </button>
+                                            </div>
+                                            <textarea
+                                                value={studentNotes}
+                                                onChange={e => setStudentNotes(e.target.value)}
+                                                placeholder="Keep private notes about this student's progress here..."
+                                                style={{ width: '100%', height: '150px', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #E2E8F0', resize: 'none', fontFamily: 'inherit' }}
+                                            />
+                                            <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: '0.5rem' }}>These notes are only visible to you.</p>
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         </motion.div>
@@ -205,7 +308,7 @@ const TeacherDashboard = () => {
                 )}
             </AnimatePresence>
 
-            {/* Grading Modal - Reusing CSS classes */}
+            {/* Grading Modal */}
             <AnimatePresence>
                 {gradingTarget && (
                     <motion.div
@@ -219,10 +322,8 @@ const TeacherDashboard = () => {
                             </div>
 
                             <div className="grading-body">
-
-                                {/* Reference text for grading context */}
                                 <div style={{ maxHeight: '100px', overflowY: 'auto', background: '#F8FAFC', padding: '0.75rem', borderRadius: '8px', fontSize: '0.8rem', color: '#64748B', marginBottom: '1rem' }}>
-                                    <strong>Content Preview:</strong><br />
+                                    <strong>Content Context:</strong><br />
                                     {gradingTarget.gibbs_analysis || gradingTarget.content || gradingTarget.file_name || "No text content."}
                                 </div>
 
