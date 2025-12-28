@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Send, Sparkles, BookOpen, Stethoscope, Users, Loader } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../services/supabaseClient';
 
 const AICoach = () => {
     const { profile } = useAuth();
@@ -55,57 +56,86 @@ What would you like to learn about today?`,
         setShowQuickPrompts(false);
 
         try {
-            // Using OpenRouter - supports multiple free models
-            const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
-
-            if (!apiKey || apiKey === 'YOUR_OPENROUTER_API_KEY_HERE') {
-                throw new Error('API_KEY_REQUIRED');
-            }
-
-            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`,
-                    'HTTP-Referer': window.location.origin,
-                    'X-Title': 'FAP Medical Coach'
-                },
-                body: JSON.stringify({
-                    model: "meta-llama/llama-3.1-8b-instruct:free", // Free model
-                    messages: [
-                        {
-                            role: "system",
-                            content: `You are an expert medical educator specializing in Community Medicine and Family Medicine for Indian medical students following the NMC-CBME curriculum. 
+            const conversationMessages = [
+                {
+                    role: "system",
+                    content: `You are an expert medical educator specializing in Community Medicine and Family Medicine for Indian medical students following the NMC-CBME curriculum. 
 
 Context: The student is in the Family Adoption Programme (FAP) where they adopt a family for 3 years and learn community medicine competencies.
 
 Student Profile: ${profile?.full_name}, Year ${profile?.year || 'N/A'}
 
 Provide helpful, accurate, and educational responses. Use simple language, include practical examples from Indian healthcare context, and relate to FAP activities when relevant. Keep responses concise (2-3 paragraphs max).`
-                        },
-                        ...messages.slice(-4).map(m => ({
-                            role: m.role === 'assistant' ? 'assistant' : 'user',
-                            content: m.content
-                        })),
-                        {
-                            role: "user",
-                            content: messageText
-                        }
-                    ],
-                    temperature: 0.7,
-                    max_tokens: 1000
-                })
-            });
-
-            if (!response.ok) {
-                if (response.status === 401) {
-                    throw new Error('API_KEY_INVALID');
+                },
+                ...messages.slice(-4).map(m => ({
+                    role: m.role === 'assistant' ? 'assistant' : 'user',
+                    content: m.content
+                })),
+                {
+                    role: "user",
+                    content: messageText
                 }
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error?.message || `API Error: ${response.status}`);
-            }
+            ];
 
-            const data = await response.json();
+            let data;
+
+            // Use Edge Function in production, direct API in development
+            if (import.meta.env.PROD) {
+                // Production: Use secure Edge Function
+                const { data: { session } } = await supabase.auth.getSession();
+
+                if (!session) {
+                    throw new Error('Please log in to use AI Coach');
+                }
+
+                const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`
+                    },
+                    body: JSON.stringify({ messages: conversationMessages })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                data = await response.json();
+            } else {
+                // Development: Direct API call
+                const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+
+                if (!apiKey || apiKey === 'YOUR_OPENROUTER_API_KEY_HERE') {
+                    throw new Error('API_KEY_REQUIRED');
+                }
+
+                const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`,
+                        'HTTP-Referer': window.location.origin,
+                        'X-Title': 'FAP Medical Coach'
+                    },
+                    body: JSON.stringify({
+                        model: "meta-llama/llama-3.1-8b-instruct:free",
+                        messages: conversationMessages,
+                        temperature: 0.7,
+                        max_tokens: 1000
+                    })
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('API_KEY_INVALID');
+                    }
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error?.message || `API Error: ${response.status}`);
+                }
+
+                data = await response.json();
+            }
 
             if (data.choices && data.choices[0]?.message?.content) {
                 const aiMessage = {
@@ -124,7 +154,7 @@ Provide helpful, accurate, and educational responses. Use simple language, inclu
             if (error.message === 'API_KEY_REQUIRED' || error.message === 'API_KEY_INVALID') {
                 errorMsg = `🔑 **AI Coach Setup Required**
 
-To enable the AI Medical Coach:
+To enable the AI Medical Coach in development:
 
 1. Get a FREE API key from: **https://openrouter.ai/keys**
 2. Sign up with Google (no credit card needed)
@@ -133,8 +163,7 @@ To enable the AI Medical Coach:
 4. Restart the dev server
 
 ✨ OpenRouter is free for students!
-🌐 Access to multiple AI models
-⚡ Fast and reliable`;
+⚡ In production, this uses a secure server-side API.`;
             } else if (error.message.includes('RATE_LIMIT') || error.message.includes('429')) {
                 errorMsg = '⚠️ Too many requests. Please wait a moment and try again.';
             } else if (error.message.includes('Failed to fetch') || error.message.includes('network')) {

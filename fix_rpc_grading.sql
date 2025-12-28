@@ -1,12 +1,20 @@
--- DROP existing rigid policies to stop interference
-DROP POLICY IF EXISTS "Teachers can grade assigned students" ON reflections;
+-- 0. SCHEMA FIX: Add missing grading columns
+-- These columns are required for the grading capability
+ALTER TABLE reflections 
+ADD COLUMN IF NOT EXISTS graded_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS teacher_feedback TEXT,
+ADD COLUMN IF NOT EXISTS grade TEXT,
+ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Pending';
 
--- 1. Create a Secure Function to Grade Reflections
--- This function runs with "SECURITY DEFINER" privileges, meaning it bypasses RLS checks.
--- It internally checks if the teacher is valid, so it remains secure but MUCH more reliable.
 
+-- 1. CLEANUP: Drop old functions
+DROP FUNCTION IF EXISTS grade_reflection(uuid, uuid, jsonb, text, text, int);
+DROP FUNCTION IF EXISTS grade_reflection(bigint, uuid, jsonb, text, text, int);
+
+
+-- 2. CREATE FUNCTION (Grading Logic)
 CREATE OR REPLACE FUNCTION grade_reflection(
-  p_reflection_id uuid,
+  p_reflection_id bigint, 
   p_teacher_id uuid,
   p_scores jsonb,
   p_feedback text,
@@ -15,17 +23,19 @@ CREATE OR REPLACE FUNCTION grade_reflection(
 )
 RETURNS boolean
 LANGUAGE plpgsql
-SECURITY DEFINER -- Runs as Admin
+SECURITY DEFINER
 AS $$
 DECLARE
   v_student_id uuid;
   v_is_authorized boolean;
 BEGIN
-  -- 1. Get the student ID for this reflection
+  -- Check ID
   SELECT student_id INTO v_student_id FROM reflections WHERE id = p_reflection_id;
+  IF v_student_id IS NULL THEN
+     RAISE EXCEPTION 'Reflection not found with ID %', p_reflection_id;
+  END IF;
 
-  -- 2. Check if the teacher is actually mapped to this student
-  -- (Or if the user is authorized. You can remove this check if you want 'open' grading)
+  -- Check Authorization
   SELECT EXISTS (
     SELECT 1 FROM teacher_student_mappings 
     WHERE teacher_id = p_teacher_id AND student_id = v_student_id
@@ -35,7 +45,7 @@ BEGIN
     RAISE EXCEPTION 'Not authorized to grade this student.';
   END IF;
 
-  -- 3. Perform the Update
+  -- Update Reflection
   UPDATE reflections
   SET 
     score_exploration = (p_scores->>'score_exploration')::int,
@@ -47,13 +57,12 @@ BEGIN
     grade = p_grade,
     status = 'Graded',
     graded_at = NOW()
-    -- total_score is generated, so we don't update it directly usually, 
-    -- but if your column is stored, it updates automatically based on columns above.
   WHERE id = p_reflection_id;
 
   RETURN true;
 END;
 $$;
 
--- 2. Fix Uploads (One last enforcement)
+
+-- 3. ENSURE UPLOAD PERMISSIONS (Safety Check)
 UPDATE storage.buckets SET public = true, file_size_limit = 52428800, allowed_mime_types = null WHERE id = 'reflection-files';

@@ -1,12 +1,20 @@
 -- FORCE FIX for Storage Bucket and Policies
 -- Run this in the Supabase SQL Editor
+-- This script is IDEMPOTENT (safe to run multiple times)
 
 -- 1. Ensure Bucket Exists and is Public
 INSERT INTO storage.buckets (id, name, public) 
 VALUES ('reflection-files', 'reflection-files', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
 
--- 2. Remove potentially conflicting 'strict' policies
+-- 2. NUCLEAR CLEANUP: Drop ALL potential policy names to avoid "Policy already exists" errors
+DROP POLICY IF EXISTS "Public Read Access" ON storage.objects;
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
+DROP POLICY IF EXISTS "Auth Insert Access" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated Insert Access" ON storage.objects;
+DROP POLICY IF EXISTS "Auth Upload" ON storage.objects;
+DROP POLICY IF EXISTS "Owner Update Access" ON storage.objects;
+DROP POLICY IF EXISTS "Owner Delete Access" ON storage.objects;
 DROP POLICY IF EXISTS "Public Access to Reflection Files" ON storage.objects;
 DROP POLICY IF EXISTS "Students can upload own files" ON storage.objects;
 DROP POLICY IF EXISTS "Students can update own files" ON storage.objects;
