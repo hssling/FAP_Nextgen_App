@@ -8,7 +8,7 @@ const AICoach = () => {
     const [messages, setMessages] = useState([
         {
             role: 'assistant',
-            content: `Hello ${profile?.full_name || 'Student'}! 👋 I'm your AI Medical Coach, powered by DeepSeek AI. I specialize in Family Adoption Programme (FAP) and Community Medicine. I can help you with:
+            content: `Hello ${profile?.full_name || 'Student'}! 👋 I'm your AI Medical Coach, powered by Groq's ultra-fast Llama AI. I specialize in Family Adoption Programme (FAP) and Community Medicine. I can help you with:
 
 • Understanding NMC competencies and learning objectives
 • Clinical case discussions and differential diagnosis
@@ -55,14 +55,21 @@ What would you like to learn about today?`,
         setShowQuickPrompts(false);
 
         try {
-            // Using DeepSeek's free API - no API key required!
-            const response = await fetch('https://api.deepseek.com/chat/completions', {
+            // Check for API key
+            const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+
+            if (!apiKey || apiKey === 'your_groq_api_key_here') {
+                throw new Error('API_KEY_REQUIRED');
+            }
+
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: "deepseek-chat",
+                    model: "llama-3.1-70b-versatile",
                     messages: [
                         {
                             role: "system",
@@ -89,6 +96,9 @@ Provide helpful, accurate, and educational responses. Use simple language, inclu
             });
 
             if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('API_KEY_INVALID');
+                }
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error?.message || `API Error: ${response.status}`);
             }
@@ -107,16 +117,26 @@ Provide helpful, accurate, and educational responses. Use simple language, inclu
             }
         } catch (error) {
             console.error('AI Coach Error:', error);
-            let errorMsg = '⚠️ Sorry, I encountered an error. ';
+            let errorMsg = '';
 
-            if (error.message.includes('RATE_LIMIT') || error.message.includes('429')) {
-                errorMsg += 'Too many requests. Please wait a moment and try again.';
-            } else if (error.message.includes('SAFETY') || error.message.includes('content_filter')) {
-                errorMsg += 'The response was blocked. Please rephrase your question.';
+            if (error.message === 'API_KEY_REQUIRED' || error.message === 'API_KEY_INVALID') {
+                errorMsg = `🔑 **AI Coach Setup Required**
+
+To enable the AI Medical Coach:
+
+1. Get a FREE API key from: **https://console.groq.com/keys**
+2. Add to your \`.env\` file: 
+   \`VITE_GROQ_API_KEY=gsk_your_key_here\`
+3. Restart the dev server
+
+✨ Groq is completely free with generous limits!
+⚡ Lightning-fast responses powered by Llama 3.1`;
+            } else if (error.message.includes('RATE_LIMIT') || error.message.includes('429')) {
+                errorMsg = '⚠️ Too many requests. Please wait a moment and try again.';
             } else if (error.message.includes('Failed to fetch') || error.message.includes('network')) {
-                errorMsg += 'Network error. Please check your internet connection.';
+                errorMsg = '⚠️ Network error. Please check your internet connection.';
             } else {
-                errorMsg += `${error.message}. Please try again.`;
+                errorMsg = `⚠️ Sorry, I encountered an error. ${error.message}. Please try again.`;
             }
 
             const errorMessage = {
@@ -156,7 +176,7 @@ Provide helpful, accurate, and educational responses. Use simple language, inclu
                     <div>
                         <h1 style={{ fontSize: '1.75rem', fontWeight: '700', margin: 0 }}>AI Medical Coach</h1>
                         <p style={{ margin: 0, opacity: 0.9, fontSize: '0.95rem' }}>
-                            Powered by DeepSeek AI • Free & Unlimited
+                            Powered by Groq ⚡ Lightning-Fast & Free
                         </p>
                     </div>
                 </div>
