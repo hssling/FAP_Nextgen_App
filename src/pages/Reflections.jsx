@@ -60,32 +60,30 @@ const Reflections = () => {
     };
 
     const runDiagnostics = async () => {
-        setSysStatus('Checking system...');
+        setSysStatus('Testing upload permissions...');
         try {
-            const { data, error } = await supabase.storage.getBucket('reflection-files');
+            if (!profile) {
+                setSysStatus("Error: User not logged in");
+                return;
+            }
+            // Perform a Real Upload Test (Tiny file)
+            const dummyBlob = new Blob(['test connection'], { type: 'text/plain' });
+            const testPath = `${profile.id}/diagnostic_test_${Date.now()}.txt`;
+
+            const { data, error } = await supabase.storage
+                .from('reflection-files')
+                .upload(testPath, dummyBlob, { upsert: true });
+
             if (error) {
-                console.error("Bucket Check Error:", error);
-                if (error.message.includes("not found")) {
-                    setSysStatus("Bucket Missing. Attempting Fix...");
-                    // ATTEMPT TO CREATE BUCKET
-                    const { data: newData, error: createError } = await supabase.storage.createBucket('reflection-files', {
-                        public: true,
-                        fileSizeLimit: 10485760,
-                        allowedMimeTypes: ['image/png', 'image/jpeg', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-                    });
-                    if (createError) {
-                        setSysStatus(`Fix Failed: ${createError.message}. Run SQL Script.`);
-                    } else {
-                        setSysStatus("Bucket Created! Try uploading now.");
-                    }
-                } else {
-                    setSysStatus(`Storage Error: ${error.message}`);
-                }
+                console.error("Diagnostic Upload Failed:", error);
+                setSysStatus(`Connection Failed: ${error.message}`);
             } else {
-                setSysStatus(`Ready. Bucket: ${data?.name || 'Found'}`);
+                setSysStatus("System Healthy & Ready! ✅");
+                // Cleanup (fire and forget)
+                supabase.storage.from('reflection-files').remove([testPath]);
             }
         } catch (e) {
-            setSysStatus(`Sys Error: ${e.message}`);
+            setSysStatus(`System Error: ${e.message}`);
         }
     };
 
