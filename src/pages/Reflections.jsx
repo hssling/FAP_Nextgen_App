@@ -213,7 +213,11 @@ const Reflections = () => {
 
         } catch (e) {
             console.error("Full Submission Error:", e);
-            setUploadError(e.message);
+            // Construct a very detailed error message for the user to report
+            let msg = e.message;
+            if (e.statusCode) msg += ` (Status: ${e.statusCode})`;
+            if (e.error) msg += ` (Details: ${e.error})`;
+            setUploadError(msg);
             setSubmissionStatus('error');
         } finally {
             if (submissionStatus !== 'success') {
@@ -387,6 +391,7 @@ const Reflections = () => {
                                         <>
                                             <div style={{ background: '#EF4444', borderRadius: '50%', padding: '1rem' }}><X size={48} color="white" /></div>
                                             <p style={{ marginTop: '1rem', fontWeight: 700, color: '#EF4444' }}>Failed!</p>
+                                            <p style={{ marginTop: '0.5rem', color: '#B91C1C', maxWidth: '80%', textAlign: 'center', fontSize: '0.8rem' }}>{uploadError}</p>
                                             <button onClick={() => setSubmissionStatus(null)} style={{ marginTop: '1rem', border: '1px solid #E2E8F0', padding: '0.5rem 1rem', borderRadius: '8px' }}>Close</button>
                                         </>
                                     )}
