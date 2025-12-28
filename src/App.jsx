@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Families from './pages/Families';
@@ -163,6 +164,7 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <Toaster />
         <AppRoutes />
       </BrowserRouter>
     </AuthProvider>

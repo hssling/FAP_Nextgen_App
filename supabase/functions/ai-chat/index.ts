@@ -15,8 +15,8 @@ serve(async (req) => {
     try {
         // Verify user is authenticated
         const supabaseClient = createClient(
-            Denv.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            Deno.env.get('URL') ?? '',
+            Deno.env.get('ANON_KEY') ?? '',
             {
                 global: {
                     headers: { Authorization: req.headers.get('Authorization')! },
