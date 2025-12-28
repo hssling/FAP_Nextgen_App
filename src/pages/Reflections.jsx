@@ -149,6 +149,11 @@ const Reflections = () => {
                 const safeName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
                 const path = `${profile.id}/${Date.now()}_${safeName}`;
 
+                console.log("%c[Upload Debug]", "color:orange;font-weight:bold");
+                console.log("File:", selectedFile.name, selectedFile.size, selectedFile.type);
+                console.log("Target Path:", path);
+                console.log("Profile ID:", profile.id);
+
                 // Convert to ArrayBuffer for robust upload
                 const fileBuffer = await selectedFile.arrayBuffer();
 
