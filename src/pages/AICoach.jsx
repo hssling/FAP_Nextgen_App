@@ -121,7 +121,7 @@ Provide helpful, accurate, and educational responses. Use simple language, inclu
                         'X-Title': 'FAP Medical Coach'
                     },
                     body: JSON.stringify({
-                        model: "google/gemini-flash-1.5:free",
+                        model: "meta-llama/llama-3.2-3b-instruct:free",
                         messages: conversationMessages,
                         temperature: 0.7,
                         max_tokens: 1000
