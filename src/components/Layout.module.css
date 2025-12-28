@@ -1,6 +1,8 @@
 .layout {
     display: flex;
     height: 100vh;
+    height: 100dvh;
+    /* Better mobile support */
     background-color: var(--color-bg-root);
     overflow: hidden;
 }
