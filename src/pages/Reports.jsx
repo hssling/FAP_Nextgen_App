@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-    BarChart, Activity, Users, Droplets, Heart, FileText, Download,
-    PieChart, TrendingUp, AlertTriangle, Baby, BookOpen, UserCheck
+    PieChart, TrendingUp, AlertTriangle, Baby, BookOpen, UserCheck, RefreshCw
 } from 'lucide-react';
 import { generateCommunityHealthReport } from '../services/analytics';
 import { useAuth } from '../contexts/AuthContext';
@@ -30,16 +29,37 @@ const Reports = () => {
     const [activeTab, setActiveTab] = useState('community');
     const [feedback, setFeedback] = useState(null);
 
+    // Cache Helper
+    const getCachedReport = (id) => {
+        const cache = sessionStorage.getItem(`analytics_${id}`);
+        if (cache) {
+            const { timestamp, data } = JSON.parse(cache);
+            if (Date.now() - timestamp < 300000) return data; // 5 min cache
+        }
+        return null;
+    };
+
     useEffect(() => {
         if (!profile) return;
-        const loadReport = async () => {
-            const result = await generateCommunityHealthReport(profile.id);
-            setData(result);
-            setLoading(false);
-        };
-        loadReport();
 
-        // Load feedback for students
+        const fetchData = async () => {
+            // Check cache first
+            const cached = getCachedReport(profile.id);
+            if (cached) {
+                setData(cached);
+                setLoading(false);
+                // Background refresh if needed, or just trust cache
+            } else {
+                const result = await generateCommunityHealthReport(profile.id);
+                setData(result);
+                sessionStorage.setItem(`analytics_${profile.id}`, JSON.stringify({ timestamp: Date.now(), data: result }));
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+
+        // Load feedback (Lightweight, no aggressive caching needed)
         if (profile?.role === 'student') {
             const loadFeedback = async () => {
                 const { data } = await supabase
@@ -50,18 +70,40 @@ const Reports = () => {
                     `)
                     .eq('student_id', profile.id)
                     .eq('is_active', true)
-                    .maybeSingle(); // Use maybeSingle to avoid error if no mentor
+                    .maybeSingle();
                 setFeedback(data);
             };
             loadFeedback();
         }
     }, [profile]);
 
+    const refreshReport = async () => {
+        setLoading(true);
+        const result = await generateCommunityHealthReport(profile.id);
+        setData(result);
+        sessionStorage.setItem(`analytics_${profile.id}`, JSON.stringify({ timestamp: Date.now(), data: result }));
+        setLoading(false);
+    };
+
     const handlePrint = () => {
         window.print();
     };
 
-    if (loading) return <div className="container" style={{ padding: '2rem' }}>Generating Analytics...</div>;
+    if (loading) return (
+        <div className="container" style={{ padding: '2rem' }}>
+            <div className="animate-pulse">
+                <div style={{ height: '40px', width: '200px', background: '#E2E8F0', borderRadius: '8px', marginBottom: '1rem' }}></div>
+                <div style={{ height: '20px', width: '300px', background: '#F1F5F9', borderRadius: '4px', marginBottom: '3rem' }}></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
+                    {[1, 2, 3, 4].map(i => <div key={i} style={{ height: '120px', background: 'white', borderRadius: '12px', border: '1px solid #E2E8F0' }}></div>)}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div style={{ height: '300px', background: 'white', borderRadius: '12px', border: '1px solid #E2E8F0' }}></div>
+                    <div style={{ height: '300px', background: 'white', borderRadius: '12px', border: '1px solid #E2E8F0' }}></div>
+                </div>
+            </div>
+        </div>
+    );
 
     const { demographics, MaternalHealth, childHealth, morbidity, socioEconomic, environmental } = data;
 
@@ -72,6 +114,9 @@ const Reports = () => {
                     <h1 className="page-title">Reports & Logbook</h1>
                     <p className="page-subtitle">Track community health status and your personal progress</p>
                 </div>
+                <button className="btn btn-outline" onClick={refreshReport} style={{ marginRight: '1rem' }}>
+                    <RefreshCw size={18} /> Refresh Data
+                </button>
                 <button className="btn btn-primary" onClick={handlePrint}>
                     <Download size={18} /> Export / Print
                 </button>
