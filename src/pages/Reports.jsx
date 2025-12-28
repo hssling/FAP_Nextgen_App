@@ -139,7 +139,7 @@ const Reports = () => {
         </div>
     );
 
-    const { demographics, MaternalHealth, childHealth, morbidity, socioEconomic, environmental } = data;
+    const { demographics, maternalHealth, childHealth, morbidity, socioEconomic, environmental } = data;
 
     return (
         <div>
