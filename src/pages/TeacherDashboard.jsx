@@ -13,11 +13,11 @@ import { useAuth } from '../contexts/AuthContext';
 import './TeacherDashboard.css';
 
 const REFLECT_CRITERIA = [
-    { id: 'score_exploration', label: 'Exploration', desc: 'Breadth/depth', max: 2 },
-    { id: 'score_voice', label: 'Voice', desc: 'Authenticity', max: 2 },
-    { id: 'score_description', label: 'Description', desc: 'Clarity', max: 2 },
-    { id: 'score_emotions', label: 'Emotions', desc: 'Awareness', max: 2 },
-    { id: 'score_analysis', label: 'Analysis', desc: 'Critical thought', max: 2 }
+    { id: 'score_exploration', label: 'Exploration', desc: 'Breadth/depth', max: 20 },
+    { id: 'score_voice', label: 'Voice', desc: 'Authenticity', max: 20 },
+    { id: 'score_description', label: 'Description', desc: 'Clarity', max: 20 },
+    { id: 'score_emotions', label: 'Emotions', desc: 'Awareness', max: 20 },
+    { id: 'score_analysis', label: 'Analysis', desc: 'Critical thought', max: 20 }
 ];
 
 const TARGET_REFLECTIONS = 10;
@@ -156,25 +156,36 @@ const TeacherDashboard = () => {
     const saveGrade = async () => {
         const total = Object.values(scores).reduce((a, b) => a + b, 0);
         let grade = 'D';
-        if (total >= 9) grade = 'A';
-        else if (total >= 7) grade = 'B+';
-        else if (total >= 5) grade = 'B';
-        else if (total >= 3) grade = 'C';
+        if (total >= 90) grade = 'A+';
+        else if (total >= 80) grade = 'A';
+        else if (total >= 70) grade = 'B';
+        else if (total >= 60) grade = 'C';
+        else grade = 'D';
 
-        await supabase.from('reflections').update({
-            ...scores,
-            teacher_feedback: gradeFeedback,
-            grade,
-            status: 'Graded',
-            graded_at: new Date().toISOString()
-        }).eq('id', gradingTarget.id);
+        try {
+            const { error } = await supabase.from('reflections').update({
+                ...scores,
+                teacher_feedback: gradeFeedback,
+                grade,
+                status: 'Graded',
+                graded_at: new Date().toISOString()
+            }).eq('id', gradingTarget.id);
 
-        setStudentReflections(prev => prev.map(r => r.id === gradingTarget.id ? {
-            ...r, ...scores, teacher_feedback: gradeFeedback, grade, total_score: total, status: 'Graded'
-        } : r));
+            if (error) throw error;
 
-        setStats(prev => ({ ...prev, pendingReviews: Math.max(0, prev.pendingReviews - 1) }));
-        setGradingTarget(null);
+            setStudentReflections(prev => prev.map(r => r.id === gradingTarget.id ? {
+                ...r, ...scores, teacher_feedback: gradeFeedback, grade, total_score: total, status: 'Graded'
+            } : r));
+
+            setStats(prev => ({ ...prev, pendingReviews: Math.max(0, prev.pendingReviews - 1) }));
+            setGradingTarget(null);
+
+            // Show success toast or alert?
+            // For now, silent success as the modal closes
+        } catch (err) {
+            console.error("Grading Failed:", err);
+            alert("Failed to save grade. Check your connection or permissions.");
+        }
     };
 
     const toggleExpand = (id) => {
@@ -460,7 +471,6 @@ const TeacherDashboard = () => {
                                     marginBottom: '1rem',
                                     border: '1px solid #E2E8F0'
                                 }}>
-
                                     {gradingTarget.reflection_type === 'file' ? (
                                         <div style={{ textAlign: 'center', padding: '1rem' }}>
                                             <p style={{ marginBottom: '0.5rem', fontWeight: 600 }}>{gradingTarget.file_name}</p>
@@ -492,35 +502,46 @@ const TeacherDashboard = () => {
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     {REFLECT_CRITERIA.map(crit => (
-                                        <div key={crit.id} className="criteria-row">
-                                            <div className="criteria-label">
-                                                {crit.label}
-                                                <span style={{ display: 'block', fontSize: '0.65rem', fontWeight: 400 }}>{crit.desc}</span>
+                                        <div key={crit.id} className="criteria-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <div className="criteria-label" style={{ flex: 1 }}>
+                                                <span style={{ fontWeight: 600, color: '#0F172A' }}>{crit.label}</span>
+                                                <span style={{ display: 'block', fontSize: '0.75rem', color: '#64748B' }}>{crit.desc} (Max 20)</span>
                                             </div>
-                                            <div className="score-group">
-                                                {[0, 1, 2].map(val => (
-                                                    <button
-                                                        key={val}
-                                                        onClick={() => setScores({ ...scores, [crit.id]: val })}
-                                                        className={`score-btn ${scores[crit.id] >= val ? 'selected' : ''}`}
-                                                    >
-                                                        {val}
-                                                    </button>
-                                                ))}
+                                            <div className="score-control" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                <input
+                                                    type="range" min="0" max="20"
+                                                    value={scores[crit.id]}
+                                                    onChange={(e) => setScores({ ...scores, [crit.id]: parseInt(e.target.value) })}
+                                                    style={{ width: '100px' }}
+                                                />
+                                                <input
+                                                    type="number" min="0" max="20"
+                                                    value={scores[crit.id]}
+                                                    onChange={(e) => setScores({ ...scores, [crit.id]: Math.min(20, Math.max(0, parseInt(e.target.value) || 0)) })}
+                                                    style={{ width: '50px', padding: '0.25rem', textAlign: 'center', border: '1px solid #CBD5E1', borderRadius: '4px', fontWeight: 700 }}
+                                                />
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                                <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '1rem' }}>
+
+                                <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '1rem', marginTop: '1rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                                        <span style={{ fontWeight: 700, color: '#64748B' }}>Total Score</span>
+                                        <span style={{ fontWeight: 800, fontSize: '1.25rem', color: '#0F766E' }}>
+                                            {Object.values(scores).reduce((a, b) => a + b, 0)} / 100
+                                        </span>
+                                    </div>
                                     <textarea
                                         className="feedback-area"
                                         rows={3}
                                         placeholder="Constructive feedback for the student..."
                                         value={gradeFeedback}
                                         onChange={e => setGradeFeedback(e.target.value)}
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #CBD5E1' }}
                                     />
                                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                                        <button onClick={saveGrade} className="save-grade-btn">
+                                        <button onClick={saveGrade} className="save-grade-btn" style={{ padding: '0.75rem 1.5rem', background: 'black', color: 'white', borderRadius: '8px', fontWeight: 600 }}>
                                             Save Grade
                                         </button>
                                     </div>
