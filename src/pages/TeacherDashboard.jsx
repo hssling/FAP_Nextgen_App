@@ -4,7 +4,8 @@ import {
     Search, Filter, LayoutGrid, List, ChevronRight,
     MoreVertical, Mail, Phone, Calendar, ArrowRight,
     TrendingUp, FileText, X, GraduationCap, Clock,
-    Home, Edit3, Save, Trash2, PieChart, Activity
+    Home, Edit3, Save, Trash2, PieChart, Activity,
+    ChevronDown, ChevronUp, ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
@@ -19,7 +20,7 @@ const REFLECT_CRITERIA = [
     { id: 'score_analysis', label: 'Analysis', desc: 'Critical thought', max: 2 }
 ];
 
-const TARGET_REFLECTIONS = 10; // Nominal target for progress bar calculation
+const TARGET_REFLECTIONS = 10;
 
 const TeacherDashboard = () => {
     const { profile } = useAuth();
@@ -27,7 +28,7 @@ const TeacherDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Aggregate Stats
+    // Stats
     const [stats, setStats] = useState({
         totalStudents: 0,
         totalReflections: 0,
@@ -42,8 +43,10 @@ const TeacherDashboard = () => {
     const [studentNotes, setStudentNotes] = useState('');
     const [notesSaving, setNotesSaving] = useState(false);
 
-    // Drawer Tab State
     const [drawerTab, setDrawerTab] = useState('reflections');
+
+    // Manage expanded states for drawer cards
+    const [expandedRefs, setExpandedRefs] = useState({});
 
     // Grading State
     const [gradingTarget, setGradingTarget] = useState(null);
@@ -54,7 +57,6 @@ const TeacherDashboard = () => {
 
     const fetchClassroomData = async () => {
         setLoading(true);
-        // 1. Get My Students
         const { data: mappings } = await supabase.from('teacher_student_mappings')
             .select('student:profiles!student_id(id, full_name, registration_number, email)')
             .eq('teacher_id', profile.id)
@@ -66,7 +68,6 @@ const TeacherDashboard = () => {
             return;
         }
 
-        // 2. Enhance with Stats (Promise.all for speed)
         let totalRefs = 0;
         let pending = 0;
         let totalScoreSum = 0;
@@ -74,8 +75,6 @@ const TeacherDashboard = () => {
 
         const enhanced = await Promise.all(mappings.map(async (m) => {
             const student = m.student;
-
-            // Fetch reflections brief (for stats)
             const { data: refs } = await supabase.from('reflections').select('status, total_score').eq('student_id', student.id);
             const { count: famCount } = await supabase.from('families').select('*', { count: 'exact', head: true }).eq('student_id', student.id);
 
@@ -87,7 +86,6 @@ const TeacherDashboard = () => {
                 ? (sGraded.reduce((a, b) => a + (b.total_score || 0), 0) / sGraded.length).toFixed(1)
                 : 0;
 
-            // Update Class Totals
             totalRefs += sTotalRefs;
             pending += sPending;
             sGraded.forEach(r => { totalScoreSum += (r.total_score || 0); gradedCount++; });
@@ -163,7 +161,6 @@ const TeacherDashboard = () => {
         else if (total >= 5) grade = 'B';
         else if (total >= 3) grade = 'C';
 
-        // NOTE: total_score is a computed column in DB, do not send it in update.
         await supabase.from('reflections').update({
             ...scores,
             teacher_feedback: gradeFeedback,
@@ -172,15 +169,16 @@ const TeacherDashboard = () => {
             graded_at: new Date().toISOString()
         }).eq('id', gradingTarget.id);
 
-        // Update local state (optimistic update)
         setStudentReflections(prev => prev.map(r => r.id === gradingTarget.id ? {
             ...r, ...scores, teacher_feedback: gradeFeedback, grade, total_score: total, status: 'Graded'
         } : r));
 
-        // Lightweight stats update
         setStats(prev => ({ ...prev, pendingReviews: Math.max(0, prev.pendingReviews - 1) }));
-
         setGradingTarget(null);
+    };
+
+    const toggleExpand = (id) => {
+        setExpandedRefs(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
     return (
@@ -324,7 +322,7 @@ const TeacherDashboard = () => {
                                                         <div>
                                                             <span className="ref-date">{new Date(ref.created_at).toLocaleDateString()}</span>
                                                             <h4 className="ref-title">
-                                                                {ref.gibbs_description ? "Reflection on " + ref.gibbs_description.substring(0, 30) + "..." : ref.file_name || "Journal Entry"}
+                                                                {ref.reflection_type === 'file' ? (ref.file_name || 'File Upload') : (ref.gibbs_description ? "Reflection on " + ref.gibbs_description.substring(0, 30) + "..." : "Journal Entry")}
                                                             </h4>
                                                         </div>
                                                         {ref.status === 'Graded' ? (
@@ -342,18 +340,42 @@ const TeacherDashboard = () => {
                                                     {ref.reflection_type === 'file' ? (
                                                         <div style={{ background: '#F1F5F9', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                                             <FileText size={20} color="#64748B" />
-                                                            <span style={{ fontSize: '0.875rem', fontWeight: 600, flex: 1 }}>{ref.file_name}</span>
+                                                            <div style={{ flex: 1 }}>
+                                                                <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>{ref.file_name}</div>
+                                                                <div style={{ fontSize: '0.75rem', color: '#64748B' }}>{(ref.file_size / 1024 / 1024).toFixed(2)} MB</div>
+                                                            </div>
                                                             <a href={ref.file_url} target="_blank" rel="noopener noreferrer" style={{ color: '#0EA5E9' }}><Download size={18} /></a>
                                                         </div>
                                                     ) : (
-                                                        <div className="ref-preview">
+                                                        <div className="ref-preview" style={{
+                                                            display: 'block', // Override flex/grid
+                                                            maxHeight: expandedRefs[ref.id] ? 'none' : '100px',
+                                                            overflow: 'hidden',
+                                                            position: 'relative',
+                                                            marginBottom: '0.5rem'
+                                                        }}>
                                                             {['description', 'feelings', 'evaluation', 'analysis', 'conclusion', 'action_plan'].map(stage => {
                                                                 const val = ref[`gibbs_${stage}`];
                                                                 if (!val) return null;
-                                                                return <p key={stage} style={{ marginBottom: '0.5rem' }}><strong style={{ textTransform: 'capitalize', fontSize: '0.75rem', color: '#64748B' }}>{stage.replace('_', ' ')}:</strong> {val}</p>
+                                                                return (
+                                                                    <div key={stage} style={{ marginBottom: '0.5rem' }}>
+                                                                        <span style={{ textTransform: 'capitalize', fontSize: '0.7rem', color: '#64748B', fontWeight: 700, display: 'block' }}>{stage.replace('_', ' ')}</span>
+                                                                        <span style={{ fontSize: '0.9rem', color: '#334155' }}>{val}</span>
+                                                                    </div>
+                                                                );
                                                             })}
                                                             {!ref.gibbs_description && <p>{ref.content}</p>}
+
+                                                            {!expandedRefs[ref.id] && (
+                                                                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '40px', background: 'linear-gradient(transparent, white)' }}></div>
+                                                            )}
                                                         </div>
+                                                    )}
+
+                                                    {ref.reflection_type !== 'file' && (
+                                                        <button onClick={() => toggleExpand(ref.id)} style={{ fontSize: '0.8rem', color: '#0EA5E9', fontWeight: 600, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            {expandedRefs[ref.id] ? <><ChevronUp size={14} /> Show Less</> : <><ChevronDown size={14} /> Show More</>}
+                                                        </button>
                                                     )}
 
                                                     <button
@@ -428,9 +450,44 @@ const TeacherDashboard = () => {
                             </div>
 
                             <div className="grading-body">
-                                <div style={{ maxHeight: '100px', overflowY: 'auto', background: '#F8FAFC', padding: '0.75rem', borderRadius: '8px', fontSize: '0.8rem', color: '#64748B', marginBottom: '1rem' }}>
-                                    <strong>Content Context:</strong><br />
-                                    {gradingTarget.gibbs_analysis || gradingTarget.content || gradingTarget.file_name || "No text content."}
+                                {/* FULL CONTENT DISPLAY */}
+                                <div style={{
+                                    maxHeight: '200px',
+                                    overflowY: 'auto',
+                                    background: '#F8FAFC',
+                                    padding: '1rem',
+                                    borderRadius: '8px',
+                                    marginBottom: '1rem',
+                                    border: '1px solid #E2E8F0'
+                                }}>
+
+                                    {gradingTarget.reflection_type === 'file' ? (
+                                        <div style={{ textAlign: 'center', padding: '1rem' }}>
+                                            <p style={{ marginBottom: '0.5rem', fontWeight: 600 }}>{gradingTarget.file_name}</p>
+                                            <a href={gradingTarget.file_url} target="_blank" rel="noopener noreferrer"
+                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'white', padding: '0.5rem 1rem', borderRadius: '99px', border: '1px solid #E2E8F0', color: '#0EA5E9', fontWeight: 600 }}>
+                                                <Download size={16} /> Download to Read
+                                            </a>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div style={{ marginBottom: '1rem', fontSize: '0.75rem', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' }}>Full Reflection Content</div>
+                                            {['description', 'feelings', 'evaluation', 'analysis', 'conclusion', 'action_plan'].map(stage => {
+                                                const val = gradingTarget[`gibbs_${stage}`];
+                                                if (!val) return null;
+                                                return (
+                                                    <div key={stage} style={{ marginBottom: '1rem' }}>
+                                                        <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#0F766E', marginBottom: '0.25rem', textTransform: 'capitalize' }}>{stage.replace('_', ' ')}</span>
+                                                        <p style={{ fontSize: '0.9rem', lineHeight: '1.5', color: '#334155' }}>{val}</p>
+                                                    </div>
+                                                );
+                                            })}
+                                            {/* Legacy Content Fallback */}
+                                            {!gradingTarget.gibbs_description && (
+                                                <p style={{ fontSize: '0.9rem', lineHeight: '1.5', color: '#334155' }}>{gradingTarget.content}</p>
+                                            )}
+                                        </>
+                                    )}
                                 </div>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
