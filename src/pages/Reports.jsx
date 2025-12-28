@@ -32,11 +32,43 @@ const Reports = () => {
 
     useEffect(() => {
         if (!profile) return;
+
         const loadReport = async () => {
-            const result = await generateCommunityHealthReport(profile.id);
-            setData(result);
-            setLoading(false);
+            try {
+                // Check cache first (5 minute cache)
+                const cacheKey = `analytics_${profile.id}`;
+                const cached = sessionStorage.getItem(cacheKey);
+
+                if (cached) {
+                    const { timestamp, reportData } = JSON.parse(cached);
+                    // Use cache if less than 5 minutes old
+                    if (Date.now() - timestamp < 300000) {
+                        console.log('[Reports] Using cached data');
+                        setData(reportData);
+                        setLoading(false);
+                        return;
+                    }
+                }
+
+                // Generate fresh report
+                console.log('[Reports] Generating fresh analytics...');
+                const result = await generateCommunityHealthReport(profile.id);
+
+                if (result) {
+                    setData(result);
+                    // Cache the result
+                    sessionStorage.setItem(cacheKey, JSON.stringify({
+                        timestamp: Date.now(),
+                        reportData: result
+                    }));
+                }
+                setLoading(false);
+            } catch (error) {
+                console.error('[Reports] Error loading report:', error);
+                setLoading(false);
+            }
         };
+
         loadReport();
 
         // Load feedback for students
