@@ -70,7 +70,7 @@ const Reflections = () => {
     };
 
     const handleDelete = async (e, id) => {
-        e.stopPropagation(); // Stop bubble so it doesn't open modal
+        e.stopPropagation();
         if (!window.confirm("Are you sure you want to delete this reflection?")) return;
 
         try {
@@ -266,7 +266,6 @@ const Reflections = () => {
                                                 {ref.reflection_type === 'file' && <span className="phase-badge" style={{ background: '#EEF2FF', color: '#4F46E5', display: 'flex', alignItems: 'center', gap: '4px' }}><Paperclip size={12} /> Attachment</span>}
                                             </div>
 
-                                            {/* Action Area */}
                                             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                                                 {ref.status !== 'Graded' && (
                                                     <button
@@ -307,30 +306,12 @@ const Reflections = () => {
                             initial={{ y: 50, scale: 0.95 }} animate={{ y: 0, scale: 1 }} exit={{ y: 50, scale: 0.95 }}
                             className="modal-content"
                         >
-                            {/* Sidebar w/ Context Selectors */}
+                            {/* Desktop Sidebar (Context Selectors + Stepper) - Hidden on Mobile */}
                             <div className="modal-sidebar">
                                 <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '2rem', color: '#0F172A' }}>New Entry</h2>
 
                                 <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    <div>
-                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.5rem' }}>Phase</label>
-                                        <select
-                                            value={formData.phase} onChange={e => setFormData({ ...formData, phase: e.target.value })}
-                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #E2E8F0', background: 'white' }}
-                                        >
-                                            <option>Phase I</option><option>Phase II</option><option>Phase III</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.5rem' }}>Family (Optional)</label>
-                                        <select
-                                            value={formData.familyId} onChange={e => setFormData({ ...formData, familyId: e.target.value })}
-                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #E2E8F0', background: 'white' }}
-                                        >
-                                            <option value="">-- General --</option>
-                                            {families.map(f => <option key={f.id} value={f.id}>{f.head_name}</option>)}
-                                        </select>
-                                    </div>
+                                    {/* Sidebar Content is now mostly visual reference in desktop, moving functional inputs to main area for mobile compatibility */}
                                 </div>
 
                                 <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '2rem' }}>
@@ -348,7 +329,6 @@ const Reflections = () => {
                                     ) : (
                                         <div style={{ color: '#64748B' }}>
                                             <p style={{ marginBottom: '1rem' }}>Upload your reflection document.</p>
-                                            <p style={{ fontSize: '0.875rem' }}>Supported formats: PDF, DOCX, JPG.</p>
                                         </div>
                                     )}
                                 </div>
@@ -356,7 +336,35 @@ const Reflections = () => {
 
                             {/* Main Input Area */}
                             <div className="modal-main">
-                                <button onClick={() => setIsWriting(false)} className="modal-close"><X size={20} /></button>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                        <button onClick={() => setIsWriting(false)} style={{ padding: '0.5rem', borderRadius: '50%', background: '#F1F5F9' }}><X size={20} /></button>
+                                        <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0F172A' }}>New Entry</span>
+                                    </div>
+                                </div>
+
+                                {/* MOVED INPUTS: Context Selectors - Visible on ALL screens now */}
+                                <div className="form-context-row" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                                    <div style={{ flex: 1, minWidth: '140px' }}>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.5rem' }}>Phase</label>
+                                        <select
+                                            value={formData.phase} onChange={e => setFormData({ ...formData, phase: e.target.value })}
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #E2E8F0', background: 'white' }}
+                                        >
+                                            <option>Phase I</option><option>Phase II</option><option>Phase III</option>
+                                        </select>
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: '140px' }}>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.5rem' }}>Family (Optional)</label>
+                                        <select
+                                            value={formData.familyId} onChange={e => setFormData({ ...formData, familyId: e.target.value })}
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #E2E8F0', background: 'white' }}
+                                        >
+                                            <option value="">-- General --</option>
+                                            {families.map(f => <option key={f.id} value={f.id}>{f.head_name}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
 
                                 <div className="tabs-header">
                                     <button
@@ -364,14 +372,14 @@ const Reflections = () => {
                                         onClick={() => setActiveTab('write')}
                                     >
                                         <BookOpen size={16} style={{ display: 'inline', marginRight: '5px' }} />
-                                        Structured Entry
+                                        Structured
                                     </button>
                                     <button
                                         className={`tab-btn ${activeTab === 'upload' ? 'active' : ''}`}
                                         onClick={() => setActiveTab('upload')}
                                     >
                                         <Upload size={16} style={{ display: 'inline', marginRight: '5px' }} />
-                                        File Upload
+                                        Upload
                                     </button>
                                 </div>
 
@@ -385,12 +393,13 @@ const Reflections = () => {
                                                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
                                                 style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
                                             >
-                                                <div style={{ marginBottom: '1.5rem' }}>
-                                                    <h3 className="stage-title">
-                                                        <span>{GIBBS_STAGES[currentStage].icon}</span>
-                                                        {GIBBS_STAGES[currentStage].title}
-                                                    </h3>
-                                                    <p className="stage-prompt">{GIBBS_STAGES[currentStage].prompt}</p>
+                                                {/* Mobile Stepper Indicator */}
+                                                <div className="mobile-stepper" style={{ marginBottom: '1rem', fontSize: '0.75rem', fontWeight: 700, color: '#0F766E', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                    Step {currentStage + 1} of {GIBBS_STAGES.length}: {GIBBS_STAGES[currentStage].title}
+                                                </div>
+
+                                                <div style={{ marginBottom: '1rem' }}>
+                                                    <h3 className="stage-prompt">{GIBBS_STAGES[currentStage].prompt}</h3>
                                                 </div>
 
                                                 <textarea
@@ -403,7 +412,7 @@ const Reflections = () => {
 
                                                 <div className="modal-actions">
                                                     <button onClick={handleAICoach} disabled={isAnalyzing} className="ai-btn">
-                                                        <Sparkles size={16} className={isAnalyzing ? "animate-spin" : ""} /> {isAnalyzing ? "Thinking..." : "AI Insight"}
+                                                        <Sparkles size={16} className={isAnalyzing ? "animate-spin" : ""} /> {isAnalyzing ? "..." : "AI Tip"}
                                                     </button>
 
                                                     <div style={{ display: 'flex', gap: '1rem' }}>
@@ -426,7 +435,7 @@ const Reflections = () => {
                                                                 className="nav-btn primary"
                                                                 style={{ background: 'linear-gradient(to right, #2563EB, #4F46E5)' }}
                                                             >
-                                                                {submitting ? 'Saving...' : <><Save size={20} style={{ marginRight: '8px' }} /> Finish</>}
+                                                                {submitting ? '...' : <><Save size={20} style={{ marginRight: '8px' }} /> Finish</>}
                                                             </button>
                                                         )}
                                                     </div>
@@ -465,7 +474,7 @@ const Reflections = () => {
                                                     className="nav-btn primary"
                                                     style={{ background: 'linear-gradient(to right, #2563EB, #4F46E5)' }}
                                                 >
-                                                    {submitting ? 'Uploading...' : <><Save size={20} style={{ marginRight: '8px' }} /> Submit File</>}
+                                                    {submitting ? '...' : <><Save size={20} style={{ marginRight: '8px' }} /> Submit File</>}
                                                 </button>
                                             </div>
                                         </motion.div>

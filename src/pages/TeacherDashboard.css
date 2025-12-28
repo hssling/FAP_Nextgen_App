@@ -402,3 +402,40 @@
     border-radius: var(--radius-md);
     width: 100%;
 }
+
+/* --- MOBILE RESPONSIVENESS --- */
+@media (max-width: 768px) {
+    .drawer-panel {
+        max-width: 100% !important;
+        width: 100%;
+    }
+
+    .header-content {
+        flex-wrap: wrap;
+        height: auto;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        gap: 1rem;
+    }
+
+    .search-bar {
+        width: 100%;
+        order: 3;
+    }
+
+    .stat-pill {
+        flex: 1 1 45%;
+        /* 2 per row */
+        margin-bottom: 0.5rem;
+    }
+
+    .student-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .grading-box {
+        width: 95%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+}

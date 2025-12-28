@@ -163,14 +163,21 @@ const TeacherDashboard = () => {
         else if (total >= 5) grade = 'B';
         else if (total >= 3) grade = 'C';
 
+        // NOTE: total_score is a computed column in DB, do not send it in update.
         await supabase.from('reflections').update({
-            ...scores, teacher_feedback: gradeFeedback, grade, total_score: total, status: 'Graded', graded_at: new Date()
+            ...scores,
+            teacher_feedback: gradeFeedback,
+            grade,
+            status: 'Graded',
+            graded_at: new Date().toISOString()
         }).eq('id', gradingTarget.id);
 
-        setStudentReflections(prev => prev.map(r => r.id === gradingTarget.id ? { ...r, ...scores, teacher_feedback: gradeFeedback, grade, total_score: total, status: 'Graded' } : r));
-        const oldPending = activeStudent.pendingCount > 0 ? activeStudent.pendingCount - 1 : 0;
+        // Update local state (optimistic update)
+        setStudentReflections(prev => prev.map(r => r.id === gradingTarget.id ? {
+            ...r, ...scores, teacher_feedback: gradeFeedback, grade, total_score: total, status: 'Graded'
+        } : r));
 
-        // Update local stats lightly without full refetch
+        // Lightweight stats update
         setStats(prev => ({ ...prev, pendingReviews: Math.max(0, prev.pendingReviews - 1) }));
 
         setGradingTarget(null);
