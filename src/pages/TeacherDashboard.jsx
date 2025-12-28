@@ -8,13 +8,14 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
+import './TeacherDashboard.css'; // Import the new CSS
 
 const REFLECT_CRITERIA = [
-    { id: 'score_exploration', label: 'Exploration', desc: 'Breadth/depth', max: 2, color: 'bg-blue-500' },
-    { id: 'score_voice', label: 'Voice', desc: 'Authenticity', max: 2, color: 'bg-purple-500' },
-    { id: 'score_description', label: 'Description', desc: 'Clarity', max: 2, color: 'bg-pink-500' },
-    { id: 'score_emotions', label: 'Emotions', desc: 'Awareness', max: 2, color: 'bg-orange-500' },
-    { id: 'score_analysis', label: 'Analysis', desc: 'Critical thought', max: 2, color: 'bg-emerald-500' }
+    { id: 'score_exploration', label: 'Exploration', desc: 'Breadth/depth', max: 2 },
+    { id: 'score_voice', label: 'Voice', desc: 'Authenticity', max: 2 },
+    { id: 'score_description', label: 'Description', desc: 'Clarity', max: 2 },
+    { id: 'score_emotions', label: 'Emotions', desc: 'Awareness', max: 2 },
+    { id: 'score_analysis', label: 'Analysis', desc: 'Critical thought', max: 2 }
 ];
 
 const TeacherDashboard = () => {
@@ -28,7 +29,7 @@ const TeacherDashboard = () => {
     const [studentReflections, setStudentReflections] = useState([]);
 
     // Grading State
-    const [gradingTarget, setGradingTarget] = useState(null); // The reflection being graded
+    const [gradingTarget, setGradingTarget] = useState(null);
     const [scores, setScores] = useState({ score_exploration: 0, score_voice: 0, score_description: 0, score_emotions: 0, score_analysis: 0 });
     const [gradeFeedback, setGradeFeedback] = useState('');
 
@@ -74,55 +75,51 @@ const TeacherDashboard = () => {
             ...scores, teacher_feedback: gradeFeedback, grade, total_score: total, status: 'Graded', graded_at: new Date()
         }).eq('id', gradingTarget.id);
 
-        // Update local
         setStudentReflections(prev => prev.map(r => r.id === gradingTarget.id ? { ...r, ...scores, teacher_feedback: gradeFeedback, grade, total_score: total, status: 'Graded' } : r));
         setGradingTarget(null);
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans text-slate-900 relative">
+        <div className="dashboard-page">
             {/* Header */}
-            <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-slate-900 text-white p-2 rounded-lg"><GraduationCap size={20} /></div>
-                        <h1 className="font-bold text-lg tracking-tight">Mentor Workspace</h1>
+            <header className="dashboard-header">
+                <div className="header-content">
+                    <div className="brand">
+                        <div style={{ background: '#0F172A', color: 'white', padding: '0.4rem', borderRadius: '8px', display: 'flex' }}><GraduationCap size={20} /></div>
+                        <span>Mentor Workspace</span>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                            <input
-                                type="text" placeholder="Search students..."
-                                value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                                className="pl-9 pr-4 py-2 bg-slate-100 border-none rounded-full text-sm font-medium focus:ring-2 focus:ring-blue-500 w-64 transition-all"
-                            />
-                        </div>
+                    <div className="search-bar">
+                        <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} size={16} />
+                        <input
+                            type="text" placeholder="Search students..."
+                            value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                            className="search-input"
+                        />
                     </div>
                 </div>
             </header>
 
             {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-6 py-8">
-                {loading ? <div className="text-center py-20 text-slate-400">Loading your classroom...</div> : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <main className="dashboard-main">
+                {loading ? <div style={{ textAlign: 'center', padding: '4rem', color: '#94A3B8' }}>Loading classroom...</div> : (
+                    <div className="student-grid">
                         {students.filter(s => s.full_name.toLowerCase().includes(searchTerm.toLowerCase())).map(student => (
                             <motion.div
                                 key={student.id}
                                 layoutId={`card-${student.id}`}
                                 onClick={() => openStudent(student)}
-                                className="group bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden"
+                                className="student-card"
                             >
-                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-lg font-bold text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                                <div className="card-top">
+                                    <div className="avatar">
                                         {student.full_name.charAt(0)}
                                     </div>
-                                    <span className="text-xs font-bold bg-slate-50 px-2 py-1 rounded text-slate-500">{student.reflectionCount} Entries</span>
+                                    <span className="count-badge">{student.reflectionCount} Entries</span>
                                 </div>
-                                <h3 className="font-bold text-lg text-slate-900 mb-1">{student.full_name}</h3>
-                                <p className="text-sm text-slate-500 font-medium mb-6">{student.registration_number}</p>
-                                <div className="flex items-center text-blue-600 text-sm font-bold opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
-                                    View Portfolio <ArrowRight size={16} className="ml-1" />
+                                <h3 className="student-name">{student.full_name}</h3>
+                                <p className="student-id">{student.registration_number}</p>
+                                <div className="view-link">
+                                    View Portfolio <ArrowRight size={16} />
                                 </div>
                             </motion.div>
                         ))}
@@ -137,60 +134,56 @@ const TeacherDashboard = () => {
                         <motion.div
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                             onClick={() => setActiveStudent(null)}
-                            className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40"
+                            className="drawer-overlay"
                         />
                         <motion.div
                             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="fixed inset-y-0 right-0 w-full md:w-[600px] bg-white shadow-2xl z-50 flex flex-col border-l border-slate-200"
+                            className="drawer-panel"
                         >
-                            {/* Drawer Header */}
-                            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                            <div className="drawer-header">
                                 <div>
-                                    <h2 className="text-2xl font-bold text-slate-900">{activeStudent.full_name}</h2>
-                                    <p className="text-slate-500 text-sm font-medium">{activeStudent.registration_number}</p>
+                                    <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0F172A' }}>{activeStudent.full_name}</h2>
+                                    <p style={{ color: '#64748B', fontSize: '0.875rem' }}>{activeStudent.registration_number}</p>
                                 </div>
-                                <button onClick={() => setActiveStudent(null)} className="p-2 bg-white border border-slate-200 rounded-full hover:bg-slate-100 outline-none"><X size={20} /></button>
+                                <button onClick={() => setActiveStudent(null)} style={{ padding: '0.5rem', borderRadius: '50%', border: '1px solid #E2E8F0' }}><X size={20} /></button>
                             </div>
 
-                            {/* Drawer Content */}
-                            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30">
+                            <div className="drawer-content">
                                 {studentReflections.length === 0 ? (
-                                    <div className="text-center py-20 text-slate-400">No reflections submitted yet.</div>
+                                    <div style={{ textAlign: 'center', padding: '3rem', color: '#94A3B8' }}>No reflections submitted yet.</div>
                                 ) : (
                                     studentReflections.map(ref => (
-                                        <div key={ref.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                                            <div className="p-5">
-                                                <div className="flex justify-between items-start mb-3">
-                                                    <div>
-                                                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1 block">{new Date(ref.created_at).toLocaleDateString()}</span>
-                                                        <h4 className="font-bold text-slate-900 text-lg leading-tight">
-                                                            {ref.gibbs_description ? "Reflection: " + ref.gibbs_description.substring(0, 30) + "..." : ref.file_name || "Journal Entry"}
-                                                        </h4>
+                                        <div key={ref.id} className="ref-card">
+                                            <div className="ref-header">
+                                                <div>
+                                                    <span className="ref-date">{new Date(ref.created_at).toLocaleDateString()}</span>
+                                                    <h4 className="ref-title">
+                                                        {ref.gibbs_description ? "Reflection: " + ref.gibbs_description.substring(0, 30) + "..." : ref.file_name || "Journal Entry"}
+                                                    </h4>
+                                                </div>
+                                                {ref.status === 'Graded' ? (
+                                                    <div className="status-graded">
+                                                        <span className="grade-display">{ref.grade}</span>
+                                                        <span className="status-label">Graded</span>
                                                     </div>
-                                                    {ref.status === 'Graded' ? (
-                                                        <div className="flex flex-col items-center bg-emerald-50 px-3 py-1 rounded-lg">
-                                                            <span className="text-xl font-bold text-emerald-600">{ref.grade}</span>
-                                                            <span className="text-[10px] font-bold text-emerald-400 uppercase">Graded</span>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="bg-amber-50 text-amber-600 text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                                                            <Clock size={12} /> Pending
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                <div className="text-sm text-slate-600 leading-relaxed mb-4 line-clamp-3">
-                                                    {ref.gibbs_analysis || ref.content || "No preview available."}
-                                                </div>
-
-                                                <button
-                                                    onClick={() => startGrading(ref)}
-                                                    className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold text-sm rounded-lg transition-colors border border-slate-100 flex items-center justify-center gap-2"
-                                                >
-                                                    {ref.status === 'Graded' ? 'Edit Assessment' : 'Start Assessment'} <ChevronRight size={14} />
-                                                </button>
+                                                ) : (
+                                                    <span className="status-pending">
+                                                        <Clock size={12} /> Pending
+                                                    </span>
+                                                )}
                                             </div>
+
+                                            <p className="ref-preview">
+                                                {ref.gibbs_analysis || ref.content || "No preview available."}
+                                            </p>
+
+                                            <button
+                                                onClick={() => startGrading(ref)}
+                                                className="assess-btn"
+                                            >
+                                                {ref.status === 'Graded' ? 'Edit Assessment' : 'Start Assessment'} <ChevronRight size={14} />
+                                            </button>
                                         </div>
                                     ))
                                 )}
@@ -205,26 +198,25 @@ const TeacherDashboard = () => {
                 {gradingTarget && (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-                        className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
+                        className="grading-overlay"
                     >
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-                            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                                <h3 className="font-bold text-lg text-slate-800">Assess Reflection</h3>
-                                <button onClick={() => setGradingTarget(null)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+                        <div className="grading-box">
+                            <div className="grading-header">
+                                <h3>Assess Reflection</h3>
+                                <button onClick={() => setGradingTarget(null)}><X size={20} /></button>
                             </div>
 
-                            <div className="p-6 space-y-6">
-                                {/* Score Sliders */}
-                                <div className="space-y-4">
+                            <div className="grading-body">
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     {REFLECT_CRITERIA.map(crit => (
-                                        <div key={crit.id} className="flex items-center gap-4">
-                                            <div className="w-24 text-xs font-bold text-slate-600">{crit.label}</div>
-                                            <div className="flex-1 flex gap-1 h-8">
+                                        <div key={crit.id} className="criteria-row">
+                                            <div className="criteria-label">{crit.label}</div>
+                                            <div className="score-group">
                                                 {[0, 1, 2].map(val => (
                                                     <button
                                                         key={val}
                                                         onClick={() => setScores({ ...scores, [crit.id]: val })}
-                                                        className={`flex-1 rounded-md text-xs font-bold transition-all ${scores[crit.id] >= val ? 'bg-blue-500 text-white shadow-sm' : 'bg-slate-100 text-slate-400'}`}
+                                                        className={`score-btn ${scores[crit.id] >= val ? 'selected' : ''}`}
                                                     >
                                                         {val}
                                                     </button>
@@ -233,16 +225,16 @@ const TeacherDashboard = () => {
                                         </div>
                                     ))}
                                 </div>
-                                <div className="pt-4 border-t border-slate-100">
+                                <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '1rem' }}>
                                     <textarea
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none"
+                                        className="feedback-area"
                                         rows={3}
                                         placeholder="Constructive feedback..."
                                         value={gradeFeedback}
                                         onChange={e => setGradeFeedback(e.target.value)}
                                     />
-                                    <div className="flex justify-end gap-3 mt-4">
-                                        <button onClick={saveGrade} className="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold hover:shadow-lg hover:scale-105 transition-all">
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                                        <button onClick={saveGrade} className="save-grade-btn">
                                             Save Grade
                                         </button>
                                     </div>
