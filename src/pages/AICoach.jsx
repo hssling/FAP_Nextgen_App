@@ -80,7 +80,9 @@ Provide helpful, accurate, and educational responses. Use simple language, inclu
             let data;
 
             // Use Edge Function in production, direct API in development
-            if (import.meta.env.PROD) {
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+            if (!isLocalhost && import.meta.env.PROD) {
                 // Production: Use secure Edge Function
                 const { data: { session } } = await supabase.auth.getSession();
 
