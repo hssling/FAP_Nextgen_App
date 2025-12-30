@@ -127,8 +127,8 @@ src/
 ## 👥 Authors & Contributors
 
 **Dr. Siddalingaiah H S**
-*Associate Professor, Dept. of Community Medicine*
-*Sri Siddhartha Institute of Medical Sciences & Research Centre (SIMS & RC)*
+*Professor, Dept. of Community Medicine*
+*Shridevi Institute of Medical Sciences & Research Hospital (SIMS & RH)*
 
 Developed as a digital innovation for the Competency-Based Medical Education (CBME) curriculum in India.
 
