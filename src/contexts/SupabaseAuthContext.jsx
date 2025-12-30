@@ -50,6 +50,73 @@ export const SupabaseAuthProvider = ({ children }) => {
         return () => subscription.unsubscribe();
     }, []);
 
+    // Session health check - validates and refreshes session periodically
+    // This helps prevent mobile session loss due to background app suspension
+    useEffect(() => {
+        if (!isSupabaseConfigured()) return;
+
+        const checkSessionHealth = async () => {
+            try {
+                const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+
+                if (error) {
+                    console.warn('[Session Health] Error getting session:', error.message);
+                    return;
+                }
+
+                if (!currentSession && user) {
+                    // Session lost but we think we're logged in - attempt refresh
+                    console.warn('[Session Health] Session missing, attempting refresh...');
+                    const { data, error: refreshError } = await supabase.auth.refreshSession();
+
+                    if (refreshError) {
+                        console.error('[Session Health] Refresh failed:', refreshError.message);
+                        // Clear stale state
+                        setUser(null);
+                        setSession(null);
+                        setProfile(null);
+                    } else if (data.session) {
+                        console.log('[Session Health] Session refreshed successfully');
+                        setSession(data.session);
+                        setUser(data.session.user);
+                    }
+                } else if (currentSession) {
+                    // Check if token is expiring soon (within 5 minutes)
+                    const expiresAt = currentSession.expires_at;
+                    const now = Math.floor(Date.now() / 1000);
+                    const fiveMinutes = 5 * 60;
+
+                    if (expiresAt && (expiresAt - now) < fiveMinutes) {
+                        console.log('[Session Health] Token expiring soon, refreshing...');
+                        await supabase.auth.refreshSession();
+                    }
+                }
+            } catch (e) {
+                console.error('[Session Health] Check failed:', e);
+            }
+        };
+
+        // Check immediately on mount
+        checkSessionHealth();
+
+        // Check every 5 minutes
+        const interval = setInterval(checkSessionHealth, 5 * 60 * 1000);
+
+        // Also check when app returns from background (mobile)
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                console.log('[Session Health] App became visible, checking session...');
+                checkSessionHealth();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [user]);
+
     const loadProfile = async (userId) => {
         try {
             const { data, error } = await supabase

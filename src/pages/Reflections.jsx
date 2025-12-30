@@ -192,24 +192,28 @@ const Reflections = () => {
                 // NEW STRATEGY: Use standard POST for reliability if SDK fails, or stick to SDK with minimal args.
                 // Let's stick to SDK but remove 'upsert' which sometimes causes lock issues, and ensure simple path.
 
-                // Detect mobile device
-                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                // Enhanced mobile/slow network detection using helper
+                const { isMobileOrSlowNetwork } = await import('../services/supabaseClient');
+                const shouldUseBase64 = isMobileOrSlowNetwork();
 
-                // MOBILE STRATEGY: Base64 Database Storage (Bypass blocked Storage bucket)
+                // MOBILE/SLOW NETWORK STRATEGY: Base64 Database Storage (Bypass blocked Storage bucket)
                 // Since text submissions work, we know the DB connection is fine.
-                if (isMobile) {
-                    console.log("📱 Mobile device detected. Using Base64 fallback strategy.");
+                if (shouldUseBase64) {
+                    console.log("📱 Mobile/slow network detected. Using Base64 fallback strategy.");
 
-                    if (selectedFile.size > 5 * 1024 * 1024) { // 5MB limit for Base64
-                        throw new Error("File too large for mobile (Limit: 5MB). Please upload from desktop.");
+                    // Increased limit to 8MB for Base64 (Supabase row limit is ~1GB but we keep it reasonable)
+                    const MAX_MOBILE_SIZE = 8 * 1024 * 1024;
+                    if (selectedFile.size > MAX_MOBILE_SIZE) {
+                        throw new Error(`File too large for mobile upload (${(selectedFile.size / 1024 / 1024).toFixed(1)}MB). Maximum ${MAX_MOBILE_SIZE / 1024 / 1024}MB allowed. Try compressing or upload from desktop.`);
                     }
 
-                    // Convert to Base64
+                    // Convert to Base64 with progress indication
+                    console.log("🔄 Converting file to Base64...");
                     const base64Data = await new Promise((resolve, reject) => {
                         const reader = new FileReader();
                         reader.readAsDataURL(selectedFile);
                         reader.onload = () => resolve(reader.result); // Returns "data:image/png;base64,..."
-                        reader.onerror = error => reject(error);
+                        reader.onerror = error => reject(new Error('Failed to read file. Please try again.'));
                     });
 
                     // Skip Supabase Storage entirely!
@@ -221,7 +225,7 @@ const Reflections = () => {
                         type: selectedFile.type || 'unknown'
                     };
 
-                    console.log("✅ Converted to Base64 (Size: " + base64Data.length + " chars)");
+                    console.log("✅ Converted to Base64 (Size: " + (base64Data.length / 1024).toFixed(1) + " KB)");
                     console.log("✅ Skipped Storage upload, ready to save to DB.");
                 }
                 else {
