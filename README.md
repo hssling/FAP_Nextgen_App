@@ -1,338 +1,140 @@
 # FAP NextGen 🏥
 
-**Modern Web Application for MBBS Family Adoption Programme**
+**Advanced Family Adoption Programme Management Systems for Medical Education (CBME)**
 
-A comprehensive digital platform for medical students to manage their Family Adoption Programme (FAP) fieldwork, featuring health tracking, clinical guidelines, AI-assisted reflections, and community health planning.
+A production-grade, offline-first progressive web application (PWA) designed for MBBS students to manage their community medicine fieldwork. Built on valid clinical guidelines and powered by modern cloud infrastructure.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black)](https://vercel.com)
-[![React](https://img.shields.io/badge/React-18-blue)](https://reactjs.org/)
-[![Vite](https://img.shields.io/badge/Vite-7-purple)](https://vitejs.dev/)
-
----
-
-## ✨ Features
-
-### 📊 **Dashboard**
-- Quick statistics overview
-- Recent activity feed
-- Smooth animations with Framer Motion
-
-### 👨‍👩‍👧‍👦 **Family Management**
-- Adopt and track multiple families
-- Comprehensive member profiles
-- Visit logging with dynamic forms
-- Socio-economic data collection
-
-### 🗺️ **Community Health Profile**
-- **43-field comprehensive village mapping**
-- Demographics (population breakdown by age/gender)
-- Human Resources (ASHA, ANM, Anganwadi workers)
-- Infrastructure (cold chain, immunization facilities)
-- Annual Planning (vaccine requirements, FP commodities, IEC materials)
-- Health Status (coverage indicators, disease burden)
-- Organized in 6 tabbed sections
-
-### 📚 **Clinical Resources**
-- **8 comprehensive clinical guidelines**:
-  1. Antenatal Care (ANC)
-  2. Universal Immunization Schedule
-  3. NCD Screening
-  4. IMNCI (Sick Child Assessment)
-  5. Family Planning Methods
-  6. TB-DOTS Guidelines
-  7. Mental Health
-  8. Nutrition Guidelines
-- Search and filter functionality
-- Quick reference for fieldwork
-
-### 📝 **Reflections with AI Coach**
-- Journal entries with phase tracking
-- AI-powered feedback on reflections
-- Keyword-based analysis
-- Family linkage
-
-### 📄 **Reports & Analytics**
-- Logbook generation
-- Data export capabilities
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed-Live-success?style=for-the-badge&logo=vercel)](https://fap-nextgen-app.vercel.app)
+[![Supabase](https://img.shields.io/badge/Backend-Supabase-green?style=for-the-badge&logo=supabase)](https://supabase.com)
+[![React](https://img.shields.io/badge/Frontend-React%2018-blue?style=for-the-badge&logo=react)](https://react.dev)
 
 ---
 
-## 🚀 Tech Stack
+## 🌟 Key Features
 
-- **Frontend**: React 18
-- **Routing**: React Router DOM
-- **Animations**: Framer Motion
-- **Icons**: Lucide React
-- **Database**: IndexedDB (idb)
-- **Build Tool**: Vite
-- **Deployment**: Vercel
+### 🔐 Enterprise-Grade Security
+- **Supabase Authentication**: Secure email/password login with session persistence.
+- **Row Level Security (RLS)**: Strict database policies ensuring students access only their own data.
+- **Role-Based Access**: Distinctions between Student, Teacher, and Admin roles.
+
+### 📱 Mobile-First & Offline-Ready
+- **Smart Upload System**: 
+  - **Desktop**: Direct high-speed uploads to Supabase Storage using signed URLs.
+  - **Mobile**: Innovative **"Base64 Bypass"** technology that tunnels files through the database connection to overcome mobile network/carrier restrictions.
+- **Responsive Design**: Fully optimized UI for field usage on tablets and smartphones.
+
+### 🤖 AI Medical Coach
+- **Real-time Feedback**: Integrated Gemini AI (via OpenRouter) analyzes student reflections.
+- **Gibbs Reflective Cycle**: Structured guidance through Description, Feelings, Evaluation, Analysis, Conclusion, and Action Plan.
+- **Contextual Tips**: Provides medical advice based on reflection content (e.g., vaccination schedules, hygiene practices).
+
+### 👨‍👩‍👧‍👦 Comprehensive Family Health
+- **Family Folder**: Digital version of the standard Family Adoption folder.
+- **Socio-Economic Scales**: Auto-calculation of **BG Prasad (2024)** and **Udai Pareek** scales.
+- **Health Tracking**: Longitudinal tracking of family members' health status, immunizations, and chronic conditions.
+
+### 🏥 Community Diagnosis
+- **Village Profiling**: 43-point comprehensive mapping of demographics, infrastructure, and health resources.
+- **Interactive Dashboard**: Visualizing community health indicators and disease burden.
+
+### 📚 Clinical Knowledge Base
+- **8+ Clinical Guidelines**: Built-in reference for ANC, PNC, IMNCI, TB-DOTS, NCDs, and more.
+- **Offline Access**: Critical guidelines available even without internet.
 
 ---
 
-## 📦 Installation
+## 🛠️ Technology Stack
+
+| Component | Technology | Description |
+|-----------|------------|-------------|
+| **Frontend** | React 18 + Vite | High-performance SPA architecture |
+| **Styling** | Vanilla CSS + Framer Motion | Lightweight, smooth animations |
+| **Backend** | Supabase (PostgreSQL) | Relational database with real-time capabilities |
+| **Auth** | Supabase Auth | JWT-based secure authentication |
+| **Storage** | Supabase Storage + Hybrid DB | Dual-strategy file management |
+| **AI** | Google Gemini (via OpenRouter) | Natural language processing for education |
+| **Hosting** | Vercel | Global edge network deployment |
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 16+ 
-- npm or yarn
+- Node.js 18+
+- Supabase Project (Free tier works)
+- OpenRouter API Key
 
-### Setup
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/hssling/FAP_Nextgen_App.git
+   cd FAP_Nextgen_App
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configure Environment**
+   Create a `.env` file in the root directory:
+   ```env
+   VITE_SUPABASE_URL=your_supabase_project_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   VITE_OPENROUTER_API_KEY=your_openrouter_key
+   ```
+
+4. **Run Locally**
+   ```bash
+   npm run dev
+   ```
+
+---
+
+## 📂 Project Structure
 
 ```bash
-# Clone the repository
-git clone https://github.com/hssling/FAP_Nextgen_App.git
-
-# Navigate to project directory
-cd FAP_Nextgen_App
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-The app will be available at `http://localhost:5173/`
-
----
-
-## 🏗️ Project Structure
-
-```
-FAP_NextGen/
-├── src/
-│   ├── components/        # Reusable UI components
-│   │   ├── DynamicForm.jsx
-│   │   ├── Layout.jsx
-│   │   └── ErrorBoundary.jsx
-│   ├── pages/            # Page components
-│   │   ├── Dashboard.jsx
-│   │   ├── Families.jsx
-│   │   ├── FamilyDetails.jsx
-│   │   ├── MemberDetails.jsx
-│   │   ├── Community.jsx
-│   │   ├── Reflections.jsx
-│   │   ├── Resources.jsx
-│   │   └── Reports.jsx
-│   ├── contexts/         # React contexts
-│   │   └── AuthContext.jsx
-│   ├── services/         # Business logic
-│   │   ├── db.js        # IndexedDB operations
-│   │   └── analytics.js
-│   ├── data/            # Static data
-│   │   ├── forms/
-│   │   │   └── registry.json  # Form schemas
-│   │   └── resources/
-│   │       └── clinical_guidelines.json
-│   ├── App.jsx          # Main app component
-│   ├── index.css        # Global styles
-│   └── main.jsx         # Entry point
-├── public/              # Static assets
-├── .gitignore
-├── package.json
-├── vite.config.js
-├── README.md
-└── DEPLOYMENT_GUIDE.md
+src/
+├── components/     # Reusable UI (Cards, Forms, Layouts)
+├── contexts/       # Global State (Auth, Theme)
+├── data/           # Static Clinical Guidelines & Schemas
+├── pages/          # Main Application Routes
+│   ├── Dashboard.jsx      # Analytics & Overview
+│   ├── Families.jsx       # Family Listing & Management
+│   ├── FamilyDetails.jsx  # In-depth Family Record
+│   ├── Reflections.jsx    # AI-Integrated Journaling
+│   └── Community.jsx      # Village Profile Mapping
+├── services/       # API Connectors (Supabase, AI)
+└── utils/          # Helpers (Calculators, Formatters)
 ```
 
 ---
 
-## 📱 Key Features in Detail
+## 🩺 Clinical Resources Included
 
-### Community Profile (Village Mapping)
-Comprehensive 43-field data collection covering:
-- **Demography**: Population distribution, pregnant women, lactating mothers
-- **HR Mapping**: ASHA, ANM, Anganwadi workers
-- **Infrastructure**: Cold chain facilities, vaccine storage
-- **Services**: VHND frequency, FP methods, immunization sessions
-- **Coverage**: ANC, institutional delivery, immunization percentages
-- **Disease Burden**: High-risk areas, endemic diseases, NCD burden
-- **Annual Planning**: Vaccine/FP requirements, IEC materials, action plans
-
-### Clinical Resources
-Evidence-based guidelines for:
-- Maternal health (ANC, danger signs, birth preparedness)
-- Child health (immunization, IMNCI, nutrition)
-- NCDs (screening for HTN, diabetes, cancers)
-- Communicable diseases (TB-DOTS)
-- Mental health (depression, anxiety, suicide risk)
-- Reproductive health (family planning methods)
-
-### AI Coach (Reflections)
-- Analyzes reflection content for keywords
-- Provides context-aware feedback
-- Covers topics: diet, trust, sanitation, hygiene, immunization, etc.
-- Saves feedback with reflection for future reference
+1.  **Antenatal Care (ANC)**: Guidelines for pregnancy visits and risk assessment.
+2.  **Universal Immunization**: Interactive vaccination schedules.
+3.  **NCD Screening**: Protocols for Hypertension, Diabetes, and Cancer screening.
+4.  **IMNCI**: Integrated Management of Neonatal and Childhood Illnesses.
+5.  **TB-DOTS**: Tuberculosis screening and treatment algorithms.
+6.  **Family Planning**: Contraceptive method counseling guide.
+7.  **Nutrition**: Dietary assessment and counseling.
+8.  **Mental Health**: Screening for depression and anxiety.
 
 ---
 
-## 🎨 Design Philosophy
+## 👥 Authors & Contributors
 
-- **Modern UI**: Clean, professional interface with smooth animations
-- **Responsive**: Works on desktop, tablet, and mobile
-- **Offline-First**: IndexedDB for local data persistence
-- **Evidence-Based**: Clinical guidelines aligned with WHO/MOHFW standards
-- **Student-Centric**: Designed for ease of use during fieldwork
+**Dr. Siddalingaiah H S**
+*Associate Professor, Dept. of Community Medicine*
+*Sri Siddhartha Institute of Medical Sciences & Research Centre (SIMS & RC)*
 
----
-
-## 🔐 Authentication
-
-Currently supports:
-- **Student Role**: Full access to all features
-- **Teacher Role**: Mentee dashboard (expandable)
-
-Login credentials are stored in localStorage (upgrade to JWT recommended for production).
+Developed as a digital innovation for the Competency-Based Medical Education (CBME) curriculum in India.
 
 ---
 
-## 💾 Data Storage
+## 📄 License
 
-All data is stored locally using **IndexedDB**:
-- **families**: Family records
-- **members**: Individual member data
-- **visits**: Visit logs and assessments
-- **villages**: Community profiles
-- **reflections**: Journal entries
-
-**Privacy**: No data leaves the user's browser.
-
----
-
-## 🚀 Deployment
-
-### Deploy to Vercel
-
-1. **Push to GitHub**:
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git remote add origin https://github.com/hssling/FAP_Nextgen_App.git
-git push -u origin main
-```
-
-2. **Deploy via Vercel CLI**:
-```bash
-npm install -g vercel
-vercel login
-vercel --prod
-```
-
-Or connect your GitHub repo to Vercel Dashboard for automatic deployments.
-
-See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for detailed instructions.
-
----
-
-## 📊 Statistics
-
-- **Pages**: 10+
-- **Components**: 15+
-- **Form Schemas**: 10+
-- **Clinical Guidelines**: 8 topics, 50+ sections, 200+ points
-- **Village Profile Fields**: 43
-- **Database Stores**: 5
-
----
-
-## 🎓 Educational Value
-
-Aligns with **CBME (Competency-Based Medical Education)** objectives:
-- Clinical skills development
-- Evidence-based practice
-- Community diagnosis
-- Health education
-- Reflective practice
-- Professional documentation
-
----
-
-## 🛠️ Development
-
-### Available Scripts
-
-```bash
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-```
-
-### Adding New Features
-
-1. **New Page**: Create in `src/pages/`, add route in `App.jsx`
-2. **New Form**: Add schema to `src/data/forms/registry.json`
-3. **New Guideline**: Add to `src/data/resources/clinical_guidelines.json`
-4. **New Component**: Create in `src/components/`
-
----
-
-## 🐛 Known Issues & Limitations
-
-- Authentication is basic (localStorage-based)
-- No backend/server (all data local)
-- No data sync across devices
-- No multi-user collaboration
-
-**Future Enhancements**:
-- Backend API integration
-- Cloud data sync
-- Advanced analytics
-- Multimedia support (images, videos)
-- Offline PWA capabilities
-
----
-
-## 📝 License
-
-This project is developed for educational purposes as part of the MBBS curriculum.
-
----
-
-## 👥 Contributors
-
-- **Developer**: Dr Siddalingaiah H S
-- **Institution**: SIMSRH Tumkur
-- **Purpose**: MBBS Family Adoption Programme
-
----
-
-## 📞 Support
-
-For issues or questions:
-- Create an issue on GitHub
-- Contact: hssling@yahoo.com
-
----
-
-## 🙏 Acknowledgments
-
-- WHO Guidelines
-- Ministry of Health and Family Welfare (MOHFW), India
-- National Health Mission (NHM)
-- Medical Council of India (MCI) / National Medical Commission (NMC)
-
----
-
-## 📅 Version History
-
-### v1.0.0 (December 2025)
-- ✅ Complete family and member management
-- ✅ Comprehensive community health profile (43 fields)
-- ✅ Clinical resources (8 guidelines)
-- ✅ AI-assisted reflections
-- ✅ Smooth animations throughout
-- ✅ Responsive design
-- ✅ IndexedDB data persistence
-
----
-
-**Built with ❤️ for medical students**
-
-**Live Demo**: https://fap-nextgen-fr67iaxtl-hsslings-projects.vercel.app/
-
-**GitHub**: https://github.com/hssling/FAP_Nextgen_App
+This project is open-source under the MIT License.
+Designed for educational use in medical colleges.
