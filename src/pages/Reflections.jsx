@@ -199,36 +199,60 @@ const Reflections = () => {
                 const shouldUseBase64 = isMobile || isSlowNetwork;
 
                 // MOBILE/SLOW NETWORK STRATEGY: Base64 Database Storage (Bypass blocked Storage bucket)
-                // Since text submissions work, we know the DB connection is fine.
                 if (shouldUseBase64) {
-                    console.log("📱 Mobile/slow network detected. Using Base64 fallback strategy.");
+                    console.log("📱 Mobile detected. Using Base64 strategy.");
 
-                    // Increased limit to 8MB for Base64 (Supabase row limit is ~1GB but we keep it reasonable)
-                    const MAX_MOBILE_SIZE = 8 * 1024 * 1024;
+                    // Reduced limit to 2MB for mobile reliability
+                    const MAX_MOBILE_SIZE = 2 * 1024 * 1024;
                     if (selectedFile.size > MAX_MOBILE_SIZE) {
-                        throw new Error(`File too large for mobile upload (${(selectedFile.size / 1024 / 1024).toFixed(1)}MB). Maximum ${MAX_MOBILE_SIZE / 1024 / 1024}MB allowed. Try compressing or upload from desktop.`);
+                        throw new Error(`File too large (${(selectedFile.size / 1024 / 1024).toFixed(1)}MB). Max 2MB on mobile. Please compress or use desktop.`);
                     }
 
-                    // Convert to Base64 with progress indication
-                    console.log("🔄 Converting file to Base64...");
-                    const base64Data = await new Promise((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.readAsDataURL(selectedFile);
-                        reader.onload = () => resolve(reader.result); // Returns "data:image/png;base64,..."
-                        reader.onerror = error => reject(new Error('Failed to read file. Please try again.'));
-                    });
+                    // Convert to Base64 with timeout
+                    console.log("🔄 Converting to Base64...");
+                    let base64Data;
+                    try {
+                        base64Data = await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
 
-                    // Skip Supabase Storage entirely!
-                    // Construct fileData directly with the base64 string as the URL
+                            // 30 second timeout
+                            const timeout = setTimeout(() => {
+                                reader.abort();
+                                reject(new Error('File read timed out. Please try a smaller file.'));
+                            }, 30000);
+
+                            reader.onload = () => {
+                                clearTimeout(timeout);
+                                resolve(reader.result);
+                            };
+                            reader.onerror = (e) => {
+                                clearTimeout(timeout);
+                                reject(new Error('Failed to read file: ' + (e.message || 'Unknown error')));
+                            };
+                            reader.onabort = () => {
+                                clearTimeout(timeout);
+                                reject(new Error('File read was aborted'));
+                            };
+
+                            reader.readAsDataURL(selectedFile);
+                        });
+                    } catch (readError) {
+                        console.error("FileReader error:", readError);
+                        throw readError;
+                    }
+
+                    if (!base64Data || !base64Data.startsWith('data:')) {
+                        throw new Error('Failed to convert file. Please try again.');
+                    }
+
                     fileData = {
-                        url: base64Data, // This string is stored in the DB "file_url" column
+                        url: base64Data,
                         name: selectedFile.name,
                         size: selectedFile.size,
                         type: selectedFile.type || 'unknown'
                     };
 
-                    console.log("✅ Converted to Base64 (Size: " + (base64Data.length / 1024).toFixed(1) + " KB)");
-                    console.log("✅ Skipped Storage upload, ready to save to DB.");
+                    console.log("✅ Base64 ready (" + (base64Data.length / 1024).toFixed(0) + " KB)");
                 }
                 else {
                     // DESKTOP STRATEGY: Standard Supabase Storage Upload
