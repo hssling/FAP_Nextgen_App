@@ -192,59 +192,92 @@ const Reflections = () => {
                 // NEW STRATEGY: Use standard POST for reliability if SDK fails, or stick to SDK with minimal args.
                 // Let's stick to SDK but remove 'upsert' which sometimes causes lock issues, and ensure simple path.
 
-                // 4. Final Attempt: Use the most basic SDK upload which defaults to TUS (resumable)
-                // We remove almost all custom options to let the SDK decide the best path.
+                // Detect mobile device
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-                // 0. AUTH CHECK & TOKEN RETRIEVAL
-                console.log("Pre-flight process...");
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                // MOBILE STRATEGY: Base64 Database Storage (Bypass blocked Storage bucket)
+                // Since text submissions work, we know the DB connection is fine.
+                if (isMobile) {
+                    console.log("📱 Mobile device detected. Using Base64 fallback strategy.");
 
-                if (sessionError || !session) {
-                    console.error("Session missing during upload:", sessionError);
-                    throw new Error("You appear to be logged out. Please refresh and login again.");
-                }
-
-                const token = session.access_token;
-                console.log("Token retrieved. Starting Raw Upload to:", path);
-
-                // 5. NUCLEAR OPTION: Raw Fetch (Bypass SDK)
-                // We construct the URL manually. standard supabase storage URL format.
-                const projectId = import.meta.env.VITE_SUPABASE_URL;
-                const uploadUrl = `${projectId}/storage/v1/object/reflection-files/${path}`;
-
-                const response = await fetch(uploadUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`, // Explicit Auth header
-                        'x-client-info': 'fap-raw-upload',
-                        'Content-Type': selectedFile.type || 'application/octet-stream',
-                        'cache-control': '3600',
-                        'x-upsert': 'false'
-                    },
-                    body: selectedFile
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error("Raw Upload Failed:", response.status, errorText);
-                    if (response.status === 401) {
-                        throw new Error("Upload Rejected: Auth Token Invalid. Please Log out and Log in.");
+                    if (selectedFile.size > 5 * 1024 * 1024) { // 5MB limit for Base64
+                        throw new Error("File too large for mobile (Limit: 5MB). Please upload from desktop.");
                     }
-                    throw new Error(`Server Error (${response.status}): ${errorText}`);
+
+                    // Convert to Base64
+                    const base64Data = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(selectedFile);
+                        reader.onload = () => resolve(reader.result); // Returns "data:image/png;base64,..."
+                        reader.onerror = error => reject(error);
+                    });
+
+                    // Skip Supabase Storage entirely!
+                    // Construct fileData directly with the base64 string as the URL
+                    fileData = {
+                        url: base64Data, // This string is stored in the DB "file_url" column
+                        name: selectedFile.name,
+                        size: selectedFile.size,
+                        type: selectedFile.type || 'unknown'
+                    };
+
+                    console.log("✅ Converted to Base64 (Size: " + base64Data.length + " chars)");
+                    console.log("✅ Skipped Storage upload, ready to save to DB.");
                 }
+                else {
+                    // DESKTOP STRATEGY: Standard Supabase Storage Upload
+                    // We remove almost all custom options to let the SDK decide the best path.
 
-                // MOCK SDK RESPONSE so downstream code works
-                const uploadError = null;
+                    // 0. AUTH CHECK & TOKEN RETRIEVAL
+                    console.log("Pre-flight process...");
+                    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-                /* LEGACY SDK CODE REMOVED */
+                    if (sessionError || !session) {
+                        console.error("Session missing during upload:", sessionError);
+                        throw new Error("You appear to be logged out. Please refresh and login again.");
+                    }
 
-                const urlData = supabase.storage.from('reflection-files').getPublicUrl(path);
-                fileData = {
-                    url: urlData.data.publicUrl,
-                    name: selectedFile.name,
-                    size: selectedFile.size,
-                    type: selectedFile.name.split('.').pop() || 'file'
-                };
+                    // 5. NUCLEAR OPTION: Raw Fetch (Bypass SDK)
+                    // We construct the URL manually. standard supabase storage URL format.
+                    const projectId = import.meta.env.VITE_SUPABASE_URL;
+                    const pathEncoded = path.split('/').map(p => encodeURIComponent(p)).join('/'); // Safely encode path
+                    const uploadUrl = `${projectId}/storage/v1/object/reflection-files/${pathEncoded}`;
+                    const token = session.access_token;
+
+                    const response = await fetch(uploadUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`, // Explicit Auth header
+                            'x-client-info': 'fap-raw-upload',
+                            'Content-Type': selectedFile.type || 'application/octet-stream',
+                            'cache-control': '3600',
+                            'x-upsert': 'false'
+                        },
+                        body: selectedFile
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error("Raw Upload Failed:", response.status, errorText);
+                        if (response.status === 401) {
+                            throw new Error("Upload Rejected: Auth Token Invalid. Please Log out and Log in.");
+                        }
+                        throw new Error(`Server Error (${response.status}): ${errorText}`);
+                    }
+
+                    // MOCK SDK RESPONSE so downstream code works
+                    const uploadError = null;
+
+                    /* LEGACY SDK CODE REMOVED */
+
+                    const urlData = supabase.storage.from('reflection-files').getPublicUrl(path);
+                    fileData = {
+                        url: urlData.data.publicUrl,
+                        name: selectedFile.name,
+                        size: selectedFile.size,
+                        type: selectedFile.name.split('.').pop() || 'file'
+                    };
+                }
             }
 
             setSubmissionStatus('saving');
