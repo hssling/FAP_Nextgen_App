@@ -88,9 +88,9 @@ export const supabase = supabaseUrl && supabaseAnonKey
             autoRefreshToken: true,
             persistSession: true,
             detectSessionInUrl: true,
-            storage: robustStorage,           // Custom storage for mobile reliability
-            storageKey: 'fap-auth-session',   // Consistent key across app
-            flowType: 'pkce'                  // More secure for mobile/PWA
+            storage: robustStorage           // Custom storage for mobile reliability
+            // NOTE: We intentionally don't change storageKey or flowType
+            // to maintain backward compatibility with existing sessions
         },
         global: {
             headers: {

@@ -50,69 +50,8 @@ export const SupabaseAuthProvider = ({ children }) => {
         return () => subscription.unsubscribe();
     }, []);
 
-    // Session health check - validates and refreshes session periodically
-    // This helps prevent mobile session loss due to background app suspension
-    useEffect(() => {
-        if (!isSupabaseConfigured()) return;
-
-        let lastCheck = 0;
-        const MIN_CHECK_INTERVAL = 30000; // Minimum 30 seconds between checks
-
-        const checkSessionHealth = async () => {
-            // Debounce rapid checks
-            const now = Date.now();
-            if (now - lastCheck < MIN_CHECK_INTERVAL) {
-                return;
-            }
-            lastCheck = now;
-
-            try {
-                const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-
-                if (error) {
-                    console.warn('[Session Health] Error getting session:', error.message);
-                    return; // Don't clear state on error - might be network issue
-                }
-
-                if (currentSession) {
-                    // Check if token is expiring soon (within 5 minutes)
-                    const expiresAt = currentSession.expires_at;
-                    const nowSecs = Math.floor(Date.now() / 1000);
-                    const fiveMinutes = 5 * 60;
-
-                    if (expiresAt && (expiresAt - nowSecs) < fiveMinutes) {
-                        console.log('[Session Health] Token expiring soon, refreshing...');
-                        const { error: refreshError } = await supabase.auth.refreshSession();
-                        if (refreshError) {
-                            console.warn('[Session Health] Refresh warning:', refreshError.message);
-                            // Don't clear state - the existing session may still work
-                        }
-                    }
-                }
-                // Note: We intentionally don't clear user/profile state on session loss
-                // The auth state listener will handle proper logout if needed
-            } catch (e) {
-                console.error('[Session Health] Check failed:', e);
-                // Don't clear state on errors - be resilient
-            }
-        };
-
-        // Check every 5 minutes (not on mount - let the main auth handler do that)
-        const interval = setInterval(checkSessionHealth, 5 * 60 * 1000);
-
-        // Check when app returns from background (mobile) - but debounced
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
-                checkSessionHealth();
-            }
-        };
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        return () => {
-            clearInterval(interval);
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-        };
-    }, []); // Remove user dependency to prevent re-running
+    // NOTE: Session health check removed - Supabase's autoRefreshToken handles this
+    // Adding custom refresh logic was interfering with the auth state listener
 
     const loadProfile = async (userId) => {
         try {
