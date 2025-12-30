@@ -192,9 +192,11 @@ const Reflections = () => {
                 // NEW STRATEGY: Use standard POST for reliability if SDK fails, or stick to SDK with minimal args.
                 // Let's stick to SDK but remove 'upsert' which sometimes causes lock issues, and ensure simple path.
 
-                // Enhanced mobile/slow network detection using helper
-                const { isMobileOrSlowNetwork } = await import('../services/supabaseClient');
-                const shouldUseBase64 = isMobileOrSlowNetwork();
+                // Inline mobile/slow network detection (avoid dynamic import issues)
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                const isSlowNetwork = connection && (connection.effectiveType === '2g' || connection.effectiveType === 'slow-2g' || connection.saveData);
+                const shouldUseBase64 = isMobile || isSlowNetwork;
 
                 // MOBILE/SLOW NETWORK STRATEGY: Base64 Database Storage (Bypass blocked Storage bucket)
                 // Since text submissions work, we know the DB connection is fine.
