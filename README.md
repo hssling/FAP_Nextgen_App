@@ -134,6 +134,38 @@ Developed as a digital innovation for the Competency-Based Medical Education (CB
 
 ---
 
+## 🔄 Student Workflow
+
+1.  **Adoption**: Assign a family unique ID and create their digital folder.
+2.  **Profiling**: Map the village infrastructure and family demographics (BG Prasad Scale auto-calculated).
+3.  **Visiting**: Log regular home visits, update health vitals, and screen for NCDs.
+4.  **Reflecting**: Write structured journals using the Gibbs cycle, receiving instant AI feedback on clinical correlation.
+5.  **Reporting**: Auto-generate NMC-compliant logbooks for submission.
+
+---
+
+## 🏆 Why FAP NextGen?
+
+| Feature | Traditional Logbook | FAP NextGen App |
+| :--- | :--- | :--- |
+| **Data Access** | Physical only | Anywhere (Cloud + Offline) |
+| **Analysis** | Manual calculation | Auto-scoring (Socio-economic) |
+| **Feedback** | Delayed (Teacher only) | **Instant AI Medical Coach** |
+| **Guidelines** | External books needed | **Built-in Clinical Resources** |
+| **Multimedia** | Text only | **Photo/Doc Uploads** |
+| **Compliance** | Hard to track | Real-time NMC adherence |
+
+---
+
+## 🗺️ Roadmap & Future Vision
+
+- [ ] **GIS Mapping**: Visualizing disease clusters on village maps.
+- [ ] **Longitudinal Analytics**: graphs showing family health trends over 4 years.
+- [ ] **Multilingual Support**: Kannada/Hindi interface for rural usage.
+- [ ] **Tele-consultation**: Link families directly to specialists via the app.
+
+---
+
 ## 📄 License
 
 This project is open-source under the MIT License.
