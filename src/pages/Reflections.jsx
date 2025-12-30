@@ -200,7 +200,8 @@ const Reflections = () => {
 
                 // MOBILE/SLOW NETWORK STRATEGY: Base64 Database Storage (Bypass blocked Storage bucket)
                 if (shouldUseBase64) {
-                    console.log("📱 Mobile detected. Using Base64 strategy.");
+                    console.log("📱 [STEP 1] Mobile detected. Using Base64 strategy.");
+                    console.log("📱 [STEP 1] File details:", { name: selectedFile.name, size: selectedFile.size, type: selectedFile.type });
 
                     // Reduced limit to 2MB for mobile reliability
                     const MAX_MOBILE_SIZE = 2 * 1024 * 1024;
@@ -209,7 +210,7 @@ const Reflections = () => {
                     }
 
                     // Convert to Base64 with timeout
-                    console.log("🔄 Converting to Base64...");
+                    console.log("📱 [STEP 2] Starting Base64 conversion...");
                     let base64Data;
                     try {
                         base64Data = await new Promise((resolve, reject) => {
@@ -252,7 +253,8 @@ const Reflections = () => {
                         type: selectedFile.type || 'unknown'
                     };
 
-                    console.log("✅ Base64 ready (" + (base64Data.length / 1024).toFixed(0) + " KB)");
+                    console.log("📱 [STEP 3] Base64 ready (" + (base64Data.length / 1024).toFixed(0) + " KB)");
+                    console.log("📱 [STEP 3] fileData created:", { name: fileData.name, size: fileData.size, urlLength: fileData.url?.length });
                 }
                 else {
                     // DESKTOP STRATEGY: Standard Supabase Storage Upload
@@ -310,6 +312,7 @@ const Reflections = () => {
                 }
             }
 
+            console.log("📱 [STEP 4] File processing complete, now saving to database...");
             setSubmissionStatus('saving');
 
             // 2. Prepare Payload
@@ -339,9 +342,12 @@ const Reflections = () => {
                 status: 'Pending'
             };
 
+            console.log("📱 [STEP 5] Sending to database...", { student_id: payload.student_id, reflection_type: payload.reflection_type, hasFileUrl: !!payload.file_url });
             const { error: insertError } = await supabase.from('reflections').insert([payload]);
+            console.log("📱 [STEP 6] Database response received", { error: insertError });
             if (insertError) throw insertError;
 
+            console.log("📱 [STEP 7] SUCCESS! Setting success status...");
             setSubmissionStatus('success');
 
             setTimeout(() => {
@@ -366,9 +372,12 @@ const Reflections = () => {
             setUploadError(msg);
             setSubmissionStatus('error');
         } finally {
-            if (submissionStatus !== 'success') {
+            // Use a ref or just always setSubmitting(false) after a delay
+            // The original code had a stale closure issue
+            console.log("📱 [FINALLY] Cleanup...");
+            setTimeout(() => {
                 setSubmitting(false);
-            }
+            }, 2000);
         }
     };
 
