@@ -33,10 +33,14 @@ const Reflections = () => {
     // Form State
     const [activeTab, setActiveTab] = useState('write');
     const [currentStage, setCurrentStage] = useState(0);
+    // State for submission status
     const [submitting, setSubmitting] = useState(false);
-    const [submissionStatus, setSubmissionStatus] = useState(null); // 'uploading', 'saving', 'success', 'error'
+    const [submissionStatus, setSubmissionStatus] = useState(null); // 'uploading', 'saving', 'saving_slow', 'success', 'error'
     const [uploadError, setUploadError] = useState(null);
     const [sysStatus, setSysStatus] = useState(null);
+
+    // Upload Cache: Prevents re-uploading the same file if DB save fails
+    const lastUploadedFile = useRef({ id: null, data: null });
 
     const [formData, setFormData] = useState({
         familyId: '',
@@ -98,20 +102,15 @@ const Reflections = () => {
             const dummyBlob = new Blob(['test connection'], { type: 'text/plain' });
             const testPath = `${profile.id}/diagnostic_test_${Date.now()}.txt`;
 
-            const { data, error } = await supabase.storage
-                .from('reflection-files')
-                .upload(testPath, dummyBlob, { upsert: false });
+            const { error: testErr } = await supabase.storage.from('reflection-files').upload(testPath, dummyBlob, { upsert: false });
+            if (testErr) throw testErr;
 
-            if (error) {
-                console.error("Diagnostic Upload Failed:", error);
-                setSysStatus(`Connection Failed: ${error.message}`);
-            } else {
-                setSysStatus("System Healthy & Ready! ✅");
-                // Cleanup (fire and forget)
-                supabase.storage.from('reflection-files').remove([testPath]);
-            }
-        } catch (e) {
-            setSysStatus(`System Error: ${e.message}`);
+            setSysStatus("Connection Strong: Storage Access OK");
+            // Cleanup
+            await supabase.storage.from('reflection-files').remove([testPath]);
+        } catch (err) {
+            console.error("Diagnostic error:", err);
+            setSysStatus(`Error: ${err.message || 'Connection unstable'}`);
         }
     };
 
@@ -123,15 +122,13 @@ const Reflections = () => {
         }, 1500);
     };
 
+    // Handle file selection - clear cache if file changes
     const handleFileSelect = (e) => {
-        setUploadError(null);
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            if (file.size > 10 * 1024 * 1024) {
-                setUploadError("File size exceeds 10MB limit.");
-                return;
-            }
+        const file = e.target.files[0];
+        if (file) {
             setSelectedFile(file);
+            lastUploadedFile.current = { id: null, data: null };
+            setUploadError(null);
         }
     };
 
@@ -173,72 +170,96 @@ const Reflections = () => {
                     return;
                 }
 
-                setSubmissionStatus('uploading');
+                // CHECK CACHE: Did we already upload this exact file in a previous attempt?
+                const fileId = `${selectedFile.name}-${selectedFile.size}`;
+                if (lastUploadedFile.current.id === fileId && lastUploadedFile.current.data) {
+                    console.log("📱 [UPLOAD] Using cached file metadata from previous successful upload.");
+                    fileData = lastUploadedFile.current.data;
+                } else {
+                    setSubmissionStatus('uploading');
 
-                const safeName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-                const path = `${profile.id}/${Date.now()}_${safeName}`;
+                    const safeName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+                    const path = `${profile.id}/${Date.now()}_${safeName}`;
 
-                console.log("%c[Upload Debug]", "color:orange;font-weight:bold");
-                console.log("File:", selectedFile.name, selectedFile.size, selectedFile.type);
-                console.log("Target Path:", path);
-                console.log("Profile ID:", profile.id);
+                    console.log("%c[Upload Debug]", "color:orange;font-weight:bold");
+                    console.log("File:", selectedFile.name, selectedFile.size, selectedFile.type);
+                    console.log("Target Path:", path);
+                    console.log("Profile ID:", profile.id);
 
-                // Session Safety (Optional)
-                try {
-                    console.log("🔐 [PRE-FLIGHT] checking session...");
-                    const refreshed = await refreshSession();
-                    if (refreshed) console.log("🔐 Session valid.");
-                } catch (err) {
-                    console.warn("Session check warning", err);
-                }
+                    // Session Safety
+                    try {
+                        console.log("🔐 [PRE-FLIGHT] checking session...");
+                        const refreshed = await refreshSession();
+                        if (refreshed) console.log("🔐 Session valid.");
+                    } catch (err) {
+                        console.warn("Session check warning", err);
+                    }
 
-                // UNIFIED UPLOAD STRATEGY: Use Supabase Storage SDK for all platforms
-                // The Base64 strategy was causing database timeouts on mobile.
+                    console.log("📱 [UPLOAD] Starting Storage SDK upload...");
 
-                console.log("📱 [UPLOAD] Using Supabase Storage SDK...");
-                console.log("File:", selectedFile.name, selectedFile.size, selectedFile.type);
+                    // UPLOAD WITH TIMEOUT PROTECTION (60s for file uploads)
+                    const UPLOAD_TIMEOUT_MS = 60000;
+                    let uploadTimeoutId;
 
-                // Use the SDK's upload method directly
-                // Note: We skip getBucket because it requires admin permissions and crashes the app for normal users.
+                    const uploadPromise = supabase.storage
+                        .from('reflection-files')
+                        .upload(path, selectedFile, {
+                            cacheControl: '3600',
+                            upsert: false
+                        });
 
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('reflection-files')
-                    .upload(path, selectedFile, {
-                        cacheControl: '3600',
-                        upsert: false
+                    const uploadTimeoutPromise = new Promise((_, reject) => {
+                        uploadTimeoutId = setTimeout(() => reject(new Error('UPLOAD_TIMEOUT')), UPLOAD_TIMEOUT_MS);
                     });
 
-                if (uploadError) {
-                    console.error("📱 [UPLOAD] SDK upload failed:", uploadError);
+                    let uploadData, uploadError;
+                    try {
+                        const result = await Promise.race([uploadPromise, uploadTimeoutPromise]);
+                        clearTimeout(uploadTimeoutId);
+                        uploadData = result.data;
+                        uploadError = result.error;
+                    } catch (raceErr) {
+                        clearTimeout(uploadTimeoutId);
+                        if (raceErr.message === 'UPLOAD_TIMEOUT') {
+                            throw new Error("Upload timed out after 60 seconds. Please check your network connection and try again.");
+                        }
+                        throw raceErr;
+                    }
 
-                    if (uploadError.message?.includes('JWT') || uploadError.message?.includes('token')) {
-                        throw new Error("Session expired during upload. Please log in again.");
+                    if (uploadError) {
+                        console.error("📱 [UPLOAD] SDK upload failed:", uploadError);
+
+                        if (uploadError.message?.includes('JWT') || uploadError.message?.includes('token')) {
+                            throw new Error("Session expired during upload. Please log in again.");
+                        }
+                        if (uploadError.statusCode === "403" || uploadError.message?.includes('policy')) {
+                            throw new Error(`Upload denied: Check file size/type or contact admin.`);
+                        }
+                        throw new Error(`Upload failed: ${uploadError.message}`);
                     }
-                    if (uploadError.statusCode === 403 || uploadError.message?.includes('policy')) {
-                        throw new Error(`Upload denied: Check file size/type or contact admin. (${uploadError.message})`);
-                    }
-                    throw new Error(`Upload failed: ${uploadError.message}`);
+
+                    console.log("📱 [UPLOAD] Storage Success:", uploadData);
+
+                    // Get the public URL
+                    const { data: urlData } = supabase.storage
+                        .from('reflection-files')
+                        .getPublicUrl(path);
+
+                    fileData = {
+                        url: urlData.publicUrl,
+                        name: selectedFile.name,
+                        size: selectedFile.size,
+                        type: selectedFile.name.split('.').pop() || 'file'
+                    };
+
+                    // Cache it so we don't re-upload if DB save hangs
+                    lastUploadedFile.current = { id: fileId, data: fileData };
+                    console.log("📱 [UPLOAD] Metadata cached.");
                 }
-
-                console.log("📱 [UPLOAD] SDK upload successful:", uploadData);
-
-                // Get the public URL
-                const { data: urlData } = supabase.storage
-                    .from('reflection-files')
-                    .getPublicUrl(path);
-
-                fileData = {
-                    url: urlData.publicUrl,
-                    name: selectedFile.name,
-                    size: selectedFile.size,
-                    type: selectedFile.name.split('.').pop() || 'file'
-                };
-
-                console.log("📱 [UPLOAD] File URL obtained:", fileData.url);
             }
 
 
-            console.log("📱 [STEP 4] File processing complete, now saving to database...");
+            console.log("📱 [STEP 4] Preparing database operation...");
             setSubmissionStatus('saving');
 
             // 2. Prepare Payload
@@ -268,13 +289,54 @@ const Reflections = () => {
                 status: 'Pending'
             };
 
-            console.log("📱 [STEP 5] Sending to database...", { student_id: payload.student_id, reflection_type: payload.reflection_type, hasFileUrl: !!payload.file_url });
-            const { error: insertError } = await supabase.from('reflections').insert([payload]);
-            console.log("📱 [STEP 6] Database response received", { error: insertError });
-            if (insertError) throw insertError;
+            console.log("📱 [STEP 5] Sending to database...", {
+                student_id: payload.student_id,
+                reflection_type: payload.reflection_type,
+                payloadSize: JSON.stringify(payload).length
+            });
 
-            console.log("📱 [STEP 7] SUCCESS! Setting success status...");
+            // DATABASE INSERT WITH TIMEOUT PROTECTION
+            const DB_TIMEOUT_MS = 30000; // 30 seconds for DB insert
+            let dbTimeoutId;
+            let slowHintId;
+
+            const insertPromise = (async () => {
+                const { error: insertError } = await supabase.from('reflections').insert([payload]);
+                if (insertError) throw insertError;
+                return true;
+            })();
+
+            const timeoutPromise = new Promise((_, reject) => {
+                dbTimeoutId = setTimeout(() => reject(new Error('DATABASE_TIMEOUT')), DB_TIMEOUT_MS);
+            });
+
+            try {
+                // Show "Saving (Network Slow...)" hint if it takes more than 10 seconds
+                slowHintId = setTimeout(() => {
+                    setSubmissionStatus('saving_slow');
+                }, 10000);
+
+                await Promise.race([insertPromise, timeoutPromise]);
+
+                clearTimeout(dbTimeoutId);
+                clearTimeout(slowHintId);
+                console.log("📱 [STEP 6] Database success");
+            } catch (dbErr) {
+                clearTimeout(dbTimeoutId);
+                clearTimeout(slowHintId);
+                console.error("📱 [STEP 6] Database error/timeout:", dbErr);
+
+                if (dbErr.message === 'DATABASE_TIMEOUT') {
+                    throw new Error("The network is taking too long to save your entry. Please try again. (Your file upload was saved, so retry will be faster)");
+                }
+                throw dbErr;
+            }
+
+            console.log("📱 [STEP 7] SUCCESS!");
             setSubmissionStatus('success');
+
+            // Success cleanup
+            lastUploadedFile.current = { id: null, data: null };
 
             setTimeout(() => {
                 setIsWriting(false);
@@ -288,22 +350,11 @@ const Reflections = () => {
 
         } catch (e) {
             console.error("Full Submission Error:", e);
-            // Construct a very detailed error message for the user to report
-            let msg = e.message || "Unknown Error";
-            if (e.statusCode) msg += ` (Status: ${e.statusCode})`;
-            if (e.error) msg += ` (Details: ${e.error})`;
-            if (typeof e === 'object' && e !== null && !e.message) {
-                try { msg = JSON.stringify(e); } catch (err) { msg = "Unknown Object Error"; }
-            }
-            setUploadError(msg);
+            setUploadError(e.message || "An unexpected error occurred. Please check your connection.");
             setSubmissionStatus('error');
         } finally {
-            // Use a ref or just always setSubmitting(false) after a delay
-            // The original code had a stale closure issue
-            console.log("📱 [FINALLY] Cleanup...");
-            setTimeout(() => {
-                setSubmitting(false);
-            }, 2000);
+            console.log("📱 [FINALLY] Submitting = false");
+            setSubmitting(false);
         }
     };
 
@@ -493,6 +544,13 @@ const Reflections = () => {
                                         </>
                                     )}
                                     {submissionStatus === 'saving' && <><Loader2 className="animate-spin" size={48} color="#10B981" /><p style={{ marginTop: '1rem', fontWeight: 600 }}>Saving Entry...</p></>}
+                                    {submissionStatus === 'saving_slow' && (
+                                        <>
+                                            <Loader2 className="animate-spin" size={48} color="#F59E0B" />
+                                            <p style={{ marginTop: '1rem', fontWeight: 600, color: '#D97706' }}>Network is slow...</p>
+                                            <p style={{ fontSize: '0.8rem', color: '#64748B', textAlign: 'center', padding: '0 2rem' }}>Still trying to save your entry. Please don't close the app.</p>
+                                        </>
+                                    )}
                                     {submissionStatus === 'success' && <><div style={{ background: '#10B981', borderRadius: '50%', padding: '1rem' }}><Check size={48} color="white" /></div><p style={{ marginTop: '1rem', fontWeight: 700, fontSize: '1.2rem', color: '#10B981' }}>Success!</p></>}
                                     {submissionStatus === 'error' && (
                                         <>
