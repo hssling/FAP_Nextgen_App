@@ -48,6 +48,7 @@ export const AuthProvider = ({ children }) => {
         const initAuth = async () => {
             try {
                 // Set a safety timeout to force loading to false after 3 seconds
+                // This prevents the "stuck on loading" screen forever
                 const safetyTimeout = setTimeout(() => {
                     if (mounted && loading) {
                         console.warn("Auth check timed out - forcing app load");
@@ -99,41 +100,22 @@ export const AuthProvider = ({ children }) => {
             }
         );
 
-        // Visibility Change Handler: Refresh session when app comes to foreground
-        const handleVisibilityChange = async () => {
-            if (document.visibilityState === 'visible') {
-                console.log("📱 App visible, checking session...");
-                const { data: { session } } = await supabase.auth.getSession();
-
-                // If session exists but is close to expiring (within 10 mins) or expired, refresh it
-                if (session) {
-                    const expiresAt = session.expires_at * 1000; // JWT exp is in seconds
-                    const now = Date.now();
-                    const timeLeft = expiresAt - now;
-
-                    if (timeLeft < 10 * 60 * 1000) { // Less than 10 mins
-                        console.log("Processing foreground session refresh...");
-                        await supabase.auth.refreshSession();
-                    }
-                }
-            }
-        };
-
-        document.addEventListener('visibilitychange', handleVisibilityChange);
+        // Check session status periodically, but rely on auto-refresh for the heavy lifting
+        // REMOVED manual interval to avoid fighting with Supabase auto-refresh
+        /*
+        const checkSessionInterval = setInterval(async () => {
+             ...
+        }, 5 * 60 * 1000); 
+        */
 
         return () => {
             mounted = false;
             subscription.unsubscribe();
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            mounted = false;
+            subscription.unsubscribe();
+            // clearInterval(checkSessionInterval);
         };
     }, []);
-
-    // Force refresh session manually
-    const forceRefreshSession = async () => {
-        const { data, error } = await supabase.auth.refreshSession();
-        if (error) console.error("Force refresh failed:", error);
-        return data.session;
-    };
 
     // Sign in
     const signIn = async (username, password) => {
@@ -181,7 +163,6 @@ export const AuthProvider = ({ children }) => {
         loading,
         signIn,
         signOut,
-        forceRefreshSession,
         isAuthenticated: !!user,
         isStudent: profile?.role === 'student',
         isTeacher: profile?.role === 'teacher',

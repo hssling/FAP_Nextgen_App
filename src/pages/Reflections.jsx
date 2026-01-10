@@ -6,7 +6,7 @@ import {
     AlertCircle, Info, Loader2, Check, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase, refreshSession } from '../services/supabaseClient';
+import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import './Reflections.css';
 
@@ -186,14 +186,7 @@ const Reflections = () => {
                     console.log("Target Path:", path);
                     console.log("Profile ID:", profile.id);
 
-                    // Session Safety
-                    try {
-                        console.log("🔐 [PRE-FLIGHT] checking session...");
-                        const refreshed = await refreshSession();
-                        if (refreshed) console.log("🔐 Session valid.");
-                    } catch (err) {
-                        console.warn("Session check warning", err);
-                    }
+                    // Session is managed by AuthContext
 
                     console.log("📱 [UPLOAD] Starting Storage SDK upload...");
 
