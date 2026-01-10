@@ -6,7 +6,7 @@ import {
     AlertCircle, Info, Loader2, Check, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../services/supabaseClient';
+import { supabase, refreshSession } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import './Reflections.css';
 
@@ -183,134 +183,60 @@ const Reflections = () => {
                 console.log("Target Path:", path);
                 console.log("Profile ID:", profile.id);
 
-                // 3. Fallback to FormData (Multipart) is sometimes more stable on mobile
-                // However, Supabase client prefers Blob/File. 
-                // Let's try explicit 'file' body with standard fetch if Supabase SDK is stubborn,
-                // But first, let's try the most robust Supabase option: TUS resumeable upload is default in v2.
-                // WE WILL USE A SIMPLER FETCH TO DEBUG if SDK is the issue.
-
-                // NEW STRATEGY: Use standard POST for reliability if SDK fails, or stick to SDK with minimal args.
-                // Let's stick to SDK but remove 'upsert' which sometimes causes lock issues, and ensure simple path.
-
-                // Inline mobile/slow network detection (avoid dynamic import issues)
-                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-                const isSlowNetwork = connection && (connection.effectiveType === '2g' || connection.effectiveType === 'slow-2g' || connection.saveData);
-                const shouldUseBase64 = isMobile || isSlowNetwork;
-
-                // MOBILE/SLOW NETWORK STRATEGY: Base64 Database Storage (Bypass blocked Storage bucket)
-                if (shouldUseBase64) {
-                    console.log("📱 [STEP 1] Mobile detected. Using Base64 strategy.");
-                    console.log("📱 [STEP 1] File details:", { name: selectedFile.name, size: selectedFile.size, type: selectedFile.type });
-
-                    // Reduced limit to 2MB for mobile reliability
-                    const MAX_MOBILE_SIZE = 2 * 1024 * 1024;
-                    if (selectedFile.size > MAX_MOBILE_SIZE) {
-                        throw new Error(`File too large (${(selectedFile.size / 1024 / 1024).toFixed(1)}MB). Max 2MB on mobile. Please compress or use desktop.`);
-                    }
-
-                    // Convert to Base64 with timeout
-                    console.log("📱 [STEP 2] Starting Base64 conversion...");
-                    let base64Data;
-                    try {
-                        base64Data = await new Promise((resolve, reject) => {
-                            const reader = new FileReader();
-
-                            // 30 second timeout
-                            const timeout = setTimeout(() => {
-                                reader.abort();
-                                reject(new Error('File read timed out. Please try a smaller file.'));
-                            }, 30000);
-
-                            reader.onload = () => {
-                                clearTimeout(timeout);
-                                resolve(reader.result);
-                            };
-                            reader.onerror = (e) => {
-                                clearTimeout(timeout);
-                                reject(new Error('Failed to read file: ' + (e.message || 'Unknown error')));
-                            };
-                            reader.onabort = () => {
-                                clearTimeout(timeout);
-                                reject(new Error('File read was aborted'));
-                            };
-
-                            reader.readAsDataURL(selectedFile);
-                        });
-                    } catch (readError) {
-                        console.error("FileReader error:", readError);
-                        throw readError;
-                    }
-
-                    if (!base64Data || !base64Data.startsWith('data:')) {
-                        throw new Error('Failed to convert file. Please try again.');
-                    }
-
-                    fileData = {
-                        url: base64Data,
-                        name: selectedFile.name,
-                        size: selectedFile.size,
-                        type: selectedFile.type || 'unknown'
-                    };
-
-                    console.log("📱 [STEP 3] Base64 ready (" + (base64Data.length / 1024).toFixed(0) + " KB)");
-                    console.log("📱 [STEP 3] fileData created:", { name: fileData.name, size: fileData.size, urlLength: fileData.url?.length });
+                // Session Safety (Optional)
+                try {
+                    console.log("🔐 [PRE-FLIGHT] checking session...");
+                    const refreshed = await refreshSession();
+                    if (refreshed) console.log("🔐 Session valid.");
+                } catch (err) {
+                    console.warn("Session check warning", err);
                 }
-                else {
-                    // DESKTOP STRATEGY: Standard Supabase Storage Upload
-                    // We remove almost all custom options to let the SDK decide the best path.
 
-                    // 0. AUTH CHECK & TOKEN RETRIEVAL
-                    console.log("Pre-flight process...");
-                    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                // UNIFIED UPLOAD STRATEGY: Use Supabase Storage SDK for all platforms
+                // The Base64 strategy was causing database timeouts on mobile.
 
-                    if (sessionError || !session) {
-                        console.error("Session missing during upload:", sessionError);
-                        throw new Error("You appear to be logged out. Please refresh and login again.");
-                    }
+                console.log("📱 [UPLOAD] Using Supabase Storage SDK...");
+                console.log("File:", selectedFile.name, selectedFile.size, selectedFile.type);
 
-                    // 5. NUCLEAR OPTION: Raw Fetch (Bypass SDK)
-                    // We construct the URL manually. standard supabase storage URL format.
-                    const projectId = import.meta.env.VITE_SUPABASE_URL;
-                    const pathEncoded = path.split('/').map(p => encodeURIComponent(p)).join('/'); // Safely encode path
-                    const uploadUrl = `${projectId}/storage/v1/object/reflection-files/${pathEncoded}`;
-                    const token = session.access_token;
+                // Use the SDK's upload method directly
+                // Note: We skip getBucket because it requires admin permissions and crashes the app for normal users.
 
-                    const response = await fetch(uploadUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`, // Explicit Auth header
-                            'x-client-info': 'fap-raw-upload',
-                            'Content-Type': selectedFile.type || 'application/octet-stream',
-                            'cache-control': '3600',
-                            'x-upsert': 'false'
-                        },
-                        body: selectedFile
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('reflection-files')
+                    .upload(path, selectedFile, {
+                        cacheControl: '3600',
+                        upsert: false
                     });
 
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error("Raw Upload Failed:", response.status, errorText);
-                        if (response.status === 401) {
-                            throw new Error("Upload Rejected: Auth Token Invalid. Please Log out and Log in.");
-                        }
-                        throw new Error(`Server Error (${response.status}): ${errorText}`);
+                if (uploadError) {
+                    console.error("📱 [UPLOAD] SDK upload failed:", uploadError);
+
+                    if (uploadError.message?.includes('JWT') || uploadError.message?.includes('token')) {
+                        throw new Error("Session expired during upload. Please log in again.");
                     }
-
-                    // MOCK SDK RESPONSE so downstream code works
-                    const uploadError = null;
-
-                    /* LEGACY SDK CODE REMOVED */
-
-                    const urlData = supabase.storage.from('reflection-files').getPublicUrl(path);
-                    fileData = {
-                        url: urlData.data.publicUrl,
-                        name: selectedFile.name,
-                        size: selectedFile.size,
-                        type: selectedFile.name.split('.').pop() || 'file'
-                    };
+                    if (uploadError.statusCode === 403 || uploadError.message?.includes('policy')) {
+                        throw new Error(`Upload denied: Check file size/type or contact admin. (${uploadError.message})`);
+                    }
+                    throw new Error(`Upload failed: ${uploadError.message}`);
                 }
+
+                console.log("📱 [UPLOAD] SDK upload successful:", uploadData);
+
+                // Get the public URL
+                const { data: urlData } = supabase.storage
+                    .from('reflection-files')
+                    .getPublicUrl(path);
+
+                fileData = {
+                    url: urlData.publicUrl,
+                    name: selectedFile.name,
+                    size: selectedFile.size,
+                    type: selectedFile.name.split('.').pop() || 'file'
+                };
+
+                console.log("📱 [UPLOAD] File URL obtained:", fileData.url);
             }
+
 
             console.log("📱 [STEP 4] File processing complete, now saving to database...");
             setSubmissionStatus('saving');

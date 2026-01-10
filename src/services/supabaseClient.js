@@ -20,82 +20,67 @@ if (!supabaseUrl || !supabaseAnonKey) {
  */
 const createRobustStorage = () => {
     let inMemoryStorage = {};
+    let preferredStorage = null;
 
-    const isStorageAvailable = (storage) => {
-        try {
-            const testKey = '__fap_storage_test__';
-            storage.setItem(testKey, testKey);
-            storage.removeItem(testKey);
-            return true;
-        } catch (e) {
-            console.warn('Storage not available:', e.message);
-            return false;
-        }
-    };
+    // Check storage availability ONCE at initialization
+    if (typeof window !== 'undefined') {
+        const isAvailable = (storage) => {
+            try {
+                const testKey = '__fap_storage_test__';
+                storage.setItem(testKey, testKey);
+                storage.removeItem(testKey);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        };
 
-    const getPreferredStorage = () => {
-        if (typeof window === 'undefined') return null;
-        if (isStorageAvailable(window.localStorage)) return window.localStorage;
-        if (isStorageAvailable(window.sessionStorage)) return window.sessionStorage;
-        console.warn('No persistent storage available, using in-memory fallback');
-        return null;
-    };
+        if (isAvailable(window.localStorage)) preferredStorage = window.localStorage;
+        else if (isAvailable(window.sessionStorage)) preferredStorage = window.sessionStorage;
+    }
+
+    if (!preferredStorage) {
+        console.warn('Persistent storage not available, using in-memory fallback');
+    }
 
     return {
         getItem: (key) => {
             try {
-                const storage = getPreferredStorage();
-                if (storage) return storage.getItem(key);
+                if (preferredStorage) return preferredStorage.getItem(key);
                 return inMemoryStorage[key] || null;
             } catch (e) {
-                console.warn('Storage getItem failed:', e);
                 return inMemoryStorage[key] || null;
             }
         },
         setItem: (key, value) => {
             try {
-                const storage = getPreferredStorage();
-                if (storage) {
-                    storage.setItem(key, value);
-                } else {
-                    inMemoryStorage[key] = value;
-                }
+                if (preferredStorage) preferredStorage.setItem(key, value);
+                else inMemoryStorage[key] = value;
             } catch (e) {
-                console.warn('Storage setItem failed, using in-memory:', e);
                 inMemoryStorage[key] = value;
             }
         },
         removeItem: (key) => {
             try {
-                const storage = getPreferredStorage();
-                if (storage) storage.removeItem(key);
+                if (preferredStorage) preferredStorage.removeItem(key);
                 delete inMemoryStorage[key];
             } catch (e) {
-                console.warn('Storage removeItem failed:', e);
                 delete inMemoryStorage[key];
             }
         }
     };
 };
 
-// Create the robust storage instance
-const robustStorage = createRobustStorage();
-
-// Create Supabase client with enhanced mobile support
+// Initialize Supabase Client with Robust Config
 export const supabase = supabaseUrl && supabaseAnonKey
     ? createClient(supabaseUrl, supabaseAnonKey, {
         auth: {
+            storage: createRobustStorage(),
             autoRefreshToken: true,
             persistSession: true,
             detectSessionInUrl: true,
-            storage: robustStorage           // Custom storage for mobile reliability
-            // NOTE: We intentionally don't change storageKey or flowType
-            // to maintain backward compatibility with existing sessions
-        },
-        global: {
-            headers: {
-                'x-application-name': 'FAP-NextGen'
-            }
+            storageKey: 'fap-nextgen-auth',
+            flowType: 'pkce' // Vital for mobile stability
         }
     })
     : null;
@@ -122,6 +107,19 @@ export const isMobileOrSlowNetwork = () => {
     const isSlowNetwork = connection &&
         (connection.effectiveType === '2g' || connection.effectiveType === 'slow-2g' || connection.saveData);
     return isMobile || isSlowNetwork;
+};
+
+// Helper: Force session refresh
+export const refreshSession = async () => {
+    if (!supabase) return null;
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error || !session) return null;
+    const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession();
+    if (refreshError) {
+        console.warn("Session refresh failed:", refreshError);
+        return null;
+    }
+    return newSession;
 };
 
 export default supabase;
