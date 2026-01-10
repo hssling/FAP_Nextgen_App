@@ -4,13 +4,14 @@ import { supabase } from '../services/supabaseClient';
 import {
     GraduationCap, BookOpen, CheckCircle, Users, Home,
     FileText, Star, TrendingUp, RefreshCw, AlertCircle,
-    ChevronDown, ChevronUp, Search, Filter
+    ChevronDown, ChevronUp, Search, Filter, AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const AdminDashboard = () => {
     const { profile } = useAuth();
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState('overview');
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -27,7 +28,6 @@ const AdminDashboard = () => {
     // Oversight Data
     const [allReflections, setAllReflections] = useState([]);
     const [allStudents, setAllStudents] = useState([]);
-    const [expandedRows, setExpandedRows] = useState({});
 
     useEffect(() => {
         if (profile?.id) {
@@ -37,34 +37,48 @@ const AdminDashboard = () => {
 
     const fetchDashboardData = async () => {
         setLoading(true);
+        setError(null);
+
         try {
+            console.log('[Admin] Starting data fetch...');
+
             // Fetch student count
-            const { count: studentCount } = await supabase
+            const { count: studentCount, error: e1 } = await supabase
                 .from('profiles')
                 .select('*', { count: 'exact', head: true })
                 .eq('role', 'student')
                 .eq('is_active', true);
 
+            if (e1) console.error('[Admin] Student count error:', e1);
+
             // Fetch teacher count
-            const { count: teacherCount } = await supabase
+            const { count: teacherCount, error: e2 } = await supabase
                 .from('profiles')
                 .select('*', { count: 'exact', head: true })
                 .eq('role', 'teacher')
                 .eq('is_active', true);
 
+            if (e2) console.error('[Admin] Teacher count error:', e2);
+
             // Fetch total families
-            const { count: familyCount } = await supabase
+            const { count: familyCount, error: e3 } = await supabase
                 .from('families')
                 .select('*', { count: 'exact', head: true });
 
-            // Fetch all reflections with student info
-            const { data: reflections, count: reflectionCount } = await supabase
+            if (e3) console.error('[Admin] Families count error:', e3);
+
+            // Fetch all reflections - simpler query first
+            const { data: reflections, error: e4 } = await supabase
                 .from('reflections')
-                .select(`
-                    *,
-                    student:profiles!student_id(id, full_name, registration_number)
-                `, { count: 'exact' })
-                .order('created_at', { ascending: false });
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(200);
+
+            if (e4) {
+                console.error('[Admin] Reflections error:', e4);
+            }
+
+            console.log('[Admin] Reflections fetched:', reflections?.length || 0);
 
             const pending = reflections?.filter(r => r.status === 'Pending' || !r.status).length || 0;
             const graded = reflections?.filter(r => r.status === 'Graded').length || 0;
@@ -73,23 +87,47 @@ const AdminDashboard = () => {
                 totalStudents: studentCount || 0,
                 totalTeachers: teacherCount || 0,
                 totalFamilies: familyCount || 0,
-                totalReflections: reflectionCount || 0,
+                totalReflections: reflections?.length || 0,
                 pendingReflections: pending,
                 gradedReflections: graded
             });
 
-            setAllReflections(reflections || []);
+            // Now enrich reflections with student names
+            if (reflections && reflections.length > 0) {
+                const studentIds = [...new Set(reflections.map(r => r.student_id).filter(Boolean))];
 
-            // Fetch all students with their stats
-            const { data: students } = await supabase
+                const { data: studentProfiles } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, registration_number')
+                    .in('id', studentIds);
+
+                const studentMap = {};
+                (studentProfiles || []).forEach(s => { studentMap[s.id] = s; });
+
+                const enrichedReflections = reflections.map(r => ({
+                    ...r,
+                    student: studentMap[r.student_id] || { full_name: 'Unknown', registration_number: '' }
+                }));
+
+                setAllReflections(enrichedReflections);
+            } else {
+                setAllReflections([]);
+            }
+
+            // Fetch all students
+            const { data: students, error: e5 } = await supabase
                 .from('profiles')
                 .select('id, full_name, registration_number, email, year')
                 .eq('role', 'student')
                 .eq('is_active', true)
                 .order('full_name');
 
-            if (students) {
-                // Enrich with family and reflection counts
+            if (e5) console.error('[Admin] Students fetch error:', e5);
+
+            console.log('[Admin] Students fetched:', students?.length || 0);
+
+            if (students && students.length > 0) {
+                // Batch fetch families count and reflections
                 const enrichedStudents = await Promise.all(students.map(async (s) => {
                     const { count: famCount } = await supabase
                         .from('families')
@@ -116,17 +154,18 @@ const AdminDashboard = () => {
                     };
                 }));
                 setAllStudents(enrichedStudents);
+            } else {
+                setAllStudents([]);
             }
 
-        } catch (error) {
-            console.error('Error fetching admin data:', error);
+            console.log('[Admin] Data fetch complete');
+
+        } catch (err) {
+            console.error('[Admin] Critical error:', err);
+            setError(err.message);
         } finally {
             setLoading(false);
         }
-    };
-
-    const toggleRow = (id) => {
-        setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
     const filteredStudents = allStudents.filter(s =>
@@ -141,27 +180,29 @@ const AdminDashboard = () => {
 
     const StatCard = ({ icon: Icon, label, value, color, bgGradient, borderColor }) => (
         <div className="card" style={{
-            padding: '1.5rem',
+            padding: '1.25rem',
             background: bgGradient,
-            border: `1px solid ${borderColor}`
+            border: `1px solid ${borderColor}`,
+            minWidth: '140px'
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '12px',
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '10px',
                     backgroundColor: color,
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    flexShrink: 0
                 }}>
-                    <Icon size={24} color="white" />
+                    <Icon size={20} color="white" />
                 </div>
-                <div>
-                    <p style={{ fontSize: '0.875rem', color: '#6B7280', marginBottom: '0.25rem' }}>
+                <div style={{ minWidth: 0 }}>
+                    <p style={{ fontSize: '0.75rem', color: '#6B7280', marginBottom: '0.125rem', whiteSpace: 'nowrap' }}>
                         {label}
                     </p>
-                    <p style={{ fontSize: '2rem', fontWeight: '700', color: '#1F2937' }}>
+                    <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1F2937' }}>
                         {loading ? '...' : value}
                     </p>
                 </div>
@@ -169,15 +210,109 @@ const AdminDashboard = () => {
         </div>
     );
 
-    return (
-        <div style={{ padding: '2rem' }}>
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+    // Mobile Card Component for Reflections
+    const ReflectionCard = ({ ref: reflection }) => (
+        <div style={{
+            padding: '1rem',
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            border: '1px solid #E5E7EB',
+            marginBottom: '0.75rem'
+        }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                 <div>
-                    <h1 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '0.5rem' }}>
+                    <div style={{ fontWeight: '600', color: '#111827', fontSize: '0.95rem' }}>
+                        {reflection.student?.full_name || 'Unknown'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>
+                        {reflection.student?.registration_number || ''}
+                    </div>
+                </div>
+                <span style={{
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '9999px',
+                    fontSize: '0.7rem',
+                    fontWeight: '600',
+                    backgroundColor: reflection.status === 'Graded' ? '#D1FAE5' : '#FEF3C7',
+                    color: reflection.status === 'Graded' ? '#065F46' : '#92400E'
+                }}>
+                    {reflection.status || 'Pending'}
+                </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <div>
+                    <div style={{ fontSize: '0.65rem', color: '#9CA3AF', textTransform: 'uppercase' }}>Date</div>
+                    <div style={{ fontSize: '0.85rem', color: '#374151' }}>{new Date(reflection.created_at).toLocaleDateString()}</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.65rem', color: '#9CA3AF', textTransform: 'uppercase' }}>Grade</div>
+                    <div style={{ fontSize: '1rem', fontWeight: '700', color: '#0F766E' }}>{reflection.grade || '-'}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.65rem', color: '#9CA3AF', textTransform: 'uppercase' }}>Score</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#374151' }}>{reflection.total_score ? `${reflection.total_score}/100` : '-'}</div>
+                </div>
+            </div>
+            {reflection.teacher_feedback && (
+                <div style={{
+                    fontSize: '0.8rem',
+                    color: '#4B5563',
+                    backgroundColor: '#F9FAFB',
+                    padding: '0.5rem',
+                    borderRadius: '6px',
+                    marginTop: '0.5rem'
+                }}>
+                    <strong>Feedback:</strong> {reflection.teacher_feedback.substring(0, 80)}{reflection.teacher_feedback.length > 80 ? '...' : ''}
+                </div>
+            )}
+        </div>
+    );
+
+    // Mobile Card Component for Students
+    const StudentCard = ({ student }) => (
+        <div style={{
+            padding: '1rem',
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            border: '1px solid #E5E7EB',
+            marginBottom: '0.75rem'
+        }}>
+            <div style={{ fontWeight: '600', color: '#111827', fontSize: '0.95rem', marginBottom: '0.25rem' }}>
+                {student.full_name}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#6B7280', marginBottom: '0.75rem' }}>
+                {student.registration_number || 'No Reg. No.'} {student.year ? `• Year ${student.year}` : ''}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
+                <div>
+                    <div style={{ fontSize: '0.6rem', color: '#9CA3AF', textTransform: 'uppercase' }}>Families</div>
+                    <div style={{ fontSize: '1rem', fontWeight: '700', color: '#0F766E' }}>{student.familyCount}</div>
+                </div>
+                <div>
+                    <div style={{ fontSize: '0.6rem', color: '#9CA3AF', textTransform: 'uppercase' }}>Reflect.</div>
+                    <div style={{ fontSize: '1rem', fontWeight: '700', color: '#3B82F6' }}>{student.reflectionCount}</div>
+                </div>
+                <div>
+                    <div style={{ fontSize: '0.6rem', color: '#9CA3AF', textTransform: 'uppercase' }}>Graded</div>
+                    <div style={{ fontSize: '1rem', fontWeight: '700', color: '#059669' }}>{student.gradedCount}</div>
+                </div>
+                <div>
+                    <div style={{ fontSize: '0.6rem', color: '#9CA3AF', textTransform: 'uppercase' }}>Avg.</div>
+                    <div style={{ fontSize: '1rem', fontWeight: '700', color: '#1F2937' }}>{student.avgScore}</div>
+                </div>
+            </div>
+        </div>
+    );
+
+    return (
+        <div style={{ padding: '1rem' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div>
+                    <h1 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '0.25rem' }}>
                         Admin Dashboard
                     </h1>
-                    <p style={{ color: '#6B7280' }}>
+                    <p style={{ color: '#6B7280', fontSize: '0.9rem' }}>
                         Welcome, {profile?.full_name || 'Administrator'}!
                     </p>
                 </div>
@@ -187,6 +322,7 @@ const AdminDashboard = () => {
                     style={{
                         display: 'flex',
                         alignItems: 'center',
+                        justifyContent: 'center',
                         gap: '0.5rem',
                         padding: '0.75rem 1.5rem',
                         backgroundColor: '#0F172A',
@@ -194,26 +330,46 @@ const AdminDashboard = () => {
                         border: 'none',
                         borderRadius: '8px',
                         cursor: 'pointer',
-                        fontWeight: '600'
+                        fontWeight: '600',
+                        width: '100%',
+                        maxWidth: '200px'
                     }}
                 >
                     <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                    Refresh Data
+                    {loading ? 'Loading...' : 'Refresh'}
                 </button>
             </div>
 
-            {/* Tab Navigation */}
+            {/* Error Display */}
+            {error && (
+                <div style={{
+                    padding: '1rem',
+                    backgroundColor: '#FEE2E2',
+                    border: '1px solid #FECACA',
+                    borderRadius: '8px',
+                    marginBottom: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem'
+                }}>
+                    <AlertTriangle size={20} color="#DC2626" />
+                    <span style={{ color: '#991B1B', fontSize: '0.9rem' }}>Error: {error}</span>
+                </div>
+            )}
+
+            {/* Tab Navigation - Scrollable on Mobile */}
             <div style={{
                 display: 'flex',
-                gap: '1rem',
-                marginBottom: '2rem',
-                borderBottom: '2px solid #E5E7EB',
-                paddingBottom: '0'
+                gap: '0.5rem',
+                marginBottom: '1.5rem',
+                overflowX: 'auto',
+                paddingBottom: '0.5rem',
+                borderBottom: '2px solid #E5E7EB'
             }}>
                 {[
                     { id: 'overview', label: 'Overview', icon: TrendingUp },
-                    { id: 'oversight', label: 'Oversight & Grades', icon: Star },
-                    { id: 'students', label: 'All Students', icon: Users }
+                    { id: 'oversight', label: 'Grades', icon: Star },
+                    { id: 'students', label: 'Students', icon: Users }
                 ].map(tab => (
                     <button
                         key={tab.id}
@@ -221,18 +377,20 @@ const AdminDashboard = () => {
                         style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.75rem 1.5rem',
+                            gap: '0.4rem',
+                            padding: '0.6rem 1rem',
                             borderBottom: activeTab === tab.id ? '3px solid #0F766E' : '3px solid transparent',
                             color: activeTab === tab.id ? '#0F766E' : '#6B7280',
                             fontWeight: activeTab === tab.id ? '700' : '500',
                             backgroundColor: 'transparent',
                             border: 'none',
                             cursor: 'pointer',
-                            marginBottom: '-2px'
+                            marginBottom: '-2px',
+                            whiteSpace: 'nowrap',
+                            fontSize: '0.9rem'
                         }}
                     >
-                        <tab.icon size={18} />
+                        <tab.icon size={16} />
                         {tab.label}
                     </button>
                 ))}
@@ -241,16 +399,16 @@ const AdminDashboard = () => {
             {/* Tab Content */}
             {activeTab === 'overview' && (
                 <>
-                    {/* Stats Cards */}
+                    {/* Stats Cards - Responsive Grid */}
                     <div style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                        gap: '1.5rem',
-                        marginBottom: '2rem'
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                        gap: '1rem',
+                        marginBottom: '1.5rem'
                     }}>
                         <StatCard
                             icon={GraduationCap}
-                            label="Total Students"
+                            label="Students"
                             value={stats.totalStudents}
                             color="#3B82F6"
                             bgGradient="linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)"
@@ -258,7 +416,7 @@ const AdminDashboard = () => {
                         />
                         <StatCard
                             icon={BookOpen}
-                            label="Total Teachers"
+                            label="Teachers"
                             value={stats.totalTeachers}
                             color="#F59E0B"
                             bgGradient="linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)"
@@ -266,7 +424,7 @@ const AdminDashboard = () => {
                         />
                         <StatCard
                             icon={Home}
-                            label="Total Families"
+                            label="Families"
                             value={stats.totalFamilies}
                             color="#10B981"
                             bgGradient="linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%)"
@@ -274,7 +432,7 @@ const AdminDashboard = () => {
                         />
                         <StatCard
                             icon={FileText}
-                            label="Total Reflections"
+                            label="Reflections"
                             value={stats.totalReflections}
                             color="#8B5CF6"
                             bgGradient="linear-gradient(135deg, #EDE9FE 0%, #DDD6FE 100%)"
@@ -282,7 +440,7 @@ const AdminDashboard = () => {
                         />
                         <StatCard
                             icon={AlertCircle}
-                            label="Pending Reviews"
+                            label="Pending"
                             value={stats.pendingReflections}
                             color="#EF4444"
                             bgGradient="linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%)"
@@ -290,7 +448,7 @@ const AdminDashboard = () => {
                         />
                         <StatCard
                             icon={CheckCircle}
-                            label="Graded Reflections"
+                            label="Graded"
                             value={stats.gradedReflections}
                             color="#059669"
                             bgGradient="linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)"
@@ -300,17 +458,17 @@ const AdminDashboard = () => {
 
                     {/* System Status */}
                     <div className="card" style={{
-                        padding: '2rem',
+                        padding: '1.5rem',
                         textAlign: 'center',
                         background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)',
                         border: '2px solid #86EFAC'
                     }}>
-                        <CheckCircle size={64} color="#16A34A" style={{ margin: '0 auto 1rem' }} />
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#166534', marginBottom: '0.5rem' }}>
-                            System Status: Online
+                        <CheckCircle size={48} color="#16A34A" style={{ margin: '0 auto 0.75rem' }} />
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#166534', marginBottom: '0.5rem' }}>
+                            System Online
                         </h2>
-                        <p style={{ color: '#15803D', fontSize: '1rem' }}>
-                            All services are running normally. Data last refreshed at {new Date().toLocaleTimeString()}.
+                        <p style={{ color: '#15803D', fontSize: '0.85rem' }}>
+                            Last refreshed: {new Date().toLocaleTimeString()}
                         </p>
                     </div>
                 </>
@@ -318,12 +476,13 @@ const AdminDashboard = () => {
 
             {activeTab === 'oversight' && (
                 <div>
-                    <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
-                            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
+                    {/* Search */}
+                    <div style={{ marginBottom: '1rem' }}>
+                        <div style={{ position: 'relative' }}>
+                            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
                             <input
                                 type="text"
-                                placeholder="Search by student name or ID..."
+                                placeholder="Search by name or ID..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 style={{
@@ -335,87 +494,36 @@ const AdminDashboard = () => {
                                 }}
                             />
                         </div>
-                        <span style={{ color: '#6B7280', fontSize: '0.9rem' }}>
-                            Showing {filteredReflections.length} reflections
-                        </span>
+                        <p style={{ color: '#6B7280', fontSize: '0.8rem', marginTop: '0.5rem' }}>
+                            {filteredReflections.length} reflection{filteredReflections.length !== 1 ? 's' : ''} found
+                        </p>
                     </div>
 
-                    <div className="card" style={{ overflow: 'hidden' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr style={{ backgroundColor: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#374151' }}>Student</th>
-                                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#374151' }}>Date</th>
-                                    <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#374151' }}>Status</th>
-                                    <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#374151' }}>Grade</th>
-                                    <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#374151' }}>Score</th>
-                                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#374151' }}>Teacher Feedback</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    <tr>
-                                        <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: '#9CA3AF' }}>Loading...</td>
-                                    </tr>
-                                ) : filteredReflections.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: '#9CA3AF' }}>No reflections found.</td>
-                                    </tr>
-                                ) : (
-                                    filteredReflections.map(ref => (
-                                        <tr key={ref.id} style={{ borderBottom: '1px solid #E5E7EB' }}>
-                                            <td style={{ padding: '1rem' }}>
-                                                <div style={{ fontWeight: '600', color: '#111827' }}>{ref.student?.full_name || 'N/A'}</div>
-                                                <div style={{ fontSize: '0.8rem', color: '#6B7280' }}>{ref.student?.registration_number || ''}</div>
-                                            </td>
-                                            <td style={{ padding: '1rem', color: '#4B5563', fontSize: '0.9rem' }}>
-                                                {new Date(ref.created_at).toLocaleDateString()}
-                                            </td>
-                                            <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                                <span style={{
-                                                    padding: '0.25rem 0.75rem',
-                                                    borderRadius: '9999px',
-                                                    fontSize: '0.75rem',
-                                                    fontWeight: '600',
-                                                    backgroundColor: ref.status === 'Graded' ? '#D1FAE5' : '#FEF3C7',
-                                                    color: ref.status === 'Graded' ? '#065F46' : '#92400E'
-                                                }}>
-                                                    {ref.status || 'Pending'}
-                                                </span>
-                                            </td>
-                                            <td style={{ padding: '1rem', textAlign: 'center', fontWeight: '700', fontSize: '1.1rem', color: '#0F766E' }}>
-                                                {ref.grade || '-'}
-                                            </td>
-                                            <td style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#374151' }}>
-                                                {ref.total_score ? `${ref.total_score}/100` : '-'}
-                                            </td>
-                                            <td style={{ padding: '1rem', color: '#4B5563', fontSize: '0.85rem', maxWidth: '300px' }}>
-                                                {ref.teacher_feedback ? (
-                                                    <div style={{
-                                                        maxHeight: '60px',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis'
-                                                    }}>
-                                                        {ref.teacher_feedback.substring(0, 100)}{ref.teacher_feedback.length > 100 ? '...' : ''}
-                                                    </div>
-                                                ) : (
-                                                    <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>No feedback yet</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                    {/* Mobile Card List */}
+                    {loading ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: '#9CA3AF' }}>Loading reflections...</div>
+                    ) : filteredReflections.length === 0 ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: '#9CA3AF', backgroundColor: '#F9FAFB', borderRadius: '12px' }}>
+                            <FileText size={32} style={{ margin: '0 auto 0.5rem', opacity: 0.5 }} />
+                            <p>No reflections found.</p>
+                            <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>Students may not have submitted any reflections yet.</p>
+                        </div>
+                    ) : (
+                        <div>
+                            {filteredReflections.map(reflection => (
+                                <ReflectionCard key={reflection.id} ref={reflection} />
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 
             {activeTab === 'students' && (
                 <div>
-                    <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
-                            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
+                    {/* Search */}
+                    <div style={{ marginBottom: '1rem' }}>
+                        <div style={{ position: 'relative' }}>
+                            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
                             <input
                                 type="text"
                                 placeholder="Search students..."
@@ -430,49 +538,27 @@ const AdminDashboard = () => {
                                 }}
                             />
                         </div>
-                        <span style={{ color: '#6B7280', fontSize: '0.9rem' }}>
-                            {filteredStudents.length} students
-                        </span>
+                        <p style={{ color: '#6B7280', fontSize: '0.8rem', marginTop: '0.5rem' }}>
+                            {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''} found
+                        </p>
                     </div>
 
-                    <div className="card" style={{ overflow: 'hidden' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr style={{ backgroundColor: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#374151' }}>Student Name</th>
-                                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#374151' }}>Reg. No.</th>
-                                    <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#374151' }}>Year</th>
-                                    <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#374151' }}>Families</th>
-                                    <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#374151' }}>Reflections</th>
-                                    <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#374151' }}>Graded</th>
-                                    <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#374151' }}>Avg. Score</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    <tr>
-                                        <td colSpan="7" style={{ padding: '2rem', textAlign: 'center', color: '#9CA3AF' }}>Loading...</td>
-                                    </tr>
-                                ) : filteredStudents.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="7" style={{ padding: '2rem', textAlign: 'center', color: '#9CA3AF' }}>No students found.</td>
-                                    </tr>
-                                ) : (
-                                    filteredStudents.map(student => (
-                                        <tr key={student.id} style={{ borderBottom: '1px solid #E5E7EB' }}>
-                                            <td style={{ padding: '1rem', fontWeight: '600', color: '#111827' }}>{student.full_name}</td>
-                                            <td style={{ padding: '1rem', color: '#4B5563', fontSize: '0.9rem' }}>{student.registration_number || '-'}</td>
-                                            <td style={{ padding: '1rem', textAlign: 'center', color: '#4B5563' }}>{student.year || '-'}</td>
-                                            <td style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#0F766E' }}>{student.familyCount}</td>
-                                            <td style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#3B82F6' }}>{student.reflectionCount}</td>
-                                            <td style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#059669' }}>{student.gradedCount}</td>
-                                            <td style={{ padding: '1rem', textAlign: 'center', fontWeight: '700', color: '#1F2937' }}>{student.avgScore}</td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                    {/* Mobile Card List */}
+                    {loading ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: '#9CA3AF' }}>Loading students...</div>
+                    ) : filteredStudents.length === 0 ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: '#9CA3AF', backgroundColor: '#F9FAFB', borderRadius: '12px' }}>
+                            <Users size={32} style={{ margin: '0 auto 0.5rem', opacity: 0.5 }} />
+                            <p>No students found.</p>
+                            <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>No active students in the system yet.</p>
+                        </div>
+                    ) : (
+                        <div>
+                            {filteredStudents.map(student => (
+                                <StudentCard key={student.id} student={student} />
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
         </div>
