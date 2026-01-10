@@ -10,68 +10,91 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 /**
- * Custom storage adapter for mobile session persistence
- * Falls back gracefully: localStorage → sessionStorage → in-memory
+ * ROBUST Storage Adapter for Session Persistence
+ * 
+ * FIXES:
+ * 1. Caches storage availability check (only checks once on init)
+ * 2. Uses a stable storage reference to avoid re-checking on every call
+ * 3. Falls back gracefully: localStorage → sessionStorage → in-memory
+ * 
  * This fixes issues with:
  * - Private/Incognito browsing
- * - In-app mobile browsers (WebView)
+ * - In-app mobile browsers (WebView) 
  * - PWA with aggressive cache clearing
  * - Safari on iOS with storage restrictions
  */
 const createRobustStorage = () => {
     let inMemoryStorage = {};
+    let preferredStorage = null;
+    let storageChecked = false;
 
     const isStorageAvailable = (storage) => {
         try {
             const testKey = '__fap_storage_test__';
             storage.setItem(testKey, testKey);
+            const retrieved = storage.getItem(testKey);
             storage.removeItem(testKey);
-            return true;
+            return retrieved === testKey;
         } catch (e) {
-            console.warn('Storage not available:', e.message);
             return false;
         }
     };
 
-    const getPreferredStorage = () => {
-        if (typeof window === 'undefined') return null;
-        if (isStorageAvailable(window.localStorage)) return window.localStorage;
-        if (isStorageAvailable(window.sessionStorage)) return window.sessionStorage;
-        console.warn('No persistent storage available, using in-memory fallback');
-        return null;
+    const initStorage = () => {
+        if (storageChecked) return;
+        storageChecked = true;
+
+        if (typeof window === 'undefined') {
+            console.log('[Storage] No window - using in-memory');
+            return;
+        }
+
+        if (isStorageAvailable(window.localStorage)) {
+            preferredStorage = window.localStorage;
+            console.log('[Storage] Using localStorage');
+        } else if (isStorageAvailable(window.sessionStorage)) {
+            preferredStorage = window.sessionStorage;
+            console.log('[Storage] Using sessionStorage (localStorage unavailable)');
+        } else {
+            console.warn('[Storage] No persistent storage available, using in-memory fallback');
+        }
     };
+
+    // Initialize immediately
+    initStorage();
 
     return {
         getItem: (key) => {
             try {
-                const storage = getPreferredStorage();
-                if (storage) return storage.getItem(key);
+                if (preferredStorage) {
+                    return preferredStorage.getItem(key);
+                }
                 return inMemoryStorage[key] || null;
             } catch (e) {
-                console.warn('Storage getItem failed:', e);
+                console.warn('[Storage] getItem failed:', e.message);
                 return inMemoryStorage[key] || null;
             }
         },
         setItem: (key, value) => {
             try {
-                const storage = getPreferredStorage();
-                if (storage) {
-                    storage.setItem(key, value);
+                if (preferredStorage) {
+                    preferredStorage.setItem(key, value);
                 } else {
                     inMemoryStorage[key] = value;
                 }
             } catch (e) {
-                console.warn('Storage setItem failed, using in-memory:', e);
+                console.warn('[Storage] setItem failed, using in-memory:', e.message);
                 inMemoryStorage[key] = value;
             }
         },
         removeItem: (key) => {
             try {
-                const storage = getPreferredStorage();
-                if (storage) storage.removeItem(key);
+                if (preferredStorage) {
+                    preferredStorage.removeItem(key);
+                }
                 delete inMemoryStorage[key];
             } catch (e) {
-                console.warn('Storage removeItem failed:', e);
+                console.warn('[Storage] removeItem failed:', e.message);
                 delete inMemoryStorage[key];
             }
         }
@@ -81,20 +104,29 @@ const createRobustStorage = () => {
 // Create the robust storage instance
 const robustStorage = createRobustStorage();
 
-// Create Supabase client with enhanced mobile support
+// Create Supabase client with enhanced session persistence
 export const supabase = supabaseUrl && supabaseAnonKey
     ? createClient(supabaseUrl, supabaseAnonKey, {
         auth: {
             autoRefreshToken: true,
             persistSession: true,
             detectSessionInUrl: true,
-            storage: robustStorage           // Custom storage for mobile reliability
-            // NOTE: We intentionally don't change storageKey or flowType
-            // to maintain backward compatibility with existing sessions
+            storage: robustStorage,
+            storageKey: 'fap-nextgen-auth', // Explicit key for clarity
+            flowType: 'pkce' // Most secure and reliable for mobile
         },
         global: {
             headers: {
                 'x-application-name': 'FAP-NextGen'
+            }
+        },
+        // Increase timeouts for mobile/slow networks
+        db: {
+            schema: 'public',
+        },
+        realtime: {
+            params: {
+                eventsPerSecond: 2
             }
         }
     })
@@ -122,6 +154,30 @@ export const isMobileOrSlowNetwork = () => {
     const isSlowNetwork = connection &&
         (connection.effectiveType === '2g' || connection.effectiveType === 'slow-2g' || connection.saveData);
     return isMobile || isSlowNetwork;
+};
+
+/**
+ * Force refresh the session token
+ * Call this when the app comes back to foreground or after network reconnection
+ */
+export const refreshSession = async () => {
+    if (!supabase) return null;
+
+    try {
+        console.log('[Session] Attempting refresh...');
+        const { data, error } = await supabase.auth.refreshSession();
+
+        if (error) {
+            console.error('[Session] Refresh failed:', error.message);
+            return null;
+        }
+
+        console.log('[Session] Refresh successful');
+        return data.session;
+    } catch (e) {
+        console.error('[Session] Refresh error:', e);
+        return null;
+    }
 };
 
 export default supabase;

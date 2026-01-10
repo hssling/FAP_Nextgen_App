@@ -203,11 +203,12 @@ const Reflections = () => {
                     console.log("📱 [STEP 1] Mobile detected. Using Base64 strategy.");
                     console.log("📱 [STEP 1] File details:", { name: selectedFile.name, size: selectedFile.size, type: selectedFile.type });
 
-                    // Reduced limit to 2MB for mobile reliability
-                    const MAX_MOBILE_SIZE = 2 * 1024 * 1024;
+                    // Increased limit to 5MB for mobile (Base64 adds ~33% overhead)
+                    const MAX_MOBILE_SIZE = 5 * 1024 * 1024;
                     if (selectedFile.size > MAX_MOBILE_SIZE) {
-                        throw new Error(`File too large (${(selectedFile.size / 1024 / 1024).toFixed(1)}MB). Max 2MB on mobile. Please compress or use desktop.`);
+                        throw new Error(`File too large (${(selectedFile.size / 1024 / 1024).toFixed(1)}MB). Max 5MB on mobile. Please compress or use desktop.`);
                     }
+
 
                     // Convert to Base64 with timeout
                     console.log("📱 [STEP 2] Starting Base64 conversion...");
