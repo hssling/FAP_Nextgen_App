@@ -295,41 +295,65 @@ const Reflections = () => {
                 payloadSize: JSON.stringify(payload).length
             });
 
-            // DATABASE INSERT WITH TIMEOUT PROTECTION
-            const DB_TIMEOUT_MS = 30000; // 30 seconds for DB insert
-            let dbTimeoutId;
-            let slowHintId;
+            // DATABASE INSERT WITH RETRY + TIMEOUT PROTECTION
+            const MAX_RETRIES = 3;
+            const INITIAL_TIMEOUT_MS = 15000; // 15 seconds first try (shorter to fail fast)
 
-            const insertPromise = (async () => {
-                const { error: insertError } = await supabase.from('reflections').insert([payload]);
-                if (insertError) throw insertError;
-                return true;
-            })();
+            const attemptInsert = async (attemptNum, timeoutMs) => {
+                console.log(`📱 [DB ATTEMPT ${attemptNum}/${MAX_RETRIES}] Timeout: ${timeoutMs}ms`);
 
-            const timeoutPromise = new Promise((_, reject) => {
-                dbTimeoutId = setTimeout(() => reject(new Error('DATABASE_TIMEOUT')), DB_TIMEOUT_MS);
-            });
+                return new Promise(async (resolve, reject) => {
+                    const timeoutId = setTimeout(() => {
+                        reject(new Error('DATABASE_TIMEOUT'));
+                    }, timeoutMs);
 
-            try {
-                // Show "Saving (Network Slow...)" hint if it takes more than 10 seconds
-                slowHintId = setTimeout(() => {
-                    setSubmissionStatus('saving_slow');
-                }, 10000);
+                    try {
+                        const { error: insertError } = await supabase.from('reflections').insert([payload]);
+                        clearTimeout(timeoutId);
+                        if (insertError) reject(insertError);
+                        else resolve(true);
+                    } catch (err) {
+                        clearTimeout(timeoutId);
+                        reject(err);
+                    }
+                });
+            };
 
-                await Promise.race([insertPromise, timeoutPromise]);
+            let lastError;
+            let slowHintId = setTimeout(() => setSubmissionStatus('saving_slow'), 10000);
 
-                clearTimeout(dbTimeoutId);
-                clearTimeout(slowHintId);
-                console.log("📱 [STEP 6] Database success");
-            } catch (dbErr) {
-                clearTimeout(dbTimeoutId);
-                clearTimeout(slowHintId);
-                console.error("📱 [STEP 6] Database error/timeout:", dbErr);
+            for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+                try {
+                    // Exponential backoff: 15s, 30s, 60s
+                    const timeoutMs = INITIAL_TIMEOUT_MS * Math.pow(2, attempt - 1);
+                    await attemptInsert(attempt, timeoutMs);
 
-                if (dbErr.message === 'DATABASE_TIMEOUT') {
-                    throw new Error("The network is taking too long to save your entry. Please try again. (Your file upload was saved, so retry will be faster)");
+                    clearTimeout(slowHintId);
+                    console.log("📱 [STEP 6] Database success on attempt", attempt);
+                    lastError = null;
+                    break; // Success!
+                } catch (dbErr) {
+                    lastError = dbErr;
+                    console.warn(`📱 [STEP 6] Attempt ${attempt} failed:`, dbErr.message);
+
+                    if (attempt < MAX_RETRIES && dbErr.message === 'DATABASE_TIMEOUT') {
+                        // Wait before retry (exponential backoff: 2s, 4s)
+                        const backoffMs = 2000 * Math.pow(2, attempt - 1);
+                        console.log(`📱 [RETRY] Waiting ${backoffMs}ms before retry...`);
+                        setSubmissionStatus('saving_slow');
+                        await new Promise(r => setTimeout(r, backoffMs));
+                    }
                 }
-                throw dbErr;
+            }
+
+            clearTimeout(slowHintId);
+
+            if (lastError) {
+                console.error("📱 [STEP 6] All attempts failed:", lastError);
+                if (lastError.message === 'DATABASE_TIMEOUT') {
+                    throw new Error("Database connection timed out after multiple retries. Please check your internet connection and try again.");
+                }
+                throw lastError;
             }
 
             console.log("📱 [STEP 7] SUCCESS!");
