@@ -1,5 +1,5 @@
-import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
-import { supabase, refreshSession } from '../services/supabaseClient';
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import { supabase } from '../services/supabaseClient';
 
 const AuthContext = createContext({});
 
@@ -16,13 +16,10 @@ export const AuthProvider = ({ children }) => {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [session, setSession] = useState(null);
-    const refreshIntervalRef = useRef(null);
-    const visibilityHandlerRef = useRef(null);
 
     // Load user profile from database
     const loadUserProfile = async (userId) => {
         try {
-            console.log('[Auth] Loading profile for:', userId);
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*')
@@ -30,42 +27,17 @@ export const AuthProvider = ({ children }) => {
                 .single();
 
             if (error) {
-                console.error('[Auth] Error loading profile:', error);
+                console.error('Error loading profile:', error);
+                // Return dummy profile on error to prevent indefinite loading
+                // This is a safety fallback during dev
                 return null;
             }
 
-            console.log('[Auth] Profile loaded:', data?.full_name);
             setProfile(data);
             return data;
         } catch (error) {
-            console.error('[Auth] Error loading profile:', error);
+            console.error('Error loading profile:', error);
             return null;
-        }
-    };
-
-    // Handle visibility change (refresh session when app comes to foreground)
-    const handleVisibilityChange = async () => {
-        if (document.visibilityState === 'visible' && session) {
-            console.log('[Auth] App visible - checking session...');
-
-            // Check if token is about to expire (within 5 minutes)
-            const expiresAt = session?.expires_at;
-            if (expiresAt) {
-                const expiresAtMs = expiresAt * 1000;
-                const fiveMinutesMs = 5 * 60 * 1000;
-                const now = Date.now();
-
-                if (expiresAtMs - now < fiveMinutesMs) {
-                    console.log('[Auth] Token expiring soon, refreshing...');
-                    const newSession = await refreshSession();
-                    if (newSession) {
-                        setSession(newSession);
-                        setUser(newSession.user);
-                    }
-                } else {
-                    console.log('[Auth] Session still valid');
-                }
-            }
         }
     };
 
@@ -75,40 +47,33 @@ export const AuthProvider = ({ children }) => {
 
         const initAuth = async () => {
             try {
-                console.log('[Auth] Initializing...');
-
-                // Set a safety timeout to force loading to false after 5 seconds
+                // Set a safety timeout to force loading to false after 3 seconds
+                // This prevents the "stuck on loading" screen forever
                 const safetyTimeout = setTimeout(() => {
                     if (mounted && loading) {
-                        console.warn("[Auth] Check timed out - forcing app load");
+                        console.warn("Auth check timed out - forcing app load");
                         setLoading(false);
                     }
-                }, 5000);
+                }, 3000);
 
-                const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-
-                if (error) {
-                    console.error('[Auth] getSession error:', error);
-                }
+                const { data: { session } } = await supabase.auth.getSession();
 
                 if (!mounted) {
                     clearTimeout(safetyTimeout);
                     return;
                 }
 
-                console.log('[Auth] Session exists:', !!currentSession);
+                setSession(session);
+                setUser(session?.user ?? null);
 
-                setSession(currentSession);
-                setUser(currentSession?.user ?? null);
-
-                if (currentSession?.user) {
-                    await loadUserProfile(currentSession.user.id);
+                if (session?.user) {
+                    await loadUserProfile(session.user.id);
                 }
 
                 clearTimeout(safetyTimeout);
                 setLoading(false);
             } catch (error) {
-                console.error('[Auth] Init failed:', error);
+                console.error('Auth check failed:', error);
                 if (mounted) {
                     setLoading(false);
                 }
@@ -119,16 +84,14 @@ export const AuthProvider = ({ children }) => {
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event, newSession) => {
+            async (_event, session) => {
                 if (!mounted) return;
 
-                console.log('[Auth] State change:', event, !!newSession);
+                setSession(session);
+                setUser(session?.user ?? null);
 
-                setSession(newSession);
-                setUser(newSession?.user ?? null);
-
-                if (newSession?.user) {
-                    await loadUserProfile(newSession.user.id);
+                if (session?.user) {
+                    await loadUserProfile(session.user.id);
                 } else {
                     setProfile(null);
                 }
@@ -137,37 +100,26 @@ export const AuthProvider = ({ children }) => {
             }
         );
 
-        // Set up visibility change listener for session refresh
-        visibilityHandlerRef.current = handleVisibilityChange;
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        // Set up periodic session refresh (every 10 minutes)
-        refreshIntervalRef.current = setInterval(async () => {
-            if (session) {
-                console.log('[Auth] Periodic refresh check...');
-                const newSession = await refreshSession();
-                if (newSession && mounted) {
-                    setSession(newSession);
-                    setUser(newSession.user);
-                }
-            }
-        }, 10 * 60 * 1000); // 10 minutes
+        // Check session status periodically, but rely on auto-refresh for the heavy lifting
+        // REMOVED manual interval to avoid fighting with Supabase auto-refresh
+        /*
+        const checkSessionInterval = setInterval(async () => {
+             ...
+        }, 5 * 60 * 1000); 
+        */
 
         return () => {
             mounted = false;
             subscription.unsubscribe();
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-            if (refreshIntervalRef.current) {
-                clearInterval(refreshIntervalRef.current);
-            }
+            mounted = false;
+            subscription.unsubscribe();
+            // clearInterval(checkSessionInterval);
         };
     }, []);
 
     // Sign in
     const signIn = async (username, password) => {
         try {
-            console.log('[Auth] Signing in:', username);
-
             const { data: userProfile, error: profileError } = await supabase
                 .rpc('get_user_by_username', { p_username: username });
 
@@ -175,56 +127,33 @@ export const AuthProvider = ({ children }) => {
                 throw new Error('Invalid username or password');
             }
 
-            const profileData = userProfile[0];
+            const profile = userProfile[0];
 
             const { data, error } = await supabase.auth.signInWithPassword({
-                email: profileData.email,
+                email: profile.email,
                 password: password,
             });
 
             if (error) throw error;
 
-            console.log('[Auth] Sign in successful');
-            return { data, profile: profileData };
+            return { data, profile };
         } catch (error) {
-            console.error('[Auth] Sign in error:', error);
             throw error;
         }
     };
 
     // Sign out
     const signOut = async () => {
-        console.log('[Auth] Signing out...');
-
-        // Clear interval and visibility handler
-        if (refreshIntervalRef.current) {
-            clearInterval(refreshIntervalRef.current);
-        }
-
-        // Optimistically clear state immediately
+        // Optimistically clear state immediately so the user doesn't feel stuck
         setProfile(null);
         setUser(null);
         setSession(null);
-
+        // localStorage.removeItem('fap-auth-token'); // No longer using custom key
         try {
             await supabase.auth.signOut();
-            console.log('[Auth] Sign out complete');
         } catch (error) {
-            console.error("[Auth] Sign out error:", error);
+            console.error("Error signing out (network?):", error);
         }
-    };
-
-    // Manual session refresh (can be called from components)
-    const forceRefreshSession = async () => {
-        console.log('[Auth] Force refresh requested');
-        const newSession = await refreshSession();
-        if (newSession) {
-            setSession(newSession);
-            setUser(newSession.user);
-            await loadUserProfile(newSession.user.id);
-            return true;
-        }
-        return false;
     };
 
     const value = {
@@ -234,7 +163,6 @@ export const AuthProvider = ({ children }) => {
         loading,
         signIn,
         signOut,
-        forceRefreshSession,
         isAuthenticated: !!user,
         isStudent: profile?.role === 'student',
         isTeacher: profile?.role === 'teacher',

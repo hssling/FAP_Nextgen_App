@@ -6,7 +6,7 @@ import {
     AlertCircle, Info, Loader2, Check, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase, refreshSession } from '../services/supabaseClient';
+import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import './Reflections.css';
 
@@ -161,23 +161,7 @@ const Reflections = () => {
         }
 
         setSubmitting(true);
-
-        // AbortController for timeout handling
-        const abortController = new AbortController();
-        let uploadTimeout = null;
-
         try {
-            // OPTIONAL: Try to refresh session before operation (non-blocking)
-            console.log("🔐 [PRE-FLIGHT] Attempting session refresh...");
-            try {
-                if (typeof refreshSession === 'function') {
-                    const freshSession = await refreshSession();
-                    console.log("🔐 [PRE-FLIGHT] Session refresh:", freshSession ? 'success' : 'no session');
-                }
-            } catch (sessionErr) {
-                console.warn("🔐 [PRE-FLIGHT] Session refresh failed (continuing anyway):", sessionErr);
-            }
-
             let fileData = null;
 
             // 1. Handle File Upload if active
@@ -189,17 +173,7 @@ const Reflections = () => {
                     return;
                 }
 
-                // CRITICAL: Set status IMMEDIATELY before any async work
                 setSubmissionStatus('uploading');
-
-                // Force a render before continuing (helps with mobile)
-                await new Promise(resolve => setTimeout(resolve, 100));
-
-                // Set upload timeout (2 minutes for mobile)
-                uploadTimeout = setTimeout(() => {
-                    console.warn("📱 [TIMEOUT] Upload timeout triggered");
-                    abortController.abort();
-                }, 120000);
 
                 const safeName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
                 const path = `${profile.id}/${Date.now()}_${safeName}`;
@@ -209,82 +183,133 @@ const Reflections = () => {
                 console.log("Target Path:", path);
                 console.log("Profile ID:", profile.id);
 
-                // Check file size limit (10MB for all platforms)
-                const MAX_FILE_SIZE = 10 * 1024 * 1024;
-                if (selectedFile.size > MAX_FILE_SIZE) {
-                    throw new Error(`File too large (${(selectedFile.size / 1024 / 1024).toFixed(1)}MB). Maximum is 10MB.`);
-                }
+                // 3. Fallback to FormData (Multipart) is sometimes more stable on mobile
+                // However, Supabase client prefers Blob/File. 
+                // Let's try explicit 'file' body with standard fetch if Supabase SDK is stubborn,
+                // But first, let's try the most robust Supabase option: TUS resumeable upload is default in v2.
+                // WE WILL USE A SIMPLER FETCH TO DEBUG if SDK is the issue.
 
-                // UPLOAD TO SUPABASE STORAGE
-                console.log("📱 [UPLOAD] Attempting Supabase Storage upload...");
+                // NEW STRATEGY: Use standard POST for reliability if SDK fails, or stick to SDK with minimal args.
+                // Let's stick to SDK but remove 'upsert' which sometimes causes lock issues, and ensure simple path.
 
-                let uploadSucceeded = false;
+                // Inline mobile/slow network detection (avoid dynamic import issues)
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                const isSlowNetwork = connection && (connection.effectiveType === '2g' || connection.effectiveType === 'slow-2g' || connection.saveData);
+                const shouldUseBase64 = isMobile || isSlowNetwork;
 
-                try {
-                    // Direct upload - no bucket check (getBucket requires admin permissions)
-                    console.log("📱 [UPLOAD] Starting upload to reflection-files bucket...");
+                // MOBILE/SLOW NETWORK STRATEGY: Base64 Database Storage (Bypass blocked Storage bucket)
+                if (shouldUseBase64) {
+                    console.log("📱 [STEP 1] Mobile detected. Using Base64 strategy.");
+                    console.log("📱 [STEP 1] File details:", { name: selectedFile.name, size: selectedFile.size, type: selectedFile.type });
 
-                    const { data: uploadData, error: uploadError } = await supabase.storage
-                        .from('reflection-files')
-                        .upload(path, selectedFile, {
-                            cacheControl: '3600',
-                            upsert: false
-                        });
-
-                    if (uploadError) {
-                        console.error("📱 [UPLOAD] Upload failed:", uploadError);
-
-                        // Provide specific error messages
-                        if (uploadError.message?.includes('Bucket not found')) {
-                            throw new Error("Storage bucket 'reflection-files' does not exist. Please contact admin.");
-                        }
-                        if (uploadError.message?.includes('policy') || uploadError.statusCode === 403) {
-                            throw new Error("Upload permission denied. Please contact admin.");
-                        }
-                        if (uploadError.message?.includes('JWT') || uploadError.message?.includes('token')) {
-                            throw new Error("Session expired. Please log in again.");
-                        }
-                        throw new Error(`Upload failed: ${uploadError.message}`);
+                    // Reduced limit to 2MB for mobile reliability
+                    const MAX_MOBILE_SIZE = 2 * 1024 * 1024;
+                    if (selectedFile.size > MAX_MOBILE_SIZE) {
+                        throw new Error(`File too large (${(selectedFile.size / 1024 / 1024).toFixed(1)}MB). Max 2MB on mobile. Please compress or use desktop.`);
                     }
 
-                    console.log("📱 [UPLOAD] Upload successful:", uploadData);
+                    // Convert to Base64 with timeout
+                    console.log("📱 [STEP 2] Starting Base64 conversion...");
+                    let base64Data;
+                    try {
+                        base64Data = await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
 
-                    // Get the public URL
-                    const { data: urlData } = supabase.storage
-                        .from('reflection-files')
-                        .getPublicUrl(path);
+                            // 30 second timeout
+                            const timeout = setTimeout(() => {
+                                reader.abort();
+                                reject(new Error('File read timed out. Please try a smaller file.'));
+                            }, 30000);
+
+                            reader.onload = () => {
+                                clearTimeout(timeout);
+                                resolve(reader.result);
+                            };
+                            reader.onerror = (e) => {
+                                clearTimeout(timeout);
+                                reject(new Error('Failed to read file: ' + (e.message || 'Unknown error')));
+                            };
+                            reader.onabort = () => {
+                                clearTimeout(timeout);
+                                reject(new Error('File read was aborted'));
+                            };
+
+                            reader.readAsDataURL(selectedFile);
+                        });
+                    } catch (readError) {
+                        console.error("FileReader error:", readError);
+                        throw readError;
+                    }
+
+                    if (!base64Data || !base64Data.startsWith('data:')) {
+                        throw new Error('Failed to convert file. Please try again.');
+                    }
 
                     fileData = {
-                        url: urlData.publicUrl,
+                        url: base64Data,
                         name: selectedFile.name,
                         size: selectedFile.size,
-                        type: selectedFile.name.split('.').pop() || 'file'
+                        type: selectedFile.type || 'unknown'
                     };
 
-                    console.log("📱 [UPLOAD] File URL obtained:", fileData.url);
-                    uploadSucceeded = true;
-
-                } catch (storageError) {
-                    console.error("📱 [UPLOAD] Storage failed, using metadata-only fallback:", storageError);
-
-                    // FALLBACK: Save reflection without file URL
-                    // User can re-upload later from desktop
-                    fileData = {
-                        url: null, // No URL - file not uploaded
-                        name: selectedFile.name,
-                        size: selectedFile.size,
-                        type: selectedFile.name.split('.').pop() || 'file'
-                    };
-
-                    // Set a warning for the user
-                    setUploadError(`File could not be uploaded (${storageError.message || 'Storage unavailable'}). Your reflection will be saved without the attachment. You can try uploading again later from desktop.`);
+                    console.log("📱 [STEP 3] Base64 ready (" + (base64Data.length / 1024).toFixed(0) + " KB)");
+                    console.log("📱 [STEP 3] fileData created:", { name: fileData.name, size: fileData.size, urlLength: fileData.url?.length });
                 }
-            }
+                else {
+                    // DESKTOP STRATEGY: Standard Supabase Storage Upload
+                    // We remove almost all custom options to let the SDK decide the best path.
 
-            // Clear the upload timeout if we got here successfully
-            if (uploadTimeout) {
-                clearTimeout(uploadTimeout);
-                uploadTimeout = null;
+                    // 0. AUTH CHECK & TOKEN RETRIEVAL
+                    console.log("Pre-flight process...");
+                    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+                    if (sessionError || !session) {
+                        console.error("Session missing during upload:", sessionError);
+                        throw new Error("You appear to be logged out. Please refresh and login again.");
+                    }
+
+                    // 5. NUCLEAR OPTION: Raw Fetch (Bypass SDK)
+                    // We construct the URL manually. standard supabase storage URL format.
+                    const projectId = import.meta.env.VITE_SUPABASE_URL;
+                    const pathEncoded = path.split('/').map(p => encodeURIComponent(p)).join('/'); // Safely encode path
+                    const uploadUrl = `${projectId}/storage/v1/object/reflection-files/${pathEncoded}`;
+                    const token = session.access_token;
+
+                    const response = await fetch(uploadUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`, // Explicit Auth header
+                            'x-client-info': 'fap-raw-upload',
+                            'Content-Type': selectedFile.type || 'application/octet-stream',
+                            'cache-control': '3600',
+                            'x-upsert': 'false'
+                        },
+                        body: selectedFile
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error("Raw Upload Failed:", response.status, errorText);
+                        if (response.status === 401) {
+                            throw new Error("Upload Rejected: Auth Token Invalid. Please Log out and Log in.");
+                        }
+                        throw new Error(`Server Error (${response.status}): ${errorText}`);
+                    }
+
+                    // MOCK SDK RESPONSE so downstream code works
+                    const uploadError = null;
+
+                    /* LEGACY SDK CODE REMOVED */
+
+                    const urlData = supabase.storage.from('reflection-files').getPublicUrl(path);
+                    fileData = {
+                        url: urlData.data.publicUrl,
+                        name: selectedFile.name,
+                        size: selectedFile.size,
+                        type: selectedFile.name.split('.').pop() || 'file'
+                    };
+                }
             }
 
             console.log("📱 [STEP 4] File processing complete, now saving to database...");
@@ -347,25 +372,12 @@ const Reflections = () => {
             setUploadError(msg);
             setSubmissionStatus('error');
         } finally {
-            // Clear the upload timeout to prevent any delayed aborts
-            if (uploadTimeout) {
-                clearTimeout(uploadTimeout);
-            }
-
             // Use a ref or just always setSubmitting(false) after a delay
+            // The original code had a stale closure issue
             console.log("📱 [FINALLY] Cleanup...");
             setTimeout(() => {
                 setSubmitting(false);
             }, 2000);
-
-            // OPTIONAL: Try to refresh session after operation (non-blocking)
-            try {
-                if (typeof refreshSession === 'function') {
-                    await refreshSession();
-                }
-            } catch (refreshError) {
-                // Ignore - this is just a best-effort refresh
-            }
         }
     };
 
