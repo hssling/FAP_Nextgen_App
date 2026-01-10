@@ -213,23 +213,15 @@ const Reflections = () => {
                     throw new Error(`File too large (${(selectedFile.size / 1024 / 1024).toFixed(1)}MB). Maximum is 10MB.`);
                 }
 
-                // TRY SUPABASE STORAGE FIRST, FALLBACK TO METADATA-ONLY IF IT FAILS
-                console.log("📱 [UPLOAD] Attempting Supabase Storage SDK...");
+                // UPLOAD TO SUPABASE STORAGE
+                console.log("📱 [UPLOAD] Attempting Supabase Storage upload...");
 
                 let uploadSucceeded = false;
 
                 try {
-                    // Check if bucket exists first
-                    const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('reflection-files');
+                    // Direct upload - no bucket check (getBucket requires admin permissions)
+                    console.log("📱 [UPLOAD] Starting upload to reflection-files bucket...");
 
-                    if (bucketError) {
-                        console.warn("📱 [UPLOAD] Bucket check failed:", bucketError.message);
-                        throw new Error("Storage bucket not available");
-                    }
-
-                    console.log("📱 [UPLOAD] Bucket exists, proceeding with upload...");
-
-                    // Use the SDK's upload method
                     const { data: uploadData, error: uploadError } = await supabase.storage
                         .from('reflection-files')
                         .upload(path, selectedFile, {
@@ -238,11 +230,22 @@ const Reflections = () => {
                         });
 
                     if (uploadError) {
-                        console.error("📱 [UPLOAD] SDK upload failed:", uploadError);
-                        throw uploadError;
+                        console.error("📱 [UPLOAD] Upload failed:", uploadError);
+
+                        // Provide specific error messages
+                        if (uploadError.message?.includes('Bucket not found')) {
+                            throw new Error("Storage bucket 'reflection-files' does not exist. Please contact admin.");
+                        }
+                        if (uploadError.message?.includes('policy') || uploadError.statusCode === 403) {
+                            throw new Error("Upload permission denied. Please contact admin.");
+                        }
+                        if (uploadError.message?.includes('JWT') || uploadError.message?.includes('token')) {
+                            throw new Error("Session expired. Please log in again.");
+                        }
+                        throw new Error(`Upload failed: ${uploadError.message}`);
                     }
 
-                    console.log("📱 [UPLOAD] SDK upload successful:", uploadData);
+                    console.log("📱 [UPLOAD] Upload successful:", uploadData);
 
                     // Get the public URL
                     const { data: urlData } = supabase.storage
