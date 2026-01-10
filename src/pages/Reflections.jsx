@@ -167,13 +167,15 @@ const Reflections = () => {
         let uploadTimeout = null;
 
         try {
-            // CRITICAL: Refresh session before any operation to prevent mid-upload session loss
-            console.log("🔐 [PRE-FLIGHT] Refreshing session before upload...");
-            const freshSession = await refreshSession();
-            if (!freshSession) {
-                console.warn("🔐 [PRE-FLIGHT] Session refresh returned null, but continuing...");
-            } else {
-                console.log("🔐 [PRE-FLIGHT] Session refreshed successfully");
+            // OPTIONAL: Try to refresh session before operation (non-blocking)
+            console.log("🔐 [PRE-FLIGHT] Attempting session refresh...");
+            try {
+                if (typeof refreshSession === 'function') {
+                    const freshSession = await refreshSession();
+                    console.log("🔐 [PRE-FLIGHT] Session refresh:", freshSession ? 'success' : 'no session');
+                }
+            } catch (sessionErr) {
+                console.warn("🔐 [PRE-FLIGHT] Session refresh failed (continuing anyway):", sessionErr);
             }
 
             let fileData = null;
@@ -356,11 +358,13 @@ const Reflections = () => {
                 setSubmitting(false);
             }, 2000);
 
-            // Try to refresh session after any operation to keep it alive
+            // OPTIONAL: Try to refresh session after operation (non-blocking)
             try {
-                await refreshSession();
+                if (typeof refreshSession === 'function') {
+                    await refreshSession();
+                }
             } catch (refreshError) {
-                console.warn("📱 [FINALLY] Session refresh after operation failed:", refreshError);
+                // Ignore - this is just a best-effort refresh
             }
         }
     };
