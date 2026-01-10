@@ -187,16 +187,20 @@ const Reflections = () => {
                     return;
                 }
 
+                // CRITICAL: Set status IMMEDIATELY before any async work
                 setSubmissionStatus('uploading');
+
+                // Force a render before continuing (helps with mobile)
+                await new Promise(resolve => setTimeout(resolve, 100));
 
                 // Set upload timeout (2 minutes for mobile)
                 uploadTimeout = setTimeout(() => {
+                    console.warn("📱 [TIMEOUT] Upload timeout triggered");
                     abortController.abort();
                 }, 120000);
 
                 const safeName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
                 const path = `${profile.id}/${Date.now()}_${safeName}`;
-
 
                 console.log("%c[Upload Debug]", "color:orange;font-weight:bold");
                 console.log("File:", selectedFile.name, selectedFile.size, selectedFile.type);
@@ -209,12 +213,23 @@ const Reflections = () => {
                     throw new Error(`File too large (${(selectedFile.size / 1024 / 1024).toFixed(1)}MB). Maximum is 10MB.`);
                 }
 
-                // UNIFIED UPLOAD STRATEGY: Use Supabase Storage SDK for all platforms
-                // The Base64 strategy was causing database timeouts on mobile (storing MB of text in file_url)
-                console.log("📱 [UPLOAD] Using Supabase Storage SDK...");
+                // TRY SUPABASE STORAGE FIRST, FALLBACK TO METADATA-ONLY IF IT FAILS
+                console.log("📱 [UPLOAD] Attempting Supabase Storage SDK...");
+
+                let uploadSucceeded = false;
 
                 try {
-                    // Use the SDK's upload method - it handles retries and chunking internally
+                    // Check if bucket exists first
+                    const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('reflection-files');
+
+                    if (bucketError) {
+                        console.warn("📱 [UPLOAD] Bucket check failed:", bucketError.message);
+                        throw new Error("Storage bucket not available");
+                    }
+
+                    console.log("📱 [UPLOAD] Bucket exists, proceeding with upload...");
+
+                    // Use the SDK's upload method
                     const { data: uploadData, error: uploadError } = await supabase.storage
                         .from('reflection-files')
                         .upload(path, selectedFile, {
@@ -224,15 +239,7 @@ const Reflections = () => {
 
                     if (uploadError) {
                         console.error("📱 [UPLOAD] SDK upload failed:", uploadError);
-
-                        // Check for specific error types
-                        if (uploadError.message?.includes('JWT') || uploadError.message?.includes('token')) {
-                            throw new Error("Session expired during upload. Please log in again.");
-                        }
-                        if (uploadError.message?.includes('policy') || uploadError.statusCode === 403) {
-                            throw new Error("Upload permission denied. Please contact support.");
-                        }
-                        throw new Error(`Upload failed: ${uploadError.message}`);
+                        throw uploadError;
                     }
 
                     console.log("📱 [UPLOAD] SDK upload successful:", uploadData);
@@ -250,16 +257,22 @@ const Reflections = () => {
                     };
 
                     console.log("📱 [UPLOAD] File URL obtained:", fileData.url);
+                    uploadSucceeded = true;
 
-                } catch (uploadCatchError) {
-                    console.error("📱 [UPLOAD] Caught error:", uploadCatchError);
+                } catch (storageError) {
+                    console.error("📱 [UPLOAD] Storage failed, using metadata-only fallback:", storageError);
 
-                    // Check if it's an abort (timeout)
-                    if (abortController.signal.aborted) {
-                        throw new Error("Upload timed out. Please try with a smaller file or better connection.");
-                    }
+                    // FALLBACK: Save reflection without file URL
+                    // User can re-upload later from desktop
+                    fileData = {
+                        url: null, // No URL - file not uploaded
+                        name: selectedFile.name,
+                        size: selectedFile.size,
+                        type: selectedFile.name.split('.').pop() || 'file'
+                    };
 
-                    throw uploadCatchError;
+                    // Set a warning for the user
+                    setUploadError(`File could not be uploaded (${storageError.message || 'Storage unavailable'}). Your reflection will be saved without the attachment. You can try uploading again later from desktop.`);
                 }
             }
 
