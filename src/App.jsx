@@ -162,7 +162,6 @@ const AppRoutes = () => {
 
 import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
-import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
 import { get, set, del } from 'idb-keyval';
 
 // Create a client
