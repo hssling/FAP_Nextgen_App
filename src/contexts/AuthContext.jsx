@@ -129,9 +129,10 @@ export const AuthProvider = ({ children }) => {
 
         return () => {
             mounted = false;
-            subscription.unsubscribe();
-            mounted = false;
-            subscription.unsubscribe();
+            // Check if subscription exists before unsubscribing
+            if (subscription && typeof subscription.unsubscribe === 'function') {
+                subscription.unsubscribe();
+            }
             // clearInterval(checkSessionInterval);
         };
     }, []);
