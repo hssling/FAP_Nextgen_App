@@ -20,6 +20,7 @@ export const AuthProvider = ({ children }) => {
     // Load user profile from database
     const loadUserProfile = async (userId) => {
         try {
+            // 1. Try fetching fresh data from Supabase
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*')
@@ -27,16 +28,34 @@ export const AuthProvider = ({ children }) => {
                 .single();
 
             if (error) {
-                console.error('Error loading profile:', error);
-                // Return dummy profile on error to prevent indefinite loading
-                // This is a safety fallback during dev
+                console.warn('Error loading profile (network?):', error);
+
+                // 2. Fallback: Try loading from local storage
+                const cachedProfile = localStorage.getItem(`fap_profile_${userId}`);
+                if (cachedProfile) {
+                    console.log('Using cached profile');
+                    const parsed = JSON.parse(cachedProfile);
+                    setProfile(parsed);
+                    return parsed;
+                }
+
                 return null;
             }
 
+            // 3. Success: Update state and cache
             setProfile(data);
+            localStorage.setItem(`fap_profile_${userId}`, JSON.stringify(data));
             return data;
         } catch (error) {
             console.error('Error loading profile:', error);
+
+            // Fallback for unexpected errors
+            const cachedProfile = localStorage.getItem(`fap_profile_${userId}`);
+            if (cachedProfile) {
+                const parsed = JSON.parse(cachedProfile);
+                setProfile(parsed);
+                return parsed;
+            }
             return null;
         }
     };

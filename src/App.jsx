@@ -160,24 +160,54 @@ const AppRoutes = () => {
   );
 };
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
+import { get, set, del } from 'idb-keyval';
 
 // Create a client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      cacheTime: 1000 * 60 * 30, // 30 minutes
-      refetchOnWindowFocus: false, // Optional: customize as needed
+      staleTime: 1000 * 60 * 5, // 5 minutes (data is fresh for 5 mins)
+      gcTime: 1000 * 60 * 60 * 24, // 24 hours (keep unused data in garbage collection for 24h)
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
     },
   },
 });
+
+// Create IDB Persister
+const createIDBPersister = (idbValidKey = "reactQuery") => {
+  return {
+    persistClient: async (client) => {
+      await set(idbValidKey, client);
+    },
+    restoreClient: async () => {
+      return await get(idbValidKey);
+    },
+    removeClient: async () => {
+      await del(idbValidKey);
+    },
+  };
+};
+
+const persister = createIDBPersister();
 
 import InstallPrompt from './components/InstallPrompt';
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{ persister }}
+      onSuccess={() => {
+        // Resume mutations after initial restore from localStorage
+        queryClient.resumePausedMutations().then(() => {
+          queryClient.invalidateQueries();
+        });
+      }}
+    >
       <AuthProvider>
         <BrowserRouter>
           <Toaster />
@@ -185,7 +215,7 @@ function App() {
           <AppRoutes />
         </BrowserRouter>
       </AuthProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }
 
