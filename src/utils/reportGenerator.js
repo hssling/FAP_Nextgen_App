@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 // Helper to format date
 const formatDate = () => {
@@ -40,7 +40,7 @@ export const generateAdminReport = (stats, topStudents) => {
         ['Pending Review', stats.pendingReflections]
     ];
 
-    doc.autoTable({
+    autoTable(doc, {
         startY: 55,
         head: [['Metric', 'Count']],
         body: overviewData.slice(1),
@@ -61,7 +61,7 @@ export const generateAdminReport = (stats, topStudents) => {
         s.avgScore
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
         startY: finalY + 5,
         head: [['Rank', 'Student Name', 'Reg. No', 'Families', 'Reflections', 'Avg Score']],
         body: studentData,
@@ -111,7 +111,7 @@ export const generateClassReport = (students, className = 'Assigned Class') => {
         s.avgScore || '-'
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
         startY: 45,
         head: [['Student Name', 'Reg. No', 'Families', 'Reflections', 'Graded', 'Grade', 'Score']],
         body: tableData,
