@@ -6,7 +6,6 @@ import {
     FileText, Star, TrendingUp, RefreshCw, AlertCircle,
     ChevronDown, ChevronUp, Search, Filter, AlertTriangle
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const AdminDashboard = () => {
     const { profile } = useAuth();

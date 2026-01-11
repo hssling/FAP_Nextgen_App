@@ -1,30 +1,33 @@
-import React, { Component } from 'react';
+import React from 'react';
 
-class ErrorBoundary extends Component {
+class ErrorBoundary extends React.Component {
     constructor(props) {
         super(props);
         this.state = { hasError: false, error: null, errorInfo: null };
     }
 
     static getDerivedStateFromError(error) {
-        return { hasError: true };
+        return { hasError: true, error };
     }
 
     componentDidCatch(error, errorInfo) {
-        this.setState({ error, errorInfo });
         console.error("Uncaught error:", error, errorInfo);
+        this.setState({ errorInfo });
     }
 
     render() {
         if (this.state.hasError) {
             return (
-                <div style={{ padding: '2rem', color: '#DC2626' }}>
+                <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
                     <h1>Something went wrong.</h1>
-                    <details style={{ whiteSpace: 'pre-wrap' }}>
+                    <details style={{ whiteSpace: 'pre-wrap', background: '#f0f0f0', padding: '1rem' }}>
                         {this.state.error && this.state.error.toString()}
                         <br />
-                        {this.state.errorInfo.componentStack}
+                        {this.state.errorInfo && this.state.errorInfo.componentStack}
                     </details>
+                    <button onClick={() => window.location.reload()} style={{ marginTop: '1rem', padding: '0.5rem 1rem' }}>
+                        Reload Page
+                    </button>
                 </div>
             );
         }
