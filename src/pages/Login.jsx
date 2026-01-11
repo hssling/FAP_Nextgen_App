@@ -24,21 +24,21 @@ const Login = () => {
 
             // If input is NOT an email, look up the email from username
             if (!username.includes('@')) {
-                const { data: userProfile, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('email, role')
-                    .eq('username', username.toLowerCase())
-                    .single();
+                // Use the secure RPC function instead of direct table access
+                // This bypasses RLS issues for unauthenticated users
+                const { data: userData, error: fnError } = await supabase
+                    .rpc('get_user_by_username', { p_username: username });
 
-                if (profileError) {
-                    if (profileError.code === 'PGRST116') throw new Error('Invalid username or email');
+                if (fnError) {
+                    console.error('Username lookup error:', fnError);
                     throw new Error('Database Error');
                 }
 
-                if (!userProfile?.email) {
-                    throw new Error('Username has no linked email. Please login with your Email Address.');
+                if (!userData || userData.length === 0) {
+                    throw new Error('Invalid username or email');
                 }
-                loginEmail = userProfile.email;
+
+                loginEmail = userData[0].email;
             }
 
             // Step 2: Sign in with email and password
