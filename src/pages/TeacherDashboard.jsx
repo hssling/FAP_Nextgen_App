@@ -33,7 +33,16 @@ const TeacherDashboard = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     const handleExport = () => {
-        generateClassReport(students, 'Assigned Students');
+        try {
+            if (!students || students.length === 0) {
+                alert("No student data to export yet.");
+                return;
+            }
+            generateClassReport(students, 'Assigned Students');
+        } catch (err) {
+            console.error(err);
+            alert("Export Failed: " + err.message);
+        }
     };
 
     // Stats

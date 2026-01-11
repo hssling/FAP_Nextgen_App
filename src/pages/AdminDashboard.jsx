@@ -38,10 +38,17 @@ const AdminDashboard = () => {
     }, [profile]);
 
     const handleExport = () => {
-        const topStudents = [...allStudents]
-            .sort((a, b) => (b.gradedCount || 0) - (a.gradedCount || 0))
-            .slice(0, 10); // Top 10 for report
-        generateAdminReport(stats, topStudents);
+        try {
+            console.log("Exporting Admin Report...");
+            const topStudents = [...allStudents]
+                .sort((a, b) => (b.gradedCount || 0) - (a.gradedCount || 0))
+                .slice(0, 10); // Top 10 for report
+            generateAdminReport(stats, topStudents);
+            console.log("Export Complete");
+        } catch (err) {
+            console.error(err);
+            alert("Export Failed: " + err.message);
+        }
     };
 
     const fetchDashboardData = async () => {
