@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Download, X } from 'lucide-react';
+import { Download, X, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const InstallPrompt = () => {
@@ -44,6 +44,26 @@ const InstallPrompt = () => {
         // We've used the prompt, and can't use it again, throw it away
         setDeferredPrompt(null);
         setShowPrompt(false);
+    };
+
+    const handleShare = async () => {
+        const shareData = {
+            title: 'FAP NextGen',
+            text: 'Check out the Family Adoption Programme App! Install it here:',
+            url: window.location.href
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch (err) {
+                console.log('Error sharing:', err);
+            }
+        } else {
+            // Fallback to WhatsApp
+            const text = encodeURIComponent(`${shareData.text} ${shareData.url}`);
+            window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
     };
 
     return (
@@ -91,6 +111,23 @@ const InstallPrompt = () => {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <button
+                            onClick={handleShare}
+                            title="Share App"
+                            style={{
+                                background: '#E0F2FE',
+                                border: 'none',
+                                borderRadius: 'var(--radius-md)',
+                                padding: '0.5rem',
+                                color: '#0284C7',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}
+                        >
+                            <Share2 size={18} />
+                        </button>
                         <button
                             onClick={handleInstallClick}
                             style={{
