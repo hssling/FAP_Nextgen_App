@@ -4,8 +4,10 @@ import { supabase } from '../services/supabaseClient';
 import {
     GraduationCap, BookOpen, CheckCircle, Users, Home,
     FileText, Star, TrendingUp, RefreshCw, AlertCircle,
-    ChevronDown, ChevronUp, Search, Filter, AlertTriangle
+    ChevronDown, ChevronUp, Search, Filter, AlertTriangle, Crown
 } from 'lucide-react';
+import { calculateBadges } from '../utils/gamification';
+import BadgeDisplay from '../components/shared/BadgeDisplay';
 
 const AdminDashboard = () => {
     const { profile } = useAuth();
@@ -453,6 +455,88 @@ const AdminDashboard = () => {
                             bgGradient="linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)"
                             borderColor="#6EE7B7"
                         />
+                    </div>
+
+                    {/* Charts Section */}
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                        gap: '1.5rem',
+                        marginBottom: '1.5rem'
+                    }}>
+                        {/* 7-Day Activity Trend (CSS Implementation) */}
+                        <div className="card" style={{ padding: '1.5rem', background: 'white', border: '1px solid #E5E7EB' }}>
+                            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <TrendingUp size={18} /> Activity Activity Trend (Last 7 Days)
+                            </h3>
+                            <div style={{ height: '200px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '4px' }}>
+                                {(() => {
+                                    // Calculate last 7 days stats
+                                    const days = [...Array(7)].map((_, i) => {
+                                        const d = new Date();
+                                        d.setDate(d.getDate() - i);
+                                        return d.toISOString().split('T')[0];
+                                    }).reverse();
+
+                                    const dailyCounts = days.map(day => {
+                                        const count = allReflections.filter(r => r.created_at.startsWith(day)).length;
+                                        return { day, count };
+                                    });
+
+                                    const max = Math.max(...dailyCounts.map(d => d.count), 5); // Minimum scale of 5
+
+                                    return dailyCounts.map((stat, idx) => (
+                                        <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                                            <div style={{
+                                                width: '100%',
+                                                height: `${(stat.count / max) * 150}px`,
+                                                background: '#8B5CF6',
+                                                borderRadius: '4px 4px 0 0',
+                                                opacity: 0.7,
+                                                minHeight: stat.count > 0 ? '4px' : '0'
+                                            }} title={`${stat.count} Reflections`}></div>
+                                            <span style={{ fontSize: '0.65rem', color: '#6B7280' }}>
+                                                {new Date(stat.day).getDate()}/{new Date(stat.day).getMonth() + 1}
+                                            </span>
+                                        </div>
+                                    ));
+                                })()}
+                            </div>
+                        </div>
+
+                        {/* Top Performers Leaderboard */}
+                        <div className="card" style={{ padding: '1.5rem', background: 'white', border: '1px solid #E5E7EB' }}>
+                            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Crown size={18} color="#F59E0B" /> Top Scholars
+                            </h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {allStudents
+                                    .sort((a, b) => (b.gradedCount || 0) - (a.gradedCount || 0))
+                                    .slice(0, 5)
+                                    .map((student, idx) => (
+                                        <div key={student.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                            <div style={{
+                                                width: '24px', height: '24px', borderRadius: '50%',
+                                                background: idx === 0 ? '#FEF3C7' : idx === 1 ? '#F3F4F6' : '#FFF7ED',
+                                                color: idx === 0 ? '#D97706' : idx === 1 ? '#6B7280' : '#C2410C',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.8rem'
+                                            }}>
+                                                {idx + 1}
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{student.full_name}</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>{student.gradedCount} Graded Reflections</div>
+                                            </div>
+                                            <BadgeDisplay badges={calculateBadges({
+                                                visits: 0, // Admin view doesn't fetch visits yet per student efficiently
+                                                reflections: student.reflectionCount,
+                                                avgGrade: 'B' // Placeholder
+                                            })} size="sm" />
+                                        </div>
+                                    ))}
+                                {allStudents.length === 0 && <p style={{ color: '#9CA3AF', fontSize: '0.9rem' }}>No student data available.</p>}
+                            </div>
+                        </div>
                     </div>
 
                     {/* System Status */}

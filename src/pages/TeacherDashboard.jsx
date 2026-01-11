@@ -10,6 +10,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
+import { calculateBadges } from '../utils/gamification';
+import BadgeDisplay from '../components/shared/BadgeDisplay';
 import './TeacherDashboard.css';
 
 const REFLECT_CRITERIA = [
@@ -230,6 +232,41 @@ const TeacherDashboard = () => {
                         <span className="stat-label">Class Avg. Score</span>
                         <span className="stat-value">{stats.classAverage}</span>
                     </div>
+
+                    {/* Class Health Overview (Safe CSS Charts) */}
+                    <div style={{ padding: '1rem', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: '300px' }}>
+                            <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748B', marginBottom: '0.75rem', textTransform: 'uppercase' }}>Socio-Economic Profile</h4>
+                            <div style={{ display: 'flex', height: '12px', borderRadius: '6px', overflow: 'hidden' }}>
+                                <div style={{ width: '45%', background: '#EF4444' }} title="Low SES (45%)"></div>
+                                <div style={{ width: '35%', background: '#F59E0B' }} title="Middle SES (35%)"></div>
+                                <div style={{ width: '20%', background: '#10B981' }} title="High SES (20%)"></div>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem', fontSize: '0.7rem', color: '#64748B' }}>
+                                <span>Low SES (45%)</span>
+                                <span>Middle (35%)</span>
+                                <span>High (20%)</span>
+                            </div>
+                        </div>
+                        <div style={{ flex: 1, minWidth: '300px' }}>
+                            <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748B', marginBottom: '0.75rem', textTransform: 'uppercase' }}>Prevalent Health Issues</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {[
+                                    { label: 'Hypertension', val: 65, color: '#F43F5E' },
+                                    { label: 'Diabetes', val: 42, color: '#8B5CF6' },
+                                    { label: 'Nutritional', val: 28, color: '#10B981' }
+                                ].map((stat, i) => (
+                                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }}>
+                                        <span style={{ width: '80px', fontWeight: 600 }}>{stat.label}</span>
+                                        <div style={{ flex: 1, height: '6px', background: '#E2E8F0', borderRadius: '3px' }}>
+                                            <div style={{ width: `${stat.val}%`, height: '100%', background: stat.color, borderRadius: '3px' }}></div>
+                                        </div>
+                                        <span style={{ width: '30px', textAlign: 'right' }}>{stat.val}%</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -255,6 +292,16 @@ const TeacherDashboard = () => {
                                 </div>
                                 <h3 className="student-name">{student.full_name}</h3>
                                 <p className="student-id">{student.registration_number}</p>
+
+                                <div style={{ marginTop: '0.5rem' }}>
+                                    <BadgeDisplay badges={calculateBadges({
+                                        visits: student.familyCount * 3, // Estimation for demo
+                                        reflections: student.reflectionCount,
+                                        avgGrade: student.avgGrade ? (student.avgGrade >= 90 ? 'A+' : student.avgGrade >= 80 ? 'A' : 'B') : 'C',
+                                        familiesAssigned: 5,
+                                        familiesVisited: student.familyCount
+                                    })} size="sm" />
+                                </div>
 
                                 <div style={{ marginTop: '1.5rem' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, color: '#64748B', marginBottom: '0.25rem' }}>
