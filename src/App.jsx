@@ -173,12 +173,15 @@ const queryClient = new QueryClient({
   },
 });
 
+import InstallPrompt from './components/InstallPrompt';
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
           <Toaster />
+          <InstallPrompt />
           <AppRoutes />
         </BrowserRouter>
       </AuthProvider>
