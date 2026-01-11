@@ -1,22 +1,23 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
-import { Activity, Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Activity, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
     const navigate = useNavigate();
     const location = useLocation();
 
     const handleLogin = async (e) => {
         e.preventDefault();
         setLoading(true);
-        setError('');
+        // setError(''); // Removed local error state
 
         try {
             let loginEmail = username;
@@ -65,6 +66,7 @@ const Login = () => {
             }
 
             const userRole = profileData?.role || 'student';
+            toast.success('Welcome back!');
 
             // Step 4: Redirect
             const from = location.state?.from?.pathname || '/';
@@ -80,7 +82,8 @@ const Login = () => {
 
         } catch (err) {
             console.error('Login error:', err);
-            setError(err.message || 'Login failed. Please check your credentials and try again.');
+            // setError(err.message || 'Login failed. Please check your credentials and try again.');
+            toast.error(err.message || 'Login failed. Please check your credentials.');
         } finally {
             setLoading(false);
         }
@@ -135,26 +138,7 @@ const Login = () => {
                     </p>
                 </div>
 
-                {/* Error Message */}
-                {error && (
-                    <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        style={{
-                            padding: '1rem',
-                            backgroundColor: '#FEE2E2',
-                            borderRadius: 'var(--radius-md)',
-                            marginBottom: '1.5rem',
-                            display: 'flex',
-                            gap: '0.75rem',
-                            alignItems: 'flex-start',
-                            border: '1px solid #FCA5A5'
-                        }}
-                    >
-                        <AlertCircle size={20} color="#DC2626" style={{ flexShrink: 0, marginTop: '0.125rem' }} />
-                        <span style={{ color: '#991B1B', fontSize: '0.875rem', lineHeight: '1.5' }}>{error}</span>
-                    </motion.div>
-                )}
+                {/* Error Message - Replaced by Toast */}
 
                 {/* Login Form */}
                 <form onSubmit={handleLogin}>
@@ -281,15 +265,8 @@ const Login = () => {
                     >
                         {loading ? (
                             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                                <span className="spinner" style={{
-                                    width: '16px',
-                                    height: '16px',
-                                    border: '2px solid white',
-                                    borderTopColor: 'transparent',
-                                    borderRadius: '50%',
-                                    animation: 'spin 0.6s linear infinite'
-                                }}></span>
-                                Signing in...
+                                <LoadingSpinner size={16} />
+                                <span>Signing in...</span>
                             </span>
                         ) : (
                             'Sign In'
@@ -332,12 +309,6 @@ const Login = () => {
                 </div>
             </motion.div>
 
-            {/* Add spinner animation */}
-            <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
         </div>
     );
 };

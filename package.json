@@ -12,6 +12,7 @@
   "dependencies": {
     "@react-pdf/renderer": "^4.3.1",
     "@supabase/supabase-js": "^2.86.2",
+    "@tanstack/react-query": "^5.90.16",
     "framer-motion": "^12.23.25",
     "idb": "^8.0.3",
     "lucide-react": "^0.556.0",

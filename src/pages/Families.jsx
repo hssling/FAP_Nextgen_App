@@ -4,58 +4,42 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
-import { invalidateAnalyticsCache } from '../utils/cacheUtils';
+import { useFamilies } from '../hooks/useFamilies';
+import toast from 'react-hot-toast';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 const Families = () => {
     const { profile } = useAuth();
-    const [families, setFamilies] = useState([]);
     const [showAddModal, setShowAddModal] = useState(false);
     const [newFamily, setNewFamily] = useState({ head_name: '', village: '', members_count: 1 });
-    const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (profile) loadFamilies();
-    }, [profile]);
-
-    const loadFamilies = async () => {
-        try {
-            setLoading(true);
-            const { data, error } = await supabase
-                .from('families')
-                .select('*')
-                .eq('student_id', profile.id)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            setFamilies(data || []);
-        } catch (error) {
-            console.error('Error fetching families:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Use React Query Hook
+    const {
+        data: families = [],
+        isLoading: loading,
+        error: fetchError,
+        addFamily
+    } = useFamilies(profile?.id);
 
     const handleAddSubmit = async (e) => {
         e.preventDefault();
         try {
-            const { error } = await supabase.from('families').insert([{
+            await addFamily({
                 student_id: profile.id,
                 head_name: newFamily.head_name,
                 village: newFamily.village,
                 members_count: newFamily.members_count
-            }]);
+            });
 
-            if (error) throw error;
-
-            // Invalidate analytics cache so Reports page shows updated data
-            invalidateAnalyticsCache(profile.id);
+            // Iterate invalidate is handled by hook
+            // invalidateAnalyticsCache(profile.id); // This is likely handled by logic in hook or global invalidation
 
             setShowAddModal(false);
             setNewFamily({ head_name: '', village: '', members_count: 1 });
-            loadFamilies(); // Reload list
+            toast.success('Family added successfully!');
         } catch (error) {
             console.error('Error adding family:', error);
-            alert('Failed to add family.');
+            toast.error('Failed to add family.');
         }
     };
 
@@ -82,7 +66,11 @@ const Families = () => {
                 </motion.button>
             </motion.header>
 
-            {loading ? <p>Loading...</p> : families.length === 0 ? (
+            {loading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
+                    <LoadingSpinner size={40} />
+                </div>
+            ) : families.length === 0 ? (
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}

@@ -5,6 +5,9 @@ import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
+import { useDashboardStats } from '../hooks/useDashboardStats';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+
 const StatCard = ({ title, value, icon: Icon, color, trend, delay }) => (
     <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -38,64 +41,20 @@ const StatCard = ({ title, value, icon: Icon, color, trend, delay }) => (
 
 const Dashboard = () => {
     const { profile } = useAuth();
-    const [stats, setStats] = useState({
+
+    // Use React Query Hook
+    const {
+        data: stats,
+        isLoading: loading,
+        error
+    } = useDashboardStats(profile?.id);
+
+    // Default stats if loading or error (prevents crash)
+    const effectiveStats = stats || {
         families: 0,
         members: 0,
         activeProblems: 0,
         recentActivity: []
-    });
-
-    useEffect(() => {
-        if (profile) loadStats();
-    }, [profile]);
-
-    const loadStats = async () => {
-        try {
-            // Get Families
-            const { data: families, error: famError } = await supabase
-                .from('families')
-                .select('*')
-                .eq('student_id', profile.id)
-                .order('created_at', { ascending: false });
-
-            if (famError) throw famError;
-
-            // Get Members and Problems
-            let membersCount = 0;
-            let problemsCount = 0;
-
-            if (families.length > 0) {
-                const familyIds = families.map(f => f.id);
-
-                // Fetch members
-                const { data: members, error: memError } = await supabase
-                    .from('family_members')
-                    .select('health_data')
-                    .in('family_id', familyIds);
-
-                if (!memError && members) {
-                    membersCount = members.length;
-                    members.forEach(m => {
-                        if (m.health_data && m.health_data.problems) {
-                            problemsCount += m.health_data.problems.length;
-                        }
-                    });
-                }
-            }
-
-            setStats({
-                families: families.length,
-                members: membersCount,
-                activeProblems: problemsCount,
-                recentActivity: families.slice(0, 3).map(f => ({
-                    title: `Family Added: ${f.head_name}`,
-                    date: f.created_at ? new Date(f.created_at).toLocaleDateString() : 'Recently'
-                }))
-            });
-
-        } catch (error) {
-            console.error("Error loading dashboard stats:", error);
-        }
     };
 
     const containerVariants = {
@@ -134,37 +93,43 @@ const Dashboard = () => {
                 </motion.p>
             </header>
 
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                gap: '1.5rem',
-                marginBottom: '2.5rem'
-            }}>
-                <StatCard
-                    title="Adopted Families"
-                    value={stats.families}
-                    icon={Users}
-                    color="#0F766E"
-                    trend="On track (Goal: 3)"
-                    delay={0.1}
-                />
-                <StatCard
-                    title="Total Population"
-                    value={stats.members}
-                    icon={Activity}
-                    color="#0EA5E9"
-                    trend="In coverage area"
-                    delay={0.2}
-                />
-                <StatCard
-                    title="Health Issues"
-                    value={stats.activeProblems}
-                    icon={AlertCircle}
-                    color="#F43F5E"
-                    trend="Identified so far"
-                    delay={0.3}
-                />
-            </div>
+            {loading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+                    <LoadingSpinner size={40} />
+                </div>
+            ) : (
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                    gap: '1.5rem',
+                    marginBottom: '2.5rem'
+                }}>
+                    <StatCard
+                        title="Adopted Families"
+                        value={effectiveStats.families}
+                        icon={Users}
+                        color="#0F766E"
+                        trend="On track (Goal: 3)"
+                        delay={0.1}
+                    />
+                    <StatCard
+                        title="Total Population"
+                        value={effectiveStats.members}
+                        icon={Activity}
+                        color="#0EA5E9"
+                        trend="In coverage area"
+                        delay={0.2}
+                    />
+                    <StatCard
+                        title="Health Issues"
+                        value={effectiveStats.activeProblems}
+                        icon={AlertCircle}
+                        color="#F43F5E"
+                        trend="Identified so far"
+                        delay={0.3}
+                    />
+                </div>
+            )}
 
             <div className="grid-layout grid-2">
                 <motion.div
@@ -180,13 +145,13 @@ const Dashboard = () => {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {stats.recentActivity.length === 0 ? (
+                        {effectiveStats.recentActivity.length === 0 ? (
                             <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
                                 <p>No activity yet. Start by adopting a family.</p>
                                 <Link to="/families" className="btn btn-primary" style={{ marginTop: '1rem' }}>Go to Families</Link>
                             </div>
                         ) : (
-                            stats.recentActivity.map((act, i) => (
+                            effectiveStats.recentActivity.map((act, i) => (
                                 <div key={i} style={{
                                     padding: '1rem',
                                     border: '1px solid var(--color-border)',
