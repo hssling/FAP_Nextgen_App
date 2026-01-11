@@ -1,3 +1,4 @@
+import React from 'react';
 import { Trophy, Star, Target, Users, Zap, Heart, Award, Crown } from 'lucide-react';
 
 export const BADGES = {
