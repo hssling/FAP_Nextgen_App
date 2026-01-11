@@ -14,6 +14,8 @@ import { calculateBadges } from '../utils/gamification';
 import BadgeDisplay from '../components/shared/BadgeDisplay';
 import './TeacherDashboard.css';
 
+import { generateClassReport } from '../utils/reportGenerator';
+
 const REFLECT_CRITERIA = [
     { id: 'score_exploration', label: 'Exploration', desc: 'Breadth/depth', max: 20 },
     { id: 'score_voice', label: 'Voice', desc: 'Authenticity', max: 20 },
@@ -29,6 +31,10 @@ const TeacherDashboard = () => {
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+
+    const handleExport = () => {
+        generateClassReport(students, 'Assigned Students');
+    };
 
     // Stats
     const [stats, setStats] = useState({
@@ -98,6 +104,8 @@ const TeacherDashboard = () => {
                 pendingCount: sPending,
                 familyCount: famCount || 0,
                 avgGrade: sAvg,
+                gradedCount: sGraded.length, // Added for report
+                avgScore: sAvg, // Added for report consistency
                 progress: Math.min(100, Math.round((sTotalRefs / TARGET_REFLECTIONS) * 100))
             };
         }));
@@ -202,13 +210,35 @@ const TeacherDashboard = () => {
                         <div style={{ background: '#0F172A', color: 'white', padding: '0.4rem', borderRadius: '8px', display: 'flex' }}><GraduationCap size={20} /></div>
                         <span>Mentor Workspace</span>
                     </div>
-                    <div className="search-bar">
-                        <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} size={16} />
-                        <input
-                            type="text" placeholder="Search students..."
-                            value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                            className="search-input"
-                        />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div className="search-bar">
+                            <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} size={16} />
+                            <input
+                                type="text" placeholder="Search students..."
+                                value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                                className="search-input"
+                            />
+                        </div>
+                        <button
+                            onClick={handleExport}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                padding: '0.5rem 1rem',
+                                backgroundColor: 'white',
+                                color: '#0F766E',
+                                border: '1px solid #E2E8F0',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontWeight: '600',
+                                fontSize: '0.9rem',
+                                height: '40px'
+                            }}
+                        >
+                            <Download size={16} />
+                            <span>Export Data</span>
+                        </button>
                     </div>
                 </div>
             </header>

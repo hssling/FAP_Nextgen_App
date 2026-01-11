@@ -306,9 +306,11 @@ const Login = () => {
                         Professor, Community Medicine<br />
                         Shridevi Institute of Medical Sciences & Research Hospital, Tumkur
                     </p>
+                    <div className="login-footer" style={{ marginTop: '1rem' }}>
+                        <p>Protected by FAP Security</p>
+                    </div>
                 </div>
             </motion.div>
-
         </div>
     );
 };

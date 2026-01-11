@@ -4,10 +4,11 @@ import { supabase } from '../services/supabaseClient';
 import {
     GraduationCap, BookOpen, CheckCircle, Users, Home,
     FileText, Star, TrendingUp, RefreshCw, AlertCircle,
-    ChevronDown, ChevronUp, Search, Filter, AlertTriangle, Crown
+    ChevronDown, ChevronUp, Search, Filter, AlertTriangle, Crown, Download
 } from 'lucide-react';
 import { calculateBadges } from '../utils/gamification';
 import BadgeDisplay from '../components/shared/BadgeDisplay';
+import { generateAdminReport } from '../utils/reportGenerator';
 
 const AdminDashboard = () => {
     const { profile } = useAuth();
@@ -35,6 +36,13 @@ const AdminDashboard = () => {
             fetchDashboardData();
         }
     }, [profile]);
+
+    const handleExport = () => {
+        const topStudents = [...allStudents]
+            .sort((a, b) => (b.gradedCount || 0) - (a.gradedCount || 0))
+            .slice(0, 10); // Top 10 for report
+        generateAdminReport(stats, topStudents);
+    };
 
     const fetchDashboardData = async () => {
         setLoading(true);
@@ -317,28 +325,50 @@ const AdminDashboard = () => {
                         Welcome, {profile?.full_name || 'Administrator'}!
                     </p>
                 </div>
-                <button
-                    onClick={fetchDashboardData}
-                    disabled={loading}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.5rem',
-                        padding: '0.75rem 1.5rem',
-                        backgroundColor: '#0F172A',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontWeight: '600',
-                        width: '100%',
-                        maxWidth: '200px'
-                    }}
-                >
-                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                    {loading ? 'Loading...' : 'Refresh'}
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                        onClick={fetchDashboardData}
+                        disabled={loading}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                            padding: '0.75rem 1.5rem',
+                            backgroundColor: 'white',
+                            color: '#0F172A',
+                            border: '1px solid #CBD5E1',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            flex: 1
+                        }}
+                    >
+                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                        {loading ? '...' : 'Refresh'}
+                    </button>
+                    <button
+                        onClick={handleExport}
+                        disabled={loading}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                            padding: '0.75rem 1.5rem',
+                            backgroundColor: '#0F766E',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            flex: 1
+                        }}
+                    >
+                        <Download size={16} />
+                        Export
+                    </button>
+                </div>
             </div>
 
             {/* Error Display */}
