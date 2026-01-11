@@ -78,10 +78,10 @@ BEGIN
   RETURN QUERY
   SELECT 
     p.id,
-    u.email,
-    p.username,
-    p.full_name,
-    p.role
+    u.email::text,
+    p.username::text,
+    p.full_name::text,
+    p.role::text
   FROM profiles p
   JOIN auth.users u ON p.id = u.id
   WHERE lower(p.username) = lower(p_username) -- Case insensitive
