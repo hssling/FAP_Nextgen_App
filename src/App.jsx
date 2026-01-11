@@ -194,6 +194,7 @@ const createIDBPersister = (idbValidKey = "reactQuery") => {
 const persister = createIDBPersister();
 
 import InstallPrompt from './components/InstallPrompt';
+import OfflineSyncManager from './components/OfflineSyncManager';
 
 function App() {
   return (
@@ -211,6 +212,7 @@ function App() {
         <BrowserRouter>
           <Toaster />
           <InstallPrompt />
+          <OfflineSyncManager />
           <AppRoutes />
         </BrowserRouter>
       </AuthProvider>

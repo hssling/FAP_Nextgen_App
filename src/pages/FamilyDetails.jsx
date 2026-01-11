@@ -8,6 +8,8 @@ import DynamicForm from '../components/DynamicForm';
 import { invalidateAnalyticsCache } from '../utils/cacheUtils';
 import formRegistry from '../data/forms/registry.json';
 
+import { useFamilyActions } from '../hooks/useFamilyActions';
+
 const FamilyDetails = () => {
     const { id } = useParams();
     const { profile } = useAuth();
@@ -15,6 +17,9 @@ const FamilyDetails = () => {
     const [members, setMembers] = useState([]);
     const [visits, setVisits] = useState([]);
     const [activeTab, setActiveTab] = useState('members');
+
+    // Custom Hook
+    const { addMember, addVisit } = useFamilyActions(id, profile?.id);
 
     // Modals
     const [showMemberModal, setShowMemberModal] = useState(false);
@@ -97,44 +102,35 @@ const FamilyDetails = () => {
     const handleAddMember = async (e) => {
         e.preventDefault();
         try {
-            const { error } = await supabase
-                .from('family_members')
-                .insert([{
-                    family_id: id,
-                    name: newMember.name,
-                    age: parseInt(newMember.age),
-                    gender: newMember.gender,
-                    relationship: newMember.relationship
-                }]);
+            const newMemberPayload = {
+                name: newMember.name,
+                age: parseInt(newMember.age),
+                gender: newMember.gender,
+                relationship: newMember.relationship
+            };
 
-            if (error) throw error;
+            const result = await addMember(newMemberPayload);
+
+            // Optimistic / Result Update
+            setMembers(prev => [...prev, result]);
 
             // Invalidate analytics cache
-            invalidateAnalyticsCache(profile.id);
+            // invalidateAnalyticsCache(profile.id); // Handled in hook
 
             setShowMemberModal(false);
             setNewMember({ name: '', age: '', gender: 'Male', relationship: '' });
-            loadData(); // Refresh
+            toast.success('Member added!');
         } catch (error) {
             console.error("Error adding member:", error);
-            alert("Failed to add member");
+            toast.error("Failed to add member");
         }
     };
 
-    const handleVisitBasicSubmit = (e) => {
-        e.preventDefault();
-        if (newVisit.protocol) {
-            setVisitStep(2);
-            setSelectedProtocol(newVisit.protocol);
-        } else {
-            finalizeVisit({});
-        }
-    };
+    // ...
 
     const finalizeVisit = async (protocolData) => {
         try {
             const payload = {
-                family_id: id,
                 student_id: profile.id,
                 visit_date: newVisit.date,
                 notes: newVisit.reflections,
@@ -147,20 +143,29 @@ const FamilyDetails = () => {
                 }
             };
 
-            const { error } = await supabase
-                .from('family_visits')
-                .insert([payload]);
+            const result = await addVisit(payload);
 
-            if (error) throw error;
+            // Optimistic / Result Update with UI mapping
+            const mappedVisit = {
+                id: result.id,
+                date: result.visit_date,
+                purpose: result.activity_type || 'General Visit',
+                notes: result.notes,
+                duration: result.data?.duration || '-',
+                protocol: result.data?.protocol || null,
+                data: result.data || {}
+            };
+
+            setVisits(prev => [mappedVisit, ...prev]);
 
             // Invalidate analytics cache
-            invalidateAnalyticsCache(profile.id);
+            // invalidateAnalyticsCache(profile.id); // Handled in hook
 
             resetVisitModal();
-            loadData();
+            toast.success('Visit logged!');
         } catch (error) {
             console.error("Error logging visit:", error);
-            alert("Failed to log visit.");
+            toast.error("Failed to log visit.");
         }
     };
 

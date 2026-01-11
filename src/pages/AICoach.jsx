@@ -1,15 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, Send, Sparkles, BookOpen, Stethoscope, Users, Loader } from 'lucide-react';
+import { MessageCircle, Send, Sparkles, BookOpen, Stethoscope, Users, Loader, Mic, MicOff, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabaseClient';
+import { get, set } from 'idb-keyval';
 
 const AICoach = () => {
     const { profile } = useAuth();
-    const [messages, setMessages] = useState([
-        {
-            role: 'assistant',
-            content: `Hello ${profile?.full_name || 'Student'}! 👋 I'm your AI Medical Coach. I specialize in Family Adoption Programme (FAP) and Community Medicine. I can help you with:
+    const [messages, setMessages] = useState([]);
+    const [input, setInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const messagesEndRef = useRef(null);
+    const [showQuickPrompts, setShowQuickPrompts] = useState(true);
+    const [isListening, setIsListening] = useState(false);
+
+    // Initialize default greeting if no history
+    const defaultGreeting = {
+        role: 'assistant',
+        content: `Hello ${profile?.full_name || 'Student'}! 👋 I'm your AI Medical Coach. I specialize in Family Adoption Programme (FAP) and Community Medicine. I can help you with:
 
 • Understanding NMC competencies and learning objectives
 • Clinical case discussions and differential diagnosis
@@ -18,13 +26,8 @@ const AICoach = () => {
 • Exam preparation and concept clarification
 
 What would you like to learn about today?`,
-            timestamp: new Date()
-        }
-    ]);
-    const [input, setInput] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const messagesEndRef = useRef(null);
-    const [showQuickPrompts, setShowQuickPrompts] = useState(true);
+        timestamp: new Date()
+    };
 
     const quickPrompts = [
         { icon: BookOpen, text: "Explain social determinants of health", category: "Concept" },
@@ -33,6 +36,33 @@ What would you like to learn about today?`,
         { icon: MessageCircle, text: "Write a reflection on my village visit", category: "Documentation" }
     ];
 
+    // Load Chat History
+    useEffect(() => {
+        const loadHistory = async () => {
+            const cachedMessages = await get('fap_ai_chat_history');
+            if (cachedMessages && cachedMessages.length > 0) {
+                // Convert timestamp strings back to Date objects
+                const parsed = cachedMessages.map(m => ({
+                    ...m,
+                    timestamp: new Date(m.timestamp)
+                }));
+                setMessages(parsed);
+                setShowQuickPrompts(false);
+            } else {
+                setMessages([defaultGreeting]);
+                setShowQuickPrompts(true);
+            }
+        };
+        loadHistory();
+    }, []);
+
+    // Save Chat History
+    useEffect(() => {
+        if (messages.length > 0) {
+            set('fap_ai_chat_history', messages);
+        }
+    }, [messages]);
+
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
@@ -40,6 +70,56 @@ What would you like to learn about today?`,
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    // Speech Recognition
+    const startListening = () => {
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'en-IN'; // Indian English
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onstart = () => {
+                setIsListening(true);
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                setInput(transcript);
+                setIsListening(false);
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error', event.error);
+                setIsListening(false);
+            };
+
+            recognition.onend = () => {
+                setIsListening(false);
+            };
+
+            recognition.start();
+        } else {
+            alert("Voice input is not supported in this browser.");
+        }
+    };
+
+    const stopListening = () => {
+        setIsListening(false);
+        // Simple UI toggle off, actual stopping is handled by recognition object scope
+        // but since we create it on click, we rely on onend or simple timeout logic if needed contextually.
+        // For this simple implementation, re-clicking mic when listening usually isn't bound to the same instance unless ref-ed.
+        // We'll just rely on the user speaking or silence timeout.
+    };
+
+    const clearChat = async () => {
+        if (window.confirm("Are you sure you want to clear the chat history?")) {
+            setMessages([defaultGreeting]);
+            setShowQuickPrompts(true);
+            await set('fap_ai_chat_history', []);
+        }
+    };
 
     const sendMessage = async (messageText = input) => {
         if (!messageText.trim() || isLoading) return;
@@ -60,7 +140,7 @@ What would you like to learn about today?`,
                 {
                     role: "system",
                     content: `You are an expert medical educator specializing in Community Medicine and Family Medicine for Indian medical students following the NMC-CBME curriculum. 
-
+        
 Context: The student is in the Family Adoption Programme (FAP) where they adopt a family for 3 years and learn community medicine competencies.
 
 Student Profile: ${profile?.full_name}, Year ${profile?.year || 'N/A'}
@@ -203,10 +283,13 @@ To enable the AI Medical Coach in development:
                     padding: '2rem',
                     color: 'white',
                     borderRadius: '12px',
-                    marginBottom: '1.5rem'
+                    marginBottom: '1.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <Sparkles size={32} />
                     <div>
                         <h1 style={{ fontSize: '1.75rem', fontWeight: '700', margin: 0 }}>AI Medical Coach</h1>
@@ -215,6 +298,23 @@ To enable the AI Medical Coach in development:
                         </p>
                     </div>
                 </div>
+                <button
+                    onClick={clearChat}
+                    title="Clear Chat History"
+                    style={{
+                        background: 'rgba(255,255,255,0.2)',
+                        border: 'none',
+                        color: 'white',
+                        padding: '0.75rem',
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}
+                >
+                    <Trash2 size={20} />
+                </button>
             </motion.div>
 
             {/* Messages Container */}
@@ -327,11 +427,29 @@ To enable the AI Medical Coach in development:
                 borderRadius: '12px',
                 boxShadow: '0 -2px 10px rgba(0,0,0,0.05)'
             }}>
+                <button
+                    onClick={isListening ? stopListening : startListening}
+                    style={{
+                        padding: '1rem',
+                        backgroundColor: isListening ? '#FEE2E2' : 'var(--color-bg)',
+                        color: isListening ? '#EF4444' : 'var(--color-text-muted)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        animation: isListening ? 'pulse 1.5s infinite' : 'none'
+                    }}
+                    title={isListening ? "Stop Listening" : "Start Voice Input"}
+                >
+                    {isListening ? <MicOff size={24} /> : <Mic size={24} />}
+                </button>
                 <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Ask me anything about Community Medicine, FAP, or medical concepts..."
+                    placeholder="Ask me anything... (or use the mic)"
                     style={{
                         flex: 1,
                         padding: '1rem',
@@ -363,6 +481,15 @@ To enable the AI Medical Coach in development:
                     Send
                 </motion.button>
             </div>
+            {isListening && (
+                <style>{`
+                    @keyframes pulse {
+                        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+                        70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+                        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+                    }
+                `}</style>
+            )}
         </div>
     );
 };

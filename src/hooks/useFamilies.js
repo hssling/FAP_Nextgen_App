@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../services/supabaseClient';
+import { addToQueue } from '../services/offlineQueue';
 
 const fetchFamilies = async (studentId) => {
     if (!studentId) return [];
@@ -25,6 +26,23 @@ export const useFamilies = (studentId) => {
 
     const addFamilyMutation = useMutation({
         mutationFn: async (newFamilyData) => {
+            // Offline Handling
+            if (!navigator.onLine) {
+                console.log('Offline: Queuing ADD_FAMILY action');
+                const tempId = crypto.randomUUID();
+                const offlinePayload = {
+                    ...newFamilyData,
+                    id: tempId,
+                    created_at: new Date().toISOString(),
+                    // Mark as offline-created if needed for UI indicators
+                    is_offline: true
+                };
+
+                await addToQueue('ADD_FAMILY', offlinePayload);
+                return offlinePayload;
+            }
+
+            // Online Handling
             const { data, error } = await supabase
                 .from('families')
                 .insert([newFamilyData])

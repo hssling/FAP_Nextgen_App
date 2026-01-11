@@ -123,13 +123,24 @@ const Families = () => {
                                         >
                                             {family.head_name.charAt(0)}
                                         </motion.div>
-                                        <span style={{
-                                            padding: '0.25rem 0.75rem', borderRadius: '99px',
-                                            backgroundColor: '#F0FDFA', color: '#0D9488',
-                                            fontSize: '0.75rem', fontWeight: '600', height: 'fit-content'
-                                        }}>
-                                            Active
-                                        </span>
+                                        {family.is_offline ? (
+                                            <span style={{
+                                                padding: '0.25rem 0.75rem', borderRadius: '99px',
+                                                backgroundColor: '#FFF7ED', color: '#EA580C',
+                                                fontSize: '0.75rem', fontWeight: '600', height: 'fit-content',
+                                                border: '1px solid #FFEDD5'
+                                            }}>
+                                                Pending Sync
+                                            </span>
+                                        ) : (
+                                            <span style={{
+                                                padding: '0.25rem 0.75rem', borderRadius: '99px',
+                                                backgroundColor: '#F0FDFA', color: '#0D9488',
+                                                fontSize: '0.75rem', fontWeight: '600', height: 'fit-content'
+                                            }}>
+                                                Active
+                                            </span>
+                                        )}
                                     </div>
 
                                     <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.25rem' }}>{family.head_name} Family</h3>
