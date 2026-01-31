@@ -46,6 +46,43 @@ const AI_PROVIDERS = {
         ],
         signupUrl: 'https://aistudio.google.com/app/apikey',
         instructions: 'Free with Google account, no credit card'
+    },
+    mistral: {
+        name: 'Mistral AI',
+        description: 'Native Mistral models',
+        apiKeyEnv: 'VITE_MISTRAL_API_KEY',
+        endpoint: 'https://api.mistral.ai/v1/chat/completions',
+        models: [
+            { id: 'mistral-small-latest', name: 'Mistral Small', speed: 'Fast' },
+            { id: 'mistral-medium-latest', name: 'Mistral Medium', speed: 'Fast' },
+            { id: 'mistral-large-latest', name: 'Mistral Large', speed: 'Fast' }
+        ],
+        signupUrl: 'https://console.mistral.ai/',
+        instructions: 'Free tier available on Mistral La Plateforme'
+    },
+    cerebras: {
+        name: 'Cerebras',
+        description: 'Extreme speed inference',
+        apiKeyEnv: 'VITE_CEREBRAS_API_KEY',
+        endpoint: 'https://api.cerebras.ai/v1/chat/completions',
+        models: [
+            { id: 'llama3.1-8b', name: 'Llama 3.1 8B', speed: 'Instant' },
+            { id: 'llama3.1-70b', name: 'Llama 3.1 70B', speed: 'Very Fast' }
+        ],
+        signupUrl: 'https://cloud.cerebras.ai/',
+        instructions: 'Sign up for Cerebras Cloud API'
+    },
+    huggingface: {
+        name: 'Hugging Face',
+        description: 'Open source models',
+        apiKeyEnv: 'VITE_HUGGINGFACE_API_KEY',
+        endpoint: 'https://api-inference.huggingface.co/v1/chat/completions',
+        models: [
+            { id: 'meta-llama/Llama-3.1-8B-Instruct', name: 'Llama 3.1 8B', speed: 'Medium' },
+            { id: 'mistralai/Mistral-7B-Instruct-v0.3', name: 'Mistral 7B v0.3', speed: 'Medium' }
+        ],
+        signupUrl: 'https://huggingface.co/settings/tokens',
+        instructions: 'Create a Read token on Hugging Face'
     }
 };
 
@@ -303,6 +340,99 @@ Guidelines:
         return data.candidates[0].content.parts[0].text;
     };
 
+    const callMistral = async (conversationMessages, controller) => {
+        const apiKey = import.meta.env.VITE_MISTRAL_API_KEY;
+        if (!apiKey) throw new Error('API_KEY_REQUIRED');
+
+        const provider = AI_PROVIDERS.mistral;
+        const model = provider.models[selectedModel] || provider.models[0];
+
+        const response = await fetch(provider.endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: model.id,
+                messages: conversationMessages,
+                temperature: 0.7,
+                max_tokens: 1000
+            }),
+            signal: controller.signal
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error?.message || `Mistral Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
+    };
+
+    const callCerebras = async (conversationMessages, controller) => {
+        const apiKey = import.meta.env.VITE_CEREBRAS_API_KEY;
+        if (!apiKey) throw new Error('API_KEY_REQUIRED');
+
+        const provider = AI_PROVIDERS.cerebras;
+        const model = provider.models[selectedModel] || provider.models[0];
+
+        const response = await fetch(provider.endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: model.id,
+                messages: conversationMessages,
+                temperature: 0.7,
+                max_tokens: 1000
+            }),
+            signal: controller.signal
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error?.message || `Cerebras Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
+    };
+
+    const callHuggingFace = async (conversationMessages, controller) => {
+        const apiKey = import.meta.env.VITE_HUGGINGFACE_API_KEY;
+        if (!apiKey) throw new Error('API_KEY_REQUIRED');
+
+        const provider = AI_PROVIDERS.huggingface;
+        const model = provider.models[selectedModel] || provider.models[0];
+
+        const response = await fetch(provider.endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: model.id,
+                messages: conversationMessages,
+                temperature: 0.7,
+                max_tokens: 1000
+            }),
+            signal: controller.signal
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error?.message || `Hugging Face Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.choices?.[0]?.message?.content || data.choices?.[0]?.text || "No content returned from Hugging Face.";
+    };
+
     const sendMessage = async (overrideMessage = null) => {
         const messageText = overrideMessage || input.trim();
         if (!messageText || isLoading) return;
@@ -360,6 +490,15 @@ Guidelines:
                             break;
                         case 'google':
                             responseText = await callGoogleAI(conversationMessages, controller);
+                            break;
+                        case 'mistral':
+                            responseText = await callMistral(conversationMessages, controller);
+                            break;
+                        case 'cerebras':
+                            responseText = await callCerebras(conversationMessages, controller);
+                            break;
+                        case 'huggingface':
+                            responseText = await callHuggingFace(conversationMessages, controller);
                             break;
                         case 'openrouter':
                         default:
