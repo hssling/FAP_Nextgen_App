@@ -22,19 +22,18 @@ const AI_PROVIDERS = {
         signupUrl: 'https://openrouter.ai/keys',
         instructions: 'Sign up free with Google, no credit card needed'
     },
-    groq: {
-        name: 'Groq',
-        description: 'Ultra-fast inference (Free tier)',
-        apiKeyEnv: 'VITE_GROQ_API_KEY',
-        endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+    xai: {
+        name: 'xAI (Grok)',
+        description: 'Advanced AI models by xAI',
+        apiKeyEnv: 'VITE_xAI_API_KEY',
+        endpoint: 'https://api.x.ai/v1/chat/completions',
         models: [
-            { id: 'llama-3.3-70b-versatile', name: 'LLaMA 3.3 70B', speed: 'Fast' },
-            { id: 'llama-3.1-8b-instant', name: 'LLaMA 3.1 8B', speed: 'Very Fast' },
-            { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', speed: 'Fast' },
-            { id: 'gemma2-9b-it', name: 'Gemma 2 9B', speed: 'Fast' }
+            { id: 'grok-beta', name: 'Grok Beta', speed: 'Fast' },
+            { id: 'grok-2', name: 'Grok 2', speed: 'Fast' },
+            { id: 'grok-vision-beta', name: 'Grok Vision', speed: 'Medium' }
         ],
-        signupUrl: 'https://console.groq.com/keys',
-        instructions: 'Sign up free, generous free tier'
+        signupUrl: 'https://console.x.ai/',
+        instructions: 'Sign up at xAI Console to get your API key'
     },
     google: {
         name: 'Google AI Studio',
@@ -238,11 +237,11 @@ Guidelines:
         }
     };
 
-    const callGroq = async (conversationMessages, controller) => {
-        const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+    const callXAI = async (conversationMessages, controller) => {
+        const apiKey = import.meta.env.VITE_xAI_API_KEY;
         if (!apiKey) throw new Error('API_KEY_REQUIRED');
 
-        const provider = AI_PROVIDERS.groq;
+        const provider = AI_PROVIDERS.xai;
         const model = provider.models[selectedModel] || provider.models[0];
 
         const response = await fetch(provider.endpoint, {
@@ -262,7 +261,7 @@ Guidelines:
 
         if (!response.ok) {
             const error = await response.json().catch(() => ({}));
-            throw new Error(error.error?.message || `Groq Error: ${response.status}`);
+            throw new Error(error.error?.message || `xAI Error: ${response.status}`);
         }
 
         const data = await response.json();
@@ -356,8 +355,8 @@ Guidelines:
                     clearTimeout(timeoutId);
 
                     switch (selectedProvider) {
-                        case 'groq':
-                            responseText = await callGroq(conversationMessages, controller);
+                        case 'xai':
+                            responseText = await callXAI(conversationMessages, controller);
                             break;
                         case 'google':
                             responseText = await callGoogleAI(conversationMessages, controller);
