@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
     BarChart, Activity, Users, Droplets, Heart, FileText, Download,
-    PieChart, TrendingUp, AlertTriangle, Baby, BookOpen, UserCheck
+    PieChart, TrendingUp, AlertTriangle, Baby, BookOpen, UserCheck,
+    Calendar, User, MapPin, Clock, ChevronDown, ChevronUp, Stethoscope,
+    ClipboardList, Target, CheckCircle, AlertCircle, Home
 } from 'lucide-react';
 import { generateCommunityHealthReport } from '../services/analytics';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,6 +23,30 @@ const ReportCard = ({ label, value, subtext, color }) => (
         {subtext && <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{subtext}</div>}
     </div>
 );
+
+const ExpandableCard = ({ title, icon: Icon, children, defaultOpen = false }) => {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
+    return (
+        <div className="card" style={{ padding: '1.5rem', marginBottom: '1rem' }}>
+            <div 
+                onClick={() => setIsOpen(!isOpen)}
+                style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    cursor: 'pointer' 
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <Icon size={20} style={{ color: 'var(--color-primary)' }} />
+                    <span style={{ fontWeight: '600' }}>{title}</span>
+                </div>
+                {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </div>
+            {isOpen && <div style={{ marginTop: '1.5rem' }}>{children}</div>}
+        </div>
+    );
+};
 
 const Reports = () => {
     const { profile } = useAuth();
@@ -82,7 +108,7 @@ const Reports = () => {
                     `)
                     .eq('student_id', profile.id)
                     .eq('is_active', true)
-                    .maybeSingle(); // Use maybeSingle to avoid error if no mentor
+                    .maybeSingle();
                 setFeedback(data);
             };
             loadFeedback();
@@ -93,7 +119,16 @@ const Reports = () => {
         window.print();
     };
 
-    if (loading) return <div className="container" style={{ padding: '2rem' }}>Generating Analytics...</div>;
+    const refreshData = () => {
+        sessionStorage.removeItem(`analytics_${profile.id}`);
+        setLoading(true);
+        generateCommunityHealthReport(profile.id).then(result => {
+            setData(result);
+            setLoading(false);
+        });
+    };
+
+    if (loading) return <div className="container" style={{ padding: '2rem' }}>Generating Comprehensive Analytics...</div>;
 
     if (!data) return (
         <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>
@@ -101,22 +136,27 @@ const Reports = () => {
         </div>
     );
 
-    const { demographics, maternalHealth, childHealth, morbidity, socioEconomic, environmental } = data;
+    const { demographics, maternalHealth, childHealth, morbidity, socioEconomic, environmental, logbook, familyDetails, assessmentSummary, interventionSummary } = data;
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
                     <h1 className="page-title">Reports & Logbook</h1>
-                    <p className="page-subtitle">Track community health status and your personal progress</p>
+                    <p className="page-subtitle">Comprehensive analytics of your FAP journey</p>
                 </div>
-                <button className="btn btn-primary" onClick={handlePrint}>
-                    <Download size={18} /> Export / Print
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn btn-outline no-print" onClick={refreshData}>
+                        Refresh
+                    </button>
+                    <button className="btn btn-primary" onClick={handlePrint}>
+                        <Download size={18} /> Export / Print
+                    </button>
+                </div>
             </div>
 
             {/* Tabs */}
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid #E5E7EB' }}>
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid #E5E7EB', flexWrap: 'wrap' }}>
                 <button
                     onClick={() => setActiveTab('community')}
                     style={{
@@ -132,20 +172,36 @@ const Reports = () => {
                     Community Health Report
                 </button>
                 {profile?.role === 'student' && (
-                    <button
-                        onClick={() => setActiveTab('logbook')}
-                        style={{
-                            padding: '1rem',
-                            borderBottom: activeTab === 'logbook' ? '3px solid var(--color-primary)' : 'none',
-                            color: activeTab === 'logbook' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                            fontWeight: '600',
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        My Logbook & Feedback
-                    </button>
+                    <>
+                        <button
+                            onClick={() => setActiveTab('logbook')}
+                            style={{
+                                padding: '1rem',
+                                borderBottom: activeTab === 'logbook' ? '3px solid var(--color-primary)' : 'none',
+                                color: activeTab === 'logbook' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                fontWeight: '600',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Logbook & Visits
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('families')}
+                            style={{
+                                padding: '1rem',
+                                borderBottom: activeTab === 'families' ? '3px solid var(--color-primary)' : 'none',
+                                color: activeTab === 'families' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                fontWeight: '600',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Family Details
+                        </button>
+                    </>
                 )}
             </div>
 
@@ -158,7 +214,6 @@ const Reports = () => {
                     body { background: white; font-size: 12pt; }
                     .card { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; }
                     h1, h2, h3 { color: black !important; }
-                    /* Force grid to be readable on print */
                     .grid-layout { display: block !important; }
                     .grid-layout > div { marginBottom: 2rem; }
                 }
@@ -169,9 +224,7 @@ const Reports = () => {
                 }
             `}</style>
 
-            {/* Content Container - Renders BOTH but hides one on screen */}
-
-            {/* Community Section */}
+            {/* ========== COMMUNITY SECTION ========== */}
             <div className={activeTab === 'community' ? 'section-visible' : 'section-hidden'}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
                     <ReportCard label="Total Population" value={demographics.totalPopulation} subtext={`${demographics.totalFamilies} Families`} color="#3B82F6" />
@@ -189,17 +242,17 @@ const Reports = () => {
                                 <div key={group}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', marginBottom: '0.25rem' }}>
                                         <span>{group} years</span>
-                                        <span style={{ fontWeight: '600' }}>{Math.round((count / demographics.totalPopulation) * 100)}% ({count})</span>
+                                        <span style={{ fontWeight: '600' }}>{demographics.totalPopulation > 0 ? Math.round((count / demographics.totalPopulation) * 100) : 0}% ({count})</span>
                                     </div>
                                     <div style={{ width: '100%', height: '8px', backgroundColor: '#F1F5F9', borderRadius: '4px' }}>
-                                        <div style={{ width: `${(count / demographics.totalPopulation) * 100}%`, height: '100%', backgroundColor: '#60A5FA', borderRadius: '4px' }}></div>
+                                        <div style={{ width: `${demographics.totalPopulation > 0 ? (count / demographics.totalPopulation) * 100 : 0}%`, height: '100%', backgroundColor: '#60A5FA', borderRadius: '4px' }}></div>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* Socio-Economic Status (Kuppuswamy) */}
+                    {/* Socio-Economic Status */}
                     <div className="card" style={{ padding: '2rem' }}>
                         <SectionHeader icon={TrendingUp} title="Socio-Economic Status" color="#059669" />
                         <div className="grid-layout grid-2">
@@ -221,10 +274,10 @@ const Reports = () => {
                             <div>
                                 <h4 style={{ fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.5rem', color: '#9D174D' }}>Antenatal Care</h4>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: '#FCE7F3', borderRadius: 'var(--radius-md)' }}>
-                                    <span>Registered</span> <span style={{ fontWeight: '700' }}>{data.maternalHealth.registeredPregnancies}</span>
+                                    <span>Registered</span> <span style={{ fontWeight: '700' }}>{maternalHealth.registeredPregnancies}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: '#FCE7F3', borderRadius: 'var(--radius-md)', marginTop: '0.5rem' }}>
-                                    <span>High Risk</span> <span style={{ fontWeight: '700', color: '#BE123C' }}>{data.maternalHealth.highRiskPregnancies}</span>
+                                    <span>High Risk</span> <span style={{ fontWeight: '700', color: '#BE123C' }}>{maternalHealth.highRiskPregnancies}</span>
                                 </div>
                             </div>
                             <div>
@@ -242,7 +295,7 @@ const Reports = () => {
                     <div className="card" style={{ padding: '2rem' }}>
                         <SectionHeader icon={Activity} title="Disease Burden" color="#DC2626" />
                         {Object.keys(morbidity).length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>No data available.</div>
+                            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>No conditions recorded.</div>
                         ) : (
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <tbody>
@@ -260,7 +313,7 @@ const Reports = () => {
                     </div>
                 </div>
 
-                {/* Environmental Health - Fixed Grid for Mobile */}
+                {/* Environmental Health */}
                 <div className="card" style={{ padding: '2rem' }}>
                     <SectionHeader icon={Droplets} title="Environmental Health Indicators" color="#0891B2" />
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '2rem', textAlign: 'center' }}>
@@ -280,66 +333,336 @@ const Reports = () => {
                 </div>
             </div>
 
-            {/* Logbook Section - Printed always, shown on tab */}
+            {/* ========== LOGBOOK SECTION ========== */}
             <div className={`print-break ${activeTab === 'logbook' ? 'section-visible' : 'section-hidden'}`}>
-                {/* Print Title for second section */}
-                <h2 className="print-show" style={{ display: 'none', marginTop: '2rem', marginBottom: '1rem', borderBottom: '2px solid black' }}>Logbook & Feedback</h2>
+                <h2 className="print-show" style={{ display: 'none', marginTop: '2rem', marginBottom: '1rem', borderBottom: '2px solid black' }}>Logbook & Visits</h2>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                {/* Summary Stats */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                    <ReportCard label="Total Visits" value={logbook.visits} subtext="Home visits conducted" color="#3B82F6" />
+                    <ReportCard label="Reflections" value={logbook.reflections} subtext="Journal entries" color="#10B981" />
+                    <ReportCard label="Graded" value={logbook.gradingSummary?.totalGraded || 0} subtext={logbook.gradingSummary?.avgScore ? `Avg: ${logbook.gradingSummary.avgScore}` : 'None graded'} color="#8B5CF6" />
+                    <ReportCard 
+                        label="Assessments" 
+                        value={Object.values(assessmentSummary || {}).reduce((a, b) => a + b.count, 0)} 
+                        subtext="Forms completed" 
+                        color="#F59E0B" 
+                    />
+                </div>
 
-                    {/* Mentor Feedback */}
-                    <div className="card" style={{ padding: '2rem', borderLeft: '4px solid #8B5CF6' }}>
-                        <SectionHeader icon={UserCheck} title="Faculty Mentor Feedback" color="#7C3AED" />
-                        {feedback ? (
-                            <div>
-                                <div style={{ marginBottom: '1rem' }}>
-                                    <span style={{ fontWeight: 'bold', color: '#5B21B6' }}>Mentor: </span>
-                                    <span>{feedback.teacher?.full_name} ({feedback.teacher?.department})</span>
-                                </div>
-                                <div style={{ backgroundColor: '#F5F3FF', padding: '1.5rem', borderRadius: '8px', color: '#4C1D95' }}>
-                                    "{feedback.notes || 'No specific feedback notes added yet.'}"
-                                </div>
+                {/* Mentor Feedback */}
+                <div className="card" style={{ padding: '2rem', borderLeft: '4px solid #8B5CF6', marginBottom: '2rem' }}>
+                    <SectionHeader icon={UserCheck} title="Faculty Mentor Feedback" color="#7C3AED" />
+                    {feedback ? (
+                        <div>
+                            <div style={{ marginBottom: '1rem' }}>
+                                <span style={{ fontWeight: 'bold', color: '#5B21B6' }}>Mentor: </span>
+                                <span>{feedback.teacher?.full_name} ({feedback.teacher?.department})</span>
                             </div>
-                        ) : (
-                            <p style={{ color: '#6B7280' }}>No mentor assigned or feedback available.</p>
-                        )}
-                    </div>
-
-                    {/* Progress Stats */}
-                    <div className="grid-layout grid-2">
-                        <div className="card" style={{ padding: '2rem' }}>
-                            <SectionHeader icon={FileText} title="Logbook Entries" color="#F97316" />
-                            <div style={{ textAlign: 'center', padding: '2rem' }}>
-                                <p style={{ fontSize: '3rem', fontWeight: '800', color: '#EA580C' }}>
-                                    {data?.logbook?.visits || '--'} {/* Assuming analytics returns this or we fetch it */}
-                                </p>
-                                <p>Family Visits Recorded</p>
-                                <button className='btn btn-outline no-print' onClick={() => navigate('/families')}>View Families</button>
+                            <div style={{ backgroundColor: '#F5F3FF', padding: '1.5rem', borderRadius: '8px', color: '#4C1D95' }}>
+                                "{feedback.notes || 'No specific feedback notes added yet.'}"
                             </div>
                         </div>
-                        <div className="card" style={{ padding: '2rem' }}>
-                            <SectionHeader icon={BookOpen} title="Reflections" color="#10B981" />
-                            <div style={{ textAlign: 'center', padding: '2rem' }}>
-                                <p style={{ fontSize: '3rem', fontWeight: '800', color: '#059669' }}>
-                                    {data?.logbook?.reflections || '--'}
-                                </p>
-                                <p>Reflection Journals</p>
-                                <button className='btn btn-outline no-print' onClick={() => navigate('/reflections')}>Write Reflection</button>
-                            </div>
+                    ) : (
+                        <p style={{ color: '#6B7280' }}>No mentor assigned or feedback available.</p>
+                    )}
+                </div>
+
+                {/* Visit Log */}
+                <ExpandableCard title={`Visit History (${logbook.visitLog?.length || 0} Visits)`} icon={Calendar} defaultOpen={true}>
+                    {logbook.visitLog?.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: '#6B7280' }}>
+                            <Clock size={32} style={{ color: '#CBD5E1', marginBottom: '0.5rem' }} />
+                            <p>No visits recorded yet.</p>
+                            <button className='btn btn-outline no-print' onClick={() => navigate('/families')} style={{ marginTop: '1rem' }}>
+                                Record First Visit
+                            </button>
+                        </div>
+                    ) : (
+                        <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                                <thead style={{ background: '#F8FAFC', position: 'sticky', top: 0 }}>
+                                    <tr>
+                                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Date</th>
+                                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Family</th>
+                                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Member</th>
+                                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Protocol</th>
+                                        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {logbook.visitLog.map((visit, idx) => (
+                                        <tr key={visit.id || idx} style={{ borderBottom: '1px solid #E5E7EB' }}>
+                                            <td style={{ padding: '0.75rem' }}>{new Date(visit.date).toLocaleDateString()}</td>
+                                            <td style={{ padding: '0.75rem', fontWeight: '500' }}>{visit.familyName}</td>
+                                            <td style={{ padding: '0.75rem' }}>{visit.memberName || '-'}</td>
+                                            <td style={{ padding: '0.75rem' }}>
+                                                <span style={{ 
+                                                    background: '#E0F2FE', 
+                                                    color: '#0369A1', 
+                                                    padding: '0.25rem 0.5rem', 
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.75rem'
+                                                }}>
+                                                    {visit.protocol.replace(/_v\d+$/, '').replace(/_/g, ' ')}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '0.75rem', color: '#6B7280', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {visit.notes || visit.reflection || '-'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </ExpandableCard>
+
+                {/* Reflection Log */}
+                <ExpandableCard title={`Reflections & Journals (${logbook.reflectionLog?.length || 0} Entries)`} icon={BookOpen}>
+                    {logbook.reflectionLog?.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: '#6B7280' }}>
+                            <FileText size={32} style={{ color: '#CBD5E1', marginBottom: '0.5rem' }} />
+                            <p>No reflections written yet.</p>
+                            <button className='btn btn-outline no-print' onClick={() => navigate('/reflections')} style={{ marginTop: '1rem' }}>
+                                Write First Reflection
+                            </button>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {logbook.reflectionLog.slice(0, 10).map((ref, idx) => (
+                                <div key={ref.id || idx} style={{ 
+                                    padding: '1rem', 
+                                    border: '1px solid #E5E7EB', 
+                                    borderRadius: '8px',
+                                    borderLeft: `4px solid ${ref.status === 'Graded' ? '#10B981' : '#3B82F6'}`
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                                        <div>
+                                            <span style={{ fontSize: '0.75rem', color: '#6B7280' }}>
+                                                {new Date(ref.date).toLocaleDateString()} • {ref.phase}
+                                            </span>
+                                            <div style={{ fontWeight: '600', marginTop: '0.25rem' }}>
+                                                {ref.description ? ref.description.substring(0, 80) + '...' : ref.fileName || 'Reflection Entry'}
+                                            </div>
+                                        </div>
+                                        {ref.status === 'Graded' && (
+                                            <div style={{ 
+                                                background: '#10B981', 
+                                                color: 'white', 
+                                                padding: '0.25rem 0.75rem', 
+                                                borderRadius: '20px',
+                                                fontSize: '0.875rem',
+                                                fontWeight: '600'
+                                            }}>
+                                                {ref.grade} ({ref.totalScore} pts)
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    {ref.mentorFeedback && (
+                                        <div style={{ 
+                                            marginTop: '0.75rem', 
+                                            padding: '0.75rem', 
+                                            background: '#F0FDF4', 
+                                            borderRadius: '6px',
+                                            fontSize: '0.875rem'
+                                        }}>
+                                            <strong style={{ color: '#166534' }}>Mentor Feedback:</strong> {ref.mentorFeedback}
+                                        </div>
+                                    )}
+
+                                    {ref.analysis && (
+                                        <div style={{ 
+                                            marginTop: '0.5rem', 
+                                            fontSize: '0.875rem',
+                                            color: '#4B5563',
+                                            fontStyle: 'italic'
+                                        }}>
+                                            "{ref.analysis.substring(0, 150)}..."
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                            
+                            {logbook.reflectionLog.length > 10 && (
+                                <button className='btn btn-outline no-print' onClick={() => navigate('/reflections')}>
+                                    View All {logbook.reflectionLog.length} Reflections
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </ExpandableCard>
+
+                {/* Assessment Summary */}
+                <ExpandableCard title="Assessment Types Completed" icon={ClipboardList}>
+                    {Object.keys(assessmentSummary || {}).length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: '#6B7280' }}>No assessments completed yet.</div>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                            {Object.entries(assessmentSummary).map(([formId, data]) => (
+                                <div key={formId} style={{ 
+                                    padding: '1rem', 
+                                    background: '#F8FAFC', 
+                                    borderRadius: '8px',
+                                    border: '1px solid #E2E8F0'
+                                }}>
+                                    <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
+                                        {formId.replace(/_v\d+$/, '').replace(/_/g, ' ')}
+                                    </div>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--color-primary)' }}>
+                                        {data.count}
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>
+                                        {data.uniqueMembers} unique members
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </ExpandableCard>
+
+                {/* Intervention Summary */}
+                <ExpandableCard title="Interventions Tracking" icon={Target}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                        <div style={{ textAlign: 'center', padding: '1rem', background: '#F0FDF4', borderRadius: '8px' }}>
+                            <div style={{ fontSize: '2rem', fontWeight: '700', color: '#10B981' }}>{interventionSummary?.completed || 0}</div>
+                            <div style={{ fontSize: '0.875rem', color: '#047857' }}>Completed</div>
+                        </div>
+                        <div style={{ textAlign: 'center', padding: '1rem', background: '#FEF3C7', borderRadius: '8px' }}>
+                            <div style={{ fontSize: '2rem', fontWeight: '700', color: '#D97706' }}>{interventionSummary?.pending || 0}</div>
+                            <div style={{ fontSize: '0.875rem', color: '#B45309' }}>Pending</div>
+                        </div>
+                        <div style={{ textAlign: 'center', padding: '1rem', background: '#EFF6FF', borderRadius: '8px' }}>
+                            <div style={{ fontSize: '2rem', fontWeight: '700', color: '#3B82F6' }}>{interventionSummary?.total || 0}</div>
+                            <div style={{ fontSize: '0.875rem', color: '#1D4ED8' }}>Total</div>
                         </div>
                     </div>
+                    
+                    {interventionSummary?.byType && Object.keys(interventionSummary.byType).length > 0 && (
+                        <div>
+                            <h4 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>By Type:</h4>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                {Object.entries(interventionSummary.byType).map(([type, count]) => (
+                                    <span key={type} style={{ 
+                                        background: '#E5E7EB', 
+                                        padding: '0.25rem 0.75rem', 
+                                        borderRadius: '20px',
+                                        fontSize: '0.875rem'
+                                    }}>
+                                        {type}: {count}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </ExpandableCard>
+            </div>
 
-                    {/* Health Trajectories */}
-                    <div className="card" style={{ padding: '2rem' }}>
-                        <SectionHeader icon={Activity} title="Health Trajectories" color="#EF4444" />
-                        <p style={{ marginBottom: '1rem', color: '#4B5563' }}>
-                            View longitudinal health data (Blood Pressure, BMI trends) for your adopted families in the Tools section.
-                        </p>
-                        <button className="btn btn-primary no-print" onClick={() => navigate('/tools')}>
-                            Open Health Analytics Tools
+            {/* ========== FAMILY DETAILS SECTION ========== */}
+            <div className={`print-break ${activeTab === 'families' ? 'section-visible' : 'section-hidden'}`}>
+                <h2 className="print-show" style={{ display: 'none', marginTop: '2rem', marginBottom: '1rem', borderBottom: '2px solid black' }}>Family Details</h2>
+
+                {familyDetails?.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '3rem', color: '#6B7280' }}>
+                        <Home size={48} style={{ color: '#CBD5E1', marginBottom: '1rem' }} />
+                        <p>No families adopted yet.</p>
+                        <button className='btn btn-primary no-print' onClick={() => navigate('/families')} style={{ marginTop: '1rem' }}>
+                            Add First Family
                         </button>
                     </div>
-                </div>
+                ) : (
+                    familyDetails.map(family => (
+                        <div key={family.id} className="card" style={{ padding: '2rem', marginBottom: '1.5rem' }}>
+                            {/* Family Header */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                                <div>
+                                    <h3 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0 }}>
+                                        <Home size={20} style={{ marginRight: '0.5rem', color: 'var(--color-primary)' }} />
+                                        {family.headName}
+                                    </h3>
+                                    {family.address && (
+                                        <p style={{ color: '#6B7280', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+                                            <MapPin size={14} style={{ marginRight: '0.25rem' }} />
+                                            {family.address}
+                                        </p>
+                                    )}
+                                </div>
+                                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                    <div style={{ textAlign: 'center', padding: '0.5rem 1rem', background: '#EFF6FF', borderRadius: '8px' }}>
+                                        <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#3B82F6' }}>{family.memberCount}</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#1D4ED8' }}>Members</div>
+                                    </div>
+                                    <div style={{ textAlign: 'center', padding: '0.5rem 1rem', background: '#F0FDF4', borderRadius: '8px' }}>
+                                        <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#10B981' }}>{family.totalVisits}</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#047857' }}>Visits</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Members Table */}
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                                    <thead style={{ background: '#F8FAFC' }}>
+                                        <tr>
+                                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Member</th>
+                                            <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>Age/Gender</th>
+                                            <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>BMI</th>
+                                            <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>BP</th>
+                                            <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>Assessments</th>
+                                            <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>Problems</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {family.members.map(member => (
+                                            <tr key={member.id} style={{ borderBottom: '1px solid #E5E7EB' }}>
+                                                <td style={{ padding: '0.75rem' }}>
+                                                    <div style={{ fontWeight: '500' }}>{member.name}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>{member.relationship}</div>
+                                                </td>
+                                                <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                                    {member.age}y / {member.gender?.charAt(0)}
+                                                </td>
+                                                <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                                    {member.latestVitals?.bmi ? (
+                                                        <span style={{ 
+                                                            padding: '0.25rem 0.5rem',
+                                                            borderRadius: '4px',
+                                                            background: member.latestVitals.bmiCategory === 'Normal' ? '#D1FAE5' : '#FEF3C7',
+                                                            color: member.latestVitals.bmiCategory === 'Normal' ? '#047857' : '#B45309',
+                                                            fontWeight: '500'
+                                                        }}>
+                                                            {member.latestVitals.bmi}
+                                                        </span>
+                                                    ) : '-'}
+                                                </td>
+                                                <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                                    {member.latestVitals?.bp || '-'}
+                                                </td>
+                                                <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                                    {member.assessmentCount}
+                                                </td>
+                                                <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                                    {member.problemCount > 0 ? (
+                                                        <span style={{ color: '#EF4444', fontWeight: '500' }}>{member.problemCount}</span>
+                                                    ) : (
+                                                        <CheckCircle size={16} style={{ color: '#10B981' }} />
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {family.lastVisit && (
+                                <div style={{ marginTop: '1rem', fontSize: '0.75rem', color: '#6B7280' }}>
+                                    Last visited: {new Date(family.lastVisit).toLocaleDateString()}
+                                </div>
+                            )}
+                        </div>
+                    ))
+                )}
             </div>
         </div>
     );
