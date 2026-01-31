@@ -3,8 +3,14 @@ import { motion } from 'framer-motion';
 import { BookOpen, Target, CheckCircle, Calendar, Award, FileText, TrendingUp, Users, X, GraduationCap } from 'lucide-react';
 import competenciesData from '../data/competencies/nmc_competencies.json';
 import LearningContentViewer from '../components/LearningContentViewer';
+import { useAuth } from '../contexts/AuthContext';
+import { useCompetencies } from '../hooks/useCompetencies';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 const LearningObjectives = () => {
+    const { profile } = useAuth();
+    const { progress, isLoading: loadingProgress } = useCompetencies(profile?.id);
+    
     const [selectedYear, setSelectedYear] = useState('year_1');
     const [activeTab, setActiveTab] = useState('competencies');
     const [selectedCompetency, setSelectedCompetency] = useState(null);
@@ -12,6 +18,29 @@ const LearningObjectives = () => {
 
     const yearData = competenciesData[selectedYear];
     const yearNumber = selectedYear.split('_')[1];
+
+    const getStatus = (code) => {
+        const item = progress.find(p => p.competency_code === code);
+        return item ? item.status : 'pending';
+    };
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'verified': return '#059669'; // Emerald
+            case 'achieved': return '#10B981'; // Green
+            case 'in_progress': return '#F59E0B'; // Amber
+            default: return '#94A3B8'; // Slate
+        }
+    };
+
+    const calculateYearProgress = (yearId) => {
+        const yearComps = competenciesData[yearId].competencies;
+        const achieved = yearComps.filter(c => {
+            const status = getStatus(c.code);
+            return status === 'achieved' || status === 'verified';
+        }).length;
+        return Math.round((achieved / yearComps.length) * 100);
+    };
 
     const tabs = [
         { id: 'competencies', label: 'Competencies', icon: Target },
@@ -83,15 +112,27 @@ const LearningObjectives = () => {
                             backgroundColor: selectedYear === year.id ? '#F0FDFA' : 'white',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
-                            textAlign: 'left'
+                            textAlign: 'left',
+                            position: 'relative',
+                            overflow: 'hidden'
                         }}
                     >
-                        <div style={{ fontWeight: '600', fontSize: '1.125rem', color: selectedYear === year.id ? '#0F766E' : 'var(--color-text)' }}>
+                        <div style={{ fontWeight: '600', fontSize: '1.125rem', color: selectedYear === year.id ? '#0F766E' : 'var(--color-text)', position: 'relative', zIndex: 1 }}>
                             {year.label}
                         </div>
-                        <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
-                            {year.subtitle} Phase
+                        <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: '0.25rem', position: 'relative', zIndex: 1 }}>
+                            {year.subtitle} Phase • {calculateYearProgress(year.id)}% Done
                         </div>
+                        {/* Progress Background */}
+                        <div style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            height: '4px',
+                            backgroundColor: selectedYear === year.id ? '#10B981' : '#E2E8F0',
+                            width: `${calculateYearProgress(year.id)}%`,
+                            transition: 'width 0.5s ease-out'
+                        }} />
                     </button>
                 ))}
             </div>
@@ -206,13 +247,14 @@ const LearningObjectives = () => {
                                     </div>
                                     <div style={{
                                         padding: '0.5rem 1rem',
-                                        backgroundColor: '#FEF3C7',
+                                        backgroundColor: getStatusColor(getStatus(comp.code)),
                                         borderRadius: '4px',
                                         fontSize: '0.875rem',
                                         fontWeight: '600',
-                                        color: '#92400E'
+                                        color: 'white',
+                                        textTransform: 'uppercase'
                                     }}>
-                                        {comp.level}
+                                        {getStatus(comp.code).replace('_', ' ')}
                                     </div>
                                 </div>
                                 <div>

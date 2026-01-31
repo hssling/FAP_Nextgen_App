@@ -9,7 +9,9 @@ import { invalidateAnalyticsCache } from '../utils/cacheUtils';
 import formRegistry from '../data/forms/registry.json';
 
 import { useFamilyActions } from '../hooks/useFamilyActions';
+import { useCompetencies } from '../hooks/useCompetencies';
 import { getCurrentLocation } from '../utils/locationUtils';
+import { getCompetenciesForActivity } from '../utils/competencyMapping';
 import { toast } from 'react-hot-toast';
 import { MapPin, Signal, SignalLow, Globe, Info, RefreshCw } from 'lucide-react';
 import { get, set } from 'idb-keyval';
@@ -22,8 +24,9 @@ const FamilyDetails = () => {
     const [visits, setVisits] = useState([]);
     const [activeTab, setActiveTab] = useState('members');
 
-    // Custom Hook
+    // Custom Hooks
     const { addMember, addVisit } = useFamilyActions(id, profile?.id);
+    const { updateCompetency } = useCompetencies(profile?.id);
 
     // Modals
     const [showMemberModal, setShowMemberModal] = useState(false);
@@ -218,8 +221,20 @@ const FamilyDetails = () => {
 
             setVisits(prev => [mappedVisit, ...prev]);
 
-            // Invalidate analytics cache
-            // invalidateAnalyticsCache(profile.id); // Handled in hook
+            // Update Competencies automatically
+            const relatedCompetencies = getCompetenciesForActivity(newVisit.purpose);
+            if (relatedCompetencies.length > 0) {
+                console.log(`[Competency] Updating: ${relatedCompetencies.join(', ')}`);
+                await Promise.all(relatedCompetencies.map(code => 
+                    updateCompetency({
+                        code,
+                        status: 'achieved',
+                        evidenceType: 'visit',
+                        evidenceId: result.id
+                    })
+                ));
+                toast.success(`Competencies Achieved: ${relatedCompetencies.join(', ')}`, { icon: '🎓' });
+            }
 
             resetVisitModal();
             toast.success('Visit logged!');
