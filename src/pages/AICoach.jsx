@@ -162,61 +162,105 @@ Provide helpful, accurate, and educational responses. Use simple language, inclu
             // Use Edge Function in production, direct API in development
             const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-            if (!isLocalhost && import.meta.env.PROD) {
-                // Production: Use secure Edge Function
-                const { data: { session } } = await supabase.auth.getSession();
+            // Create abort controller for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-                if (!session) {
-                    throw new Error('Please log in to use AI Coach');
-                }
+            try {
+                if (!isLocalhost && import.meta.env.PROD) {
+                    // Production: Use secure Edge Function
+                    const { data: { session } } = await supabase.auth.getSession();
 
-                const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${session.access_token}`
-                    },
-                    body: JSON.stringify({ messages: conversationMessages })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Server error: ${response.status}`);
-                }
-
-                data = await response.json();
-            } else {
-                // Development: Direct API call
-                const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
-
-                if (!apiKey || apiKey === 'YOUR_OPENROUTER_API_KEY_HERE') {
-                    throw new Error('API_KEY_REQUIRED');
-                }
-
-                const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`,
-                        'HTTP-Referer': window.location.origin,
-                        'X-Title': 'FAP Medical Coach'
-                    },
-                    body: JSON.stringify({
-                        model: "meta-llama/llama-3.2-3b-instruct:free",
-                        messages: conversationMessages,
-                        temperature: 0.7,
-                        max_tokens: 1000
-                    })
-                });
-
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        throw new Error('API_KEY_INVALID');
+                    if (!session) {
+                        throw new Error('Please log in to use AI Coach');
                     }
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error?.message || `API Error: ${response.status}`);
-                }
 
-                data = await response.json();
+                    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${session.access_token}`
+                        },
+                        body: JSON.stringify({ messages: conversationMessages }),
+                        signal: controller.signal
+                    });
+
+                    clearTimeout(timeoutId);
+
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+
+                    data = await response.json();
+                } else {
+                    // Development: Direct API call
+                    const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+
+                    if (!apiKey || apiKey === 'YOUR_OPENROUTER_API_KEY_HERE') {
+                        throw new Error('API_KEY_REQUIRED');
+                    }
+
+                    // Try primary model first, fallback to alternative if needed
+                    const models = [
+                        "google/gemma-2-9b-it:free",           // Fast, reliable
+                        "meta-llama/llama-3.2-3b-instruct:free", // Alternative
+                        "mistralai/mistral-7b-instruct:free"   // Fallback
+                    ];
+
+                    let lastError = null;
+                    
+                    for (const model of models) {
+                        try {
+                            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${apiKey}`,
+                                    'HTTP-Referer': window.location.origin,
+                                    'X-Title': 'FAP Medical Coach'
+                                },
+                                body: JSON.stringify({
+                                    model: model,
+                                    messages: conversationMessages,
+                                    temperature: 0.7,
+                                    max_tokens: 1000
+                                }),
+                                signal: controller.signal
+                            });
+
+                            clearTimeout(timeoutId);
+
+                            if (response.ok) {
+                                data = await response.json();
+                                if (data.choices && data.choices[0]?.message?.content) {
+                                    break; // Success! Exit the loop
+                                }
+                            } else if (response.status === 401) {
+                                throw new Error('API_KEY_INVALID');
+                            } else if (response.status === 429) {
+                                // Rate limited on this model, try next
+                                lastError = new Error('RATE_LIMIT');
+                                continue;
+                            } else {
+                                const errorData = await response.json().catch(() => ({}));
+                                lastError = new Error(errorData.error?.message || `API Error: ${response.status}`);
+                                continue;
+                            }
+                        } catch (modelError) {
+                            if (modelError.name === 'AbortError') {
+                                throw new Error('TIMEOUT');
+                            }
+                            lastError = modelError;
+                            continue;
+                        }
+                    }
+
+                    if (!data && lastError) {
+                        throw lastError;
+                    }
+                }
+            } finally {
+                clearTimeout(timeoutId);
             }
 
             if (data.choices && data.choices[0]?.message?.content) {
@@ -246,6 +290,14 @@ To enable the AI Medical Coach in development:
 
 ✨ OpenRouter is free for students!
 ⚡ In production, this uses a secure server-side API.`;
+            } else if (error.message === 'TIMEOUT' || error.name === 'AbortError') {
+                errorMsg = `⏱️ **Request Timed Out**
+
+The AI model took too long to respond. This can happen when:
+• The AI service is experiencing high traffic
+• Your network connection is slow
+
+**Try again** - it usually works on the second attempt!`;
             } else if (error.message.includes('RATE_LIMIT') || error.message.includes('429')) {
                 errorMsg = '⚠️ Too many requests. Please wait a moment and try again.';
             } else if (error.message.includes('Failed to fetch') || error.message.includes('network')) {
