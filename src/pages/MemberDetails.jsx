@@ -138,8 +138,63 @@ const MemberDetails = () => {
     if (loading) return <div className="container" style={{ paddingTop: '2rem' }}>Loading Member...</div>;
     if (!member) return <div className="container" style={{ paddingTop: '2rem' }}>Member not found.</div>;
 
-    // Derived Health Status (Mock Logic based on assessments)
-    const lastBP = member.assessments.find(a => a.formId === 'ncd_screening_v1')?.data.bp_systolic || '-';
+    // Derived Health Status from assessments
+    // Get latest BMI from anthropometric assessment
+    const latestAnthropometric = member.assessments
+        .filter(a => a.formId === 'anthropometric_assessment_v1')
+        .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+    
+    // Calculate BMI from the latest anthropometric data
+    let bmiValue = null;
+    let bmiCategory = null;
+    let bmiColor = '#6B7280';
+    
+    if (latestAnthropometric?.data) {
+        const { height_cm, weight_kg } = latestAnthropometric.data;
+        if (height_cm && weight_kg) {
+            const heightM = parseFloat(height_cm) / 100;
+            const weightKg = parseFloat(weight_kg);
+            if (heightM > 0 && weightKg > 0) {
+                bmiValue = (weightKg / (heightM * heightM)).toFixed(1);
+                
+                // Determine category and color
+                if (bmiValue < 18.5) {
+                    bmiCategory = 'Underweight';
+                    bmiColor = '#F59E0B';
+                } else if (bmiValue >= 18.5 && bmiValue < 23) {
+                    bmiCategory = 'Normal';
+                    bmiColor = '#10B981';
+                } else if (bmiValue >= 23 && bmiValue < 25) {
+                    bmiCategory = 'Overweight';
+                    bmiColor = '#F59E0B';
+                } else if (bmiValue >= 25 && bmiValue < 30) {
+                    bmiCategory = 'Obese I';
+                    bmiColor = '#EF4444';
+                } else {
+                    bmiCategory = 'Obese II';
+                    bmiColor = '#DC2626';
+                }
+            }
+        }
+    }
+
+    // Also check if BMI was calculated and stored during form submission
+    if (!bmiValue && latestAnthropometric?.calculated_fields?.bmi) {
+        bmiValue = latestAnthropometric.calculated_fields.bmi.bmi;
+        bmiCategory = latestAnthropometric.calculated_fields.bmi.category;
+        bmiColor = latestAnthropometric.calculated_fields.bmi.color;
+    }
+
+    // Get latest BP from NCD screening
+    const latestNCD = member.assessments
+        .filter(a => a.formId === 'ncd_screening_v1')
+        .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+    
+    const lastBPSystolic = latestNCD?.data?.bp_systolic || null;
+    const lastBPDiastolic = latestNCD?.data?.bp_diastolic || null;
+    const lastBP = lastBPSystolic && lastBPDiastolic 
+        ? `${lastBPSystolic}/${lastBPDiastolic}` 
+        : '-';
 
     return (
         <div>
@@ -218,6 +273,21 @@ const MemberDetails = () => {
                                         </div>
                                     )}
 
+                                    {a.formId === 'anthropometric_assessment_v1' && (
+                                        <div style={{ fontSize: '0.75rem', color: '#4B5563', marginBottom: '0.5rem' }}>
+                                            {a.data.height_cm && a.data.weight_kg && (
+                                                <>
+                                                    Ht: {a.data.height_cm}cm • Wt: {a.data.weight_kg}kg
+                                                    {a.calculated_fields?.bmi && (
+                                                        <span style={{ color: a.calculated_fields.bmi.color, fontWeight: '600' }}>
+                                                            {' '}• BMI: {a.calculated_fields.bmi.bmi}
+                                                        </span>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+
                                     <div style={{ fontSize: '0.875rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                         View Data <ChevronRight size={14} />
                                     </div>
@@ -235,13 +305,25 @@ const MemberDetails = () => {
                         <Activity size={20} className="text-secondary" /> Clinical Status
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-                        <div style={{ backgroundColor: '#F8FAFC', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+                        <div style={{ backgroundColor: '#F8FAFC', padding: '1rem', borderRadius: 'var(--radius-md)', borderLeft: bmiValue ? `4px solid ${bmiColor}` : '' }}>
                             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>BMI</span>
-                            <span style={{ fontSize: '1.25rem', fontWeight: '700' }}>-</span>
+                            <span style={{ fontSize: '1.25rem', fontWeight: '700', color: bmiValue ? bmiColor : 'inherit' }}>
+                                {bmiValue || '-'}
+                            </span>
+                            {bmiCategory && (
+                                <span style={{ fontSize: '0.7rem', color: bmiColor, display: 'block', marginTop: '0.25rem' }}>
+                                    {bmiCategory}
+                                </span>
+                            )}
                         </div>
                         <div style={{ backgroundColor: '#F8FAFC', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
                             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>BP (Last)</span>
-                            <span style={{ fontSize: '1.25rem', fontWeight: '700' }}>{lastBP > 0 ? `${lastBP} Sys` : '-'}</span>
+                            <span style={{ fontSize: '1.25rem', fontWeight: '700' }}>{lastBP}</span>
+                            {lastBP !== '-' && (
+                                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'block', marginTop: '0.25rem' }}>
+                                    mmHg
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -81,6 +81,21 @@ const createRobustStorage = () => {
 // Create the robust storage instance
 const robustStorage = createRobustStorage();
 
+// Session refresh function - call this when tab becomes visible
+const refreshSession = async (client) => {
+    if (!client) return;
+    try {
+        const { data, error } = await client.auth.refreshSession();
+        if (error) {
+            console.warn('Session refresh failed:', error.message);
+        } else if (data?.session) {
+            console.log('Session refreshed successfully');
+        }
+    } catch (e) {
+        console.warn('Session refresh error:', e);
+    }
+};
+
 // Create Supabase client with enhanced mobile support
 export const supabase = supabaseUrl && supabaseAnonKey
     ? createClient(supabaseUrl, supabaseAnonKey, {
@@ -88,9 +103,9 @@ export const supabase = supabaseUrl && supabaseAnonKey
             autoRefreshToken: true,
             persistSession: true,
             detectSessionInUrl: true,
-            storage: robustStorage           // Custom storage for mobile reliability
-            // NOTE: We intentionally don't change storageKey or flowType
-            // to maintain backward compatibility with existing sessions
+            storage: robustStorage,           // Custom storage for mobile reliability
+            // Refresh token 60 seconds before expiry (default is 10 seconds, too tight)
+            // This gives more buffer time especially on slow networks
         },
         global: {
             headers: {
@@ -99,6 +114,23 @@ export const supabase = supabaseUrl && supabaseAnonKey
         }
     })
     : null;
+
+// Set up visibility change listener - refresh session when user returns to tab
+if (typeof document !== 'undefined' && supabase) {
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            console.log('Tab visible - refreshing session...');
+            refreshSession(supabase);
+        }
+    });
+
+    // Also refresh session periodically every 10 minutes to keep it alive
+    setInterval(() => {
+        if (document.visibilityState === 'visible') {
+            refreshSession(supabase);
+        }
+    }, 10 * 60 * 1000); // 10 minutes
+}
 
 // Check if Supabase is configured
 export const isSupabaseConfigured = () => {
