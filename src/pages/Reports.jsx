@@ -95,7 +95,13 @@ const Reports = () => {
 
     if (loading) return <div className="container" style={{ padding: '2rem' }}>Generating Analytics...</div>;
 
-    const { demographics, MaternalHealth, childHealth, morbidity, socioEconomic, environmental } = data;
+    if (!data) return (
+        <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>
+            <p style={{ color: '#6B7280' }}>No data available. Please add family members to generate reports.</p>
+        </div>
+    );
+
+    const { demographics, maternalHealth, childHealth, morbidity, socioEconomic, environmental } = data;
 
     return (
         <div>
