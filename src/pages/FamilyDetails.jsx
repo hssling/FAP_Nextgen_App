@@ -9,6 +9,10 @@ import { invalidateAnalyticsCache } from '../utils/cacheUtils';
 import formRegistry from '../data/forms/registry.json';
 
 import { useFamilyActions } from '../hooks/useFamilyActions';
+import { getCurrentLocation } from '../utils/locationUtils';
+import { toast } from 'react-hot-toast';
+import { MapPin, Signal, SignalLow, Globe, Info, RefreshCw } from 'lucide-react';
+import { get, set } from 'idb-keyval';
 
 const FamilyDetails = () => {
     const { id } = useParams();
@@ -39,12 +43,42 @@ const FamilyDetails = () => {
         memberId: ''
     });
     const [uploading, setUploading] = useState(false); // For Photo Upload
+    const [gpsLocation, setGpsLocation] = useState(null);
+    const [isLocating, setIsLocating] = useState(false);
+    const [locationError, setLocationError] = useState(null);
 
     useEffect(() => {
         if (profile) loadData();
     }, [id, profile]);
 
+    // Capture GPS when visit modal opens
+    useEffect(() => {
+        if (showVisitModal && visitStep === 1) {
+            captureLocation();
+        }
+    }, [showVisitModal, visitStep]);
+
+    const captureLocation = async () => {
+        setIsLocating(true);
+        setLocationError(null);
+        try {
+            const loc = await getCurrentLocation();
+            setGpsLocation(loc);
+        } catch (err) {
+            console.error("Location error:", err);
+            setLocationError(err.message);
+        } finally {
+            setIsLocating(false);
+        }
+    };
+
     const loadData = async () => {
+        const cacheKeys = {
+            family: `fap_family_${id}`,
+            members: `fap_members_${id}`,
+            visits: `fap_visits_${id}`
+        };
+
         try {
             // Fetch Family
             const { data: famData, error: famError } = await supabase
@@ -60,9 +94,10 @@ const FamilyDetails = () => {
                 headName: famData.head_name,
                 village: famData.village,
                 membersCount: famData.members_count,
-                photoUrl: famData.photo_url // Map photo url
+                photoUrl: famData.photo_url
             };
             setFamily(mappedFam);
+            await set(cacheKeys.family, mappedFam);
 
             // Fetch Members
             const { data: memData, error: memError } = await supabase
@@ -72,6 +107,7 @@ const FamilyDetails = () => {
 
             if (memError) throw memError;
             setMembers(memData || []);
+            await set(cacheKeys.members, memData || []);
 
             // Fetch Visits
             const { data: visData, error: visError } = await supabase
@@ -82,7 +118,6 @@ const FamilyDetails = () => {
 
             if (visError) throw visError;
 
-            // Map visits to UI format
             const mappedVisits = (visData || []).map(v => ({
                 id: v.id,
                 date: v.visit_date,
@@ -93,9 +128,26 @@ const FamilyDetails = () => {
                 data: v.data || {}
             }));
             setVisits(mappedVisits);
+            await set(cacheKeys.visits, mappedVisits);
 
         } catch (error) {
-            console.error("Error loading family details:", error);
+            console.warn("Error loading family details (trying cache):", error);
+            
+            // Try loading from cache if offline
+            const [cachedFam, cachedMembers, cachedVisits] = await Promise.all([
+                get(cacheKeys.family),
+                get(cacheKeys.members),
+                get(cacheKeys.visits)
+            ]);
+
+            if (cachedFam) {
+                setFamily(cachedFam);
+                setMembers(cachedMembers || []);
+                setVisits(cachedVisits || []);
+                toast('Showing cached data (Offline)', { icon: '📴' });
+            } else {
+                toast.error("Failed to load data and no cache found.");
+            }
         }
     };
 
@@ -140,6 +192,14 @@ const FamilyDetails = () => {
                     duration: newVisit.duration,
                     protocol: newVisit.protocol,
                     member_id: newVisit.memberId || null
+                },
+                latitude: gpsLocation?.latitude || null,
+                longitude: gpsLocation?.longitude || null,
+                gps_accuracy: gpsLocation?.accuracy || null,
+                device_info: {
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    online: navigator.onLine
                 }
             };
 
@@ -180,6 +240,8 @@ const FamilyDetails = () => {
             protocol: null,
             memberId: ''
         });
+        setGpsLocation(null);
+        setLocationError(null);
     };
 
     const handlePhotoUpload = async (e) => {
@@ -582,6 +644,58 @@ const FamilyDetails = () => {
                                                 <option key={m.id} value={m.id}>{m.name} ({m.relationship})</option>
                                             ))}
                                         </select>
+                                    </div>
+
+                                    <div style={{
+                                        marginBottom: '1.5rem',
+                                        padding: '1rem',
+                                        background: locationError ? '#FFF1F2' : '#F0F9FF',
+                                        borderRadius: '12px',
+                                        border: `1px solid ${locationError ? '#FECACA' : '#BAE6FD'}`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '1rem'
+                                    }}>
+                                        <div style={{
+                                            width: '40px',
+                                            height: '40px',
+                                            borderRadius: '50%',
+                                            background: locationError ? '#FECACA' : (gpsLocation ? '#BBF7D0' : '#BAE6FD'),
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: locationError ? '#DC2626' : (gpsLocation ? '#166534' : '#0369A1')
+                                        }}>
+                                            {isLocating ? (
+                                                <div className="animate-spin"><Globe size={20} /></div>
+                                            ) : locationError ? (
+                                                <Info size={20} />
+                                            ) : (
+                                                <MapPin size={20} />
+                                            )}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#1E293B' }}>
+                                                {isLocating ? 'Capturing GPS Location...' : (locationError ? 'Location Error' : 'Visit Verified (GPS)')}
+                                            </div>
+                                            <div style={{ fontSize: '0.75rem', color: '#64748B' }}>
+                                                {isLocating ? 'Waiting for satellites...' : (
+                                                    locationError 
+                                                    ? `${locationError}. Please enable GPS for compliance.` 
+                                                    : (gpsLocation ? `Lat: ${gpsLocation.latitude.toFixed(4)}, Lng: ${gpsLocation.longitude.toFixed(4)} (±${gpsLocation.accuracy.toFixed(1)}m)` : 'Starting location capture...')
+                                                )}
+                                            </div>
+                                        </div>
+                                        {(locationError || gpsLocation) && !isLocating && (
+                                            <button 
+                                                type="button"
+                                                onClick={captureLocation}
+                                                style={{ padding: '0.4rem', borderRadius: '6px', background: 'white', border: '1px solid #CBD5E1', cursor: 'pointer' }}
+                                                title="Retry Location"
+                                            >
+                                                <Signal size={16} />
+                                            </button>
+                                        )}
                                     </div>
 
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>

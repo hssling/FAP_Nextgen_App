@@ -30,6 +30,14 @@ export const getQueue = async () => {
 };
 
 /**
+ * Gets the number of items in the queue.
+ */
+export const getQueueCount = async () => {
+    const queue = await getQueue();
+    return queue.length;
+};
+
+/**
  * Removes an item from the queue by ID.
  * @param {string} id 
  */

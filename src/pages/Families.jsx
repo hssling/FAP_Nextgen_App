@@ -2,24 +2,56 @@ import React, { useEffect, useState } from 'react';
 import { Plus, MapPin, Users, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useFamilies } from '../hooks/useFamilies';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { getQueueCount, processQueue } from '../services/offlineQueue';
+import { RefreshCw, CloudOff, CloudCheck } from 'lucide-react';
 
 const Families = () => {
     const { profile } = useAuth();
     const [showAddModal, setShowAddModal] = useState(false);
     const [newFamily, setNewFamily] = useState({ head_name: '', village: '', members_count: 1 });
+    const [pendingCount, setPendingCount] = useState(0);
+    const [isSyncing, setIsSyncing] = useState(false);
 
     // Use React Query Hook
     const {
         data: families = [],
         isLoading: loading,
-        error: fetchError,
         addFamily
     } = useFamilies(profile?.id);
+
+    useEffect(() => {
+        const updateCount = async () => {
+            const count = await getQueueCount();
+            setPendingCount(count);
+        };
+
+        updateCount();
+        
+        // Update count on sync completion
+        window.addEventListener('fap-sync-complete', updateCount);
+        
+        // Also check occasionally or when online
+        const handleOnline = () => updateCount();
+        window.addEventListener('online', handleOnline);
+
+        return () => {
+            window.removeEventListener('fap-sync-complete', updateCount);
+            window.removeEventListener('online', handleOnline);
+        };
+    }, []);
+
+    const handleSync = async () => {
+        setIsSyncing(true);
+        try {
+            await processQueue();
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     const handleAddSubmit = async (e) => {
         e.preventDefault();
@@ -65,6 +97,59 @@ const Families = () => {
                     Adopt New Family
                 </motion.button>
             </motion.header>
+
+            {/* Offline Sync Banner */}
+            <AnimatePresence>
+                {pendingCount > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        style={{ marginBottom: '1.5rem' }}
+                    >
+                        <div style={{
+                            padding: '1rem 1.5rem',
+                            background: navigator.onLine ? '#F0FDFA' : '#FFF7ED',
+                            border: `1px solid ${navigator.onLine ? '#CCFBF1' : '#FFEDD5'}`,
+                            borderRadius: '12px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                {navigator.onLine ? (
+                                    <CloudCheck size={24} color="#0D9488" />
+                                ) : (
+                                    <CloudOff size={24} color="#EA580C" />
+                                )}
+                                <div>
+                                    <div style={{ fontWeight: '600', color: navigator.onLine ? '#134E48' : '#7C2D12' }}>
+                                        {pendingCount} offline {pendingCount === 1 ? 'change' : 'changes'} pending
+                                    </div>
+                                    <p style={{ margin: 0, fontSize: '0.875rem', color: navigator.onLine ? '#0D9488' : '#9A3412' }}>
+                                        {navigator.onLine 
+                                            ? 'Internet connection restored. You can sync your changes now.' 
+                                            : 'No internet connection. Changes will be saved locally.'}
+                                    </p>
+                                </div>
+                            </div>
+                            {navigator.onLine && (
+                                <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    className="btn btn-primary"
+                                    onClick={handleSync}
+                                    disabled={isSyncing}
+                                    style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                >
+                                    <RefreshCw size={18} className={isSyncing ? 'animate-spin' : ''} />
+                                    {isSyncing ? 'Syncing...' : 'Sync Now'}
+                                </motion.button>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {loading ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
@@ -123,7 +208,7 @@ const Families = () => {
                                         >
                                             {family.head_name.charAt(0)}
                                         </motion.div>
-                                        {family.is_offline ? (
+                                        {family.is_offline_sync ? (
                                             <span style={{
                                                 padding: '0.25rem 0.75rem', borderRadius: '99px',
                                                 backgroundColor: '#FFF7ED', color: '#EA580C',

@@ -1,18 +1,39 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../services/supabaseClient';
 import { addToQueue } from '../services/offlineQueue';
+import { get, set } from 'idb-keyval';
+
+const CACHE_KEY_PREFIX = 'fap_families_cache_';
 
 const fetchFamilies = async (studentId) => {
     if (!studentId) return [];
 
-    const { data, error } = await supabase
-        .from('families')
-        .select('*')
-        .eq('student_id', studentId)
-        .order('created_at', { ascending: false });
+    const cacheKey = `${CACHE_KEY_PREFIX}${studentId}`;
 
-    if (error) throw error;
-    return data;
+    try {
+        const { data, error } = await supabase
+            .from('families')
+            .select('*')
+            .eq('student_id', studentId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Save to local cache for offline use
+        if (data) {
+            await set(cacheKey, data);
+        }
+        return data;
+    } catch (error) {
+        console.warn('[useFamilies] Fetch failed, trying cache:', error);
+        // If fetch fails (offline), try to get from IndexedDB
+        const cachedData = await get(cacheKey);
+        if (cachedData) {
+            console.log('[useFamilies] Loading from local cache');
+            return cachedData;
+        }
+        throw error;
+    }
 };
 
 export const useFamilies = (studentId) => {
@@ -34,8 +55,8 @@ export const useFamilies = (studentId) => {
                     ...newFamilyData,
                     id: tempId,
                     created_at: new Date().toISOString(),
-                    // Mark as offline-created if needed for UI indicators
-                    is_offline: true
+                    is_offline_sync: true,
+                    synced_at: null
                 };
 
                 await addToQueue('ADD_FAMILY', offlinePayload);
