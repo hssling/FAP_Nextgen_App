@@ -81,6 +81,15 @@ const Reports = () => {
                 const result = await generateCommunityHealthReport(profile.id);
 
                 if (result) {
+                    console.log('[Reports] Data loaded:', {
+                        families: result.demographics?.totalFamilies,
+                        members: result.demographics?.totalPopulation,
+                        visits: result.logbook?.visits,
+                        reflections: result.logbook?.reflections,
+                        visitLog: result.logbook?.visitLog?.length,
+                        reflectionLog: result.logbook?.reflectionLog?.length,
+                        familyDetails: result.familyDetails?.length
+                    });
                     setData(result);
                     // Cache the result
                     sessionStorage.setItem(cacheKey, JSON.stringify({
@@ -155,7 +164,7 @@ const Reports = () => {
                 </div>
             </div>
 
-            {/* Tabs */}
+            {/* Tabs - All tabs visible to all users */}
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid #E5E7EB', flexWrap: 'wrap' }}>
                 <button
                     onClick={() => setActiveTab('community')}
@@ -171,38 +180,34 @@ const Reports = () => {
                 >
                     Community Health Report
                 </button>
-                {profile?.role === 'student' && (
-                    <>
-                        <button
-                            onClick={() => setActiveTab('logbook')}
-                            style={{
-                                padding: '1rem',
-                                borderBottom: activeTab === 'logbook' ? '3px solid var(--color-primary)' : 'none',
-                                color: activeTab === 'logbook' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                                fontWeight: '600',
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            Logbook & Visits
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('families')}
-                            style={{
-                                padding: '1rem',
-                                borderBottom: activeTab === 'families' ? '3px solid var(--color-primary)' : 'none',
-                                color: activeTab === 'families' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                                fontWeight: '600',
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            Family Details
-                        </button>
-                    </>
-                )}
+                <button
+                    onClick={() => setActiveTab('logbook')}
+                    style={{
+                        padding: '1rem',
+                        borderBottom: activeTab === 'logbook' ? '3px solid var(--color-primary)' : 'none',
+                        color: activeTab === 'logbook' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                        fontWeight: '600',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer'
+                    }}
+                >
+                    Logbook & Visits
+                </button>
+                <button
+                    onClick={() => setActiveTab('families')}
+                    style={{
+                        padding: '1rem',
+                        borderBottom: activeTab === 'families' ? '3px solid var(--color-primary)' : 'none',
+                        color: activeTab === 'families' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                        fontWeight: '600',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer'
+                    }}
+                >
+                    Family Details
+                </button>
             </div>
 
             {/* Print Styles */}

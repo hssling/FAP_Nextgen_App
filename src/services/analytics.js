@@ -46,6 +46,15 @@ export const generateCommunityHealthReport = async (studentId) => {
         console.error("Analytics Error:", error);
     }
 
+    console.log('[Analytics] Raw data fetched:', {
+        families: families.length,
+        members: members.length,
+        visits: visits.length,
+        reflections: reflections.length,
+        sampleVisit: visits[0],
+        sampleMember: members[0] ? { id: members[0].id, name: members[0].name, hasHealthData: !!members[0].health_data } : null
+    });
+
     // Process Members: Combine health_data.assessments with visits for complete picture
     const membersWithAssessments = members.map(m => {
         // Get assessments from health_data (new format)
