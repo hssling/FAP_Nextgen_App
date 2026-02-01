@@ -280,3 +280,8 @@ Mobile UX polish (Phase 4)
 - AI Coach uses 100dvh sizing and safe-area padding for input bar.
 - Reports header/actions and tabs are more mobile-friendly.
 - Reflections page adds safe-area bottom padding.
+
+CI/DX upgrades (Phase 5)
+- Added npm scripts for lint:fix, check, and predeploy.
+- Added GitHub Actions CI workflow to run lint + build on main and PRs.
+- Lint currently reports hook dependency warnings; no errors.

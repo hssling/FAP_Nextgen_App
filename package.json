@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "check": "npm run lint && npm run build",
+    "predeploy": "npm run check",
     "preview": "vite preview"
   },
   "dependencies": {

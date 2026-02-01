@@ -13,13 +13,6 @@ import { get, set } from 'idb-keyval';
 
 const AICoach = () => {
     const { profile, loading } = useAuth();
-    if (loading) {
-        return (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-                <LoadingSpinner size={40} />
-            </div>
-        );
-    }
 
     // Configuration moved inside component to avoid TDZ issues in production
     const AI_PROVIDERS = useMemo(() => ({
@@ -636,6 +629,14 @@ The AI model took too long to respond. Try:
     };
 
     const currentProvider = AI_PROVIDERS[selectedProvider];
+
+    if (loading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+                <LoadingSpinner size={40} />
+            </div>
+        );
+    }
 
     return (
         <div style={{ height: 'calc(100dvh - 80px)', minHeight: 'calc(100dvh - 80px)', display: 'flex', flexDirection: 'column' }}>

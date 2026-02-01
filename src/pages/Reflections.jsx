@@ -59,13 +59,6 @@ const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
 
 const Reflections = () => {
     const { profile, loading: authLoading } = useAuth();
-    if (authLoading) {
-        return (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-                <LoadingSpinner size={40} />
-            </div>
-        );
-    }
 
     // Configuration moved inside to avoid TDZ issues in production
     const GIBBS_STAGES = useMemo(() => [
@@ -485,6 +478,14 @@ const Reflections = () => {
         const gibbsContent = JSON.stringify(ref.content || ref.gibbs_description || '').toLowerCase();
         return headName.includes(query) || gibbsContent.includes(query) || (ref.reflection_type || '').toLowerCase().includes(query);
     });
+
+    if (authLoading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+                <LoadingSpinner size={40} />
+            </div>
+        );
+    }
 
     return (
         <div className="reflections-page">
