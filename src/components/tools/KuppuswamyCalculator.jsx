@@ -4,11 +4,6 @@ const KuppuswamyCalculator = () => {
     const [education, setEducation] = useState('0');
     const [occupation, setOccupation] = useState('0');
     const [income, setIncome] = useState('');
-    const incomeScore = getIncomeScore(income);
-    const totalScore = parseInt(education) + parseInt(occupation) + incomeScore;
-    const socialClass = education !== '0' && occupation !== '0' && income
-        ? calculateClass(totalScore)
-        : '';
 
     // Income Ranges (Approx. April 2024 - CPI base)
     // These values often need updating. We use a recent standard update.
@@ -31,6 +26,12 @@ const KuppuswamyCalculator = () => {
         if (score >= 5) return "Upper Lower (IV)";
         return "Lower (V)";
     };
+
+    const incomeScore = getIncomeScore(income);
+    const totalScore = parseInt(education) + parseInt(occupation) + incomeScore;
+    const socialClass = education !== '0' && occupation !== '0' && income
+        ? calculateClass(totalScore)
+        : '';
 
     const educationOptions = [
         { score: 7, label: "Professional / Honours" },
