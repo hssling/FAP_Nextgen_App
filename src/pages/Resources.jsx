@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, BookOpen, Baby, Syringe, Activity, Heart, Users, AlertCircle, Brain, Apple, ChevronRight, X, CloudOff } from 'lucide-react';
-import { set } from 'idb-keyval';
 import { motion, AnimatePresence } from 'framer-motion';
+import { set } from 'idb-keyval';
 import clinicalGuidelines from '../data/resources/clinical_guidelines.json';
 
-const iconMap = {
-    'baby': Baby,
-    'syringe': Syringe,
-    'activity': Activity,
-    'heart': Heart,
-    'users': Users,
-    'alert-circle': AlertCircle,
-    'brain': Brain,
-    'apple': Apple
-};
-
 const Resources = () => {
+    // Moved inside to avoid initialization order issues
+    const iconMap = useMemo(() => ({
+        'baby': Baby,
+        'syringe': Syringe,
+        'activity': Activity,
+        'heart': Heart,
+        'users': Users,
+        'alert-circle': AlertCircle,
+        'brain': Brain,
+        'apple': Apple
+    }), []);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [selectedResource, setSelectedResource] = useState(null);
