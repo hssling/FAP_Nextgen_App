@@ -99,8 +99,6 @@ const Reflections = () => {
     const [aiFeedback, setAiFeedback] = useState(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-    useEffect(() => { if (profile) loadData(); }, [profile, loadData]);
-
     // Cache Helper
     const getCachedData = (id) => {
         const cache = sessionStorage.getItem(`reflections_cache_${id}`);
@@ -151,6 +149,8 @@ const Reflections = () => {
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profile.id]);
+
+    useEffect(() => { if (profile) loadData(); }, [profile, loadData]);
 
     const runDiagnostics = async () => {
         setSysStatus('Testing upload permissions...');

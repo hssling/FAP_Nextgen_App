@@ -128,6 +128,16 @@ What would you like to learn about today?`,
         { icon: Zap, text: "Quick DDx for fever with rash", category: "Clinical" }
     ];
 
+    const checkProviderStatus = useCallback(() => {
+        const status = {};
+        Object.keys(AI_PROVIDERS).forEach(key => {
+            const envKey = AI_PROVIDERS[key].apiKeyEnv;
+            const apiKey = import.meta.env[envKey];
+            status[key] = apiKey && apiKey.length > 10;
+        });
+        setProviderStatus(status);
+    }, []);
+
     // Load Chat History and Settings
     useEffect(() => {
         const loadHistory = async () => {
@@ -167,37 +177,7 @@ What would you like to learn about today?`,
         set('fap_ai_provider', selectedProvider);
         set('fap_ai_model', selectedModel);
     }, [selectedProvider, selectedModel]);
-
-    // Auto-retry pending messages when coming back online
-    useEffect(() => {
-        const handleOnline = () => {
-            const hasPending = messages.some(m => m.status === 'pending');
-            if (hasPending && !isLoading) {
-                console.log("📱 [AI] Online! Retrying pending messages...");
-                // Find first pending message
-                const pending = messages.find(m => m.status === 'pending');
-                if (pending) {
-                    // We need to re-send this
-                    sendMessage(pending.content, true);
-                }
-            }
-        };
-
-        window.addEventListener('online', handleOnline);
-        return () => window.removeEventListener('online', handleOnline);
-    }, [messages, isLoading, sendMessage]);
-
-    const checkProviderStatus = useCallback(() => {
-        const status = {};
-        Object.keys(AI_PROVIDERS).forEach(key => {
-            const envKey = AI_PROVIDERS[key].apiKeyEnv;
-            const apiKey = import.meta.env[envKey];
-            status[key] = apiKey && apiKey.length > 10;
-        });
-        setProviderStatus(status);
-    }, []);
-
-    const scrollToBottom = () => {
+const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
@@ -608,6 +588,25 @@ The AI model took too long to respond. Try:
             setIsLoading(false);
         }
     }, [input, isLoading, selectedProvider, messages, AI_PROVIDERS, callCerebras, callGoogleAI, callHuggingFace, callMistral, callXAI, callOpenRouter, getSystemPrompt]);
+
+    // Auto-retry pending messages when coming back online
+    useEffect(() => {
+        const handleOnline = () => {
+            const hasPending = messages.some(m => m.status === 'pending');
+            if (hasPending && !isLoading) {
+                console.log("ðŸ“± [AI] Online! Retrying pending messages...");
+                // Find first pending message
+                const pending = messages.find(m => m.status === 'pending');
+                if (pending) {
+                    // We need to re-send this
+                    sendMessage(pending.content, true);
+                }
+            }
+        };
+
+        window.addEventListener('online', handleOnline);
+        return () => window.removeEventListener('online', handleOnline);
+    }, [messages, isLoading, sendMessage]);
 
     const handleKeyPress = (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
