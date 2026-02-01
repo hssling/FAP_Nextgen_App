@@ -50,7 +50,6 @@ export default defineConfig({
           supabase: ['@supabase/supabase-js'],
           charts: ['recharts'],
           pdf: ['jspdf', 'jspdf-autotable', '@react-pdf/renderer'],
-          pwa: ['workbox-window'],
           motion: ['framer-motion']
         }
       }
