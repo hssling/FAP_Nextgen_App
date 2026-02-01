@@ -195,6 +195,7 @@ const persister = createIDBPersister();
 
 import InstallPrompt from './components/InstallPrompt';
 import OfflineSyncManager from './components/OfflineSyncManager';
+import PwaUpdatePrompt from './components/PwaUpdatePrompt';
 
 function App() {
   return (
@@ -213,6 +214,7 @@ function App() {
           <Toaster />
           <InstallPrompt />
           <OfflineSyncManager />
+          <PwaUpdatePrompt />
           <React.Suspense fallback={
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#F9FAFB' }}>
               <div style={{ textAlign: 'center' }}>

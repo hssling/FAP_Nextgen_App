@@ -267,3 +267,7 @@ Before next session, verify:
 Notes (Desktop first-login intermittent error)
 - Reports/Reflections/AI Coach initial-load error was seen only on first desktop login; not reproducible on mobile or subsequent hard refreshes.
 - Mitigation option (kept for future): add/keep auth-loading guard and early-return when profile is missing to prevent rendering until auth is ready.
+
+PWA reliability (Phase 2)
+- Added a PWA update/offline banner to surface new versions and connectivity changes.
+- This forces safer reload behavior and avoids stale SW bundles lingering after deploys.
