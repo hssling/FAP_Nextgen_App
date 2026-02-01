@@ -166,12 +166,12 @@ const Reports = () => {
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div className="reports-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
                     <h1 className="page-title">Reports & Logbook</h1>
                     <p className="page-subtitle">Comprehensive analytics of your FAP journey</p>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div className="reports-actions" style={{ display: 'flex', gap: '0.5rem' }}>
                     <button className="btn btn-outline no-print" onClick={refreshData}>
                         Refresh
                     </button>
@@ -182,7 +182,7 @@ const Reports = () => {
             </div>
 
             {/* Tabs - All tabs visible to all users */}
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid #E5E7EB', flexWrap: 'wrap' }}>
+            <div className="reports-tabs" style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid #E5E7EB', flexWrap: 'wrap' }}>
                 <button
                     onClick={() => setActiveTab('community')}
                     style={{
@@ -243,6 +243,24 @@ const Reports = () => {
                 .section-visible { display: block; }
                 @media print {
                     .section-hidden { display: block !important; }
+                }
+                @media (max-width: 640px) {
+                    .reports-header {
+                        flex-direction: column;
+                        align-items: flex-start;
+                    }
+                    .reports-actions {
+                        width: 100%;
+                        flex-direction: column;
+                    }
+                    .reports-actions .btn {
+                        width: 100%;
+                        justify-content: center;
+                    }
+                    .reports-tabs button {
+                        padding: 0.75rem;
+                        font-size: 0.85rem;
+                    }
                 }
             `}</style>
 

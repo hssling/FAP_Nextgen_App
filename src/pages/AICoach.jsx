@@ -638,7 +638,7 @@ The AI model took too long to respond. Try:
     const currentProvider = AI_PROVIDERS[selectedProvider];
 
     return (
-        <div style={{ height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ height: 'calc(100dvh - 80px)', minHeight: 'calc(100dvh - 80px)', display: 'flex', flexDirection: 'column' }}>
             {/* Header */}
             <div style={{
                 padding: '1rem 1.5rem',
@@ -911,6 +911,7 @@ The AI model took too long to respond. Try:
             {/* Input Area */}
             <div style={{
                 padding: '1rem',
+                paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))',
                 borderTop: '1px solid #E5E7EB',
                 background: 'white'
             }}>

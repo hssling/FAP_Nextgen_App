@@ -275,3 +275,8 @@ PWA reliability (Phase 2)
 Admin dashboard performance (Phase 3)
 - Parallelized count/summary queries and limited reflection fields to reduce payload.
 - Reused student list for reflection enrichment to avoid extra profile query.
+
+Mobile UX polish (Phase 4)
+- AI Coach uses 100dvh sizing and safe-area padding for input bar.
+- Reports header/actions and tabs are more mobile-friendly.
+- Reflections page adds safe-area bottom padding.
