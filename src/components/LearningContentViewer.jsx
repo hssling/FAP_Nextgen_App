@@ -94,7 +94,7 @@ const LearningContentViewer = ({ competencyCode }) => {
             {content.learning_content.key_concepts && (
                 <ExpandableSection title="Key Concepts" icon={BookOpen} defaultExpanded={true}>
                     {content.learning_content.key_concepts.map((concept, idx) => (
-                        <div key={idx} style={{ marginBottom: idx < content.learning_content.key_concepts.length - 1 ? '2rem' : 0 }}>
+                        <div key={concept.concept || idx} style={{ marginBottom: idx < content.learning_content.key_concepts.length - 1 ? '2rem' : 0 }}>
                             <h5 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.75rem', color: '#0F766E' }}>
                                 {concept.concept}
                             </h5>
@@ -105,7 +105,7 @@ const LearningContentViewer = ({ competencyCode }) => {
                                     <div style={{ fontWeight: '500', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Examples:</div>
                                     <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
                                         {concept.examples.map((example, i) => (
-                                            <li key={i} style={{ marginBottom: '0.5rem' }}>{example}</li>
+                                            <li key={example || i} style={{ marginBottom: '0.5rem' }}>{example}</li>
                                         ))}
                                     </ul>
                                 </div>
@@ -114,7 +114,7 @@ const LearningContentViewer = ({ competencyCode }) => {
                             {concept.categories && (
                                 <div style={{ display: 'grid', gap: '0.75rem', marginTop: '1rem' }}>
                                     {concept.categories.map((cat, i) => (
-                                        <div key={i} style={{
+                                        <div key={cat.name || i} style={{
                                             backgroundColor: 'white',
                                             padding: '1rem',
                                             borderRadius: '4px',
@@ -134,7 +134,7 @@ const LearningContentViewer = ({ competencyCode }) => {
                             {concept.life_stages && (
                                 <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
                                     {concept.life_stages.map((stage, i) => (
-                                        <div key={i} style={{
+                                        <div key={stage.stage || i} style={{
                                             backgroundColor: 'white',
                                             padding: '1.25rem',
                                             borderRadius: '4px',
@@ -149,7 +149,7 @@ const LearningContentViewer = ({ competencyCode }) => {
                                                 </div>
                                                 <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.875rem' }}>
                                                     {stage.priority_assessments.map((assess, j) => (
-                                                        <li key={j} style={{ marginBottom: '0.25rem' }}>{assess}</li>
+                                                        <li key={assess || j} style={{ marginBottom: '0.25rem' }}>{assess}</li>
                                                     ))}
                                                 </ul>
                                             </div>
@@ -188,7 +188,7 @@ const LearningContentViewer = ({ competencyCode }) => {
                     </h5>
                     <div style={{ display: 'grid', gap: '1rem' }}>
                         {content.learning_content.step_by_step_guide.steps.map((step, idx) => (
-                            <div key={idx} style={{
+                            <div key={step.step || step.title || idx} style={{
                                 backgroundColor: 'white',
                                 padding: '1.25rem',
                                 borderRadius: '4px',
@@ -212,7 +212,7 @@ const LearningContentViewer = ({ competencyCode }) => {
                                 </div>
                                 <ul style={{ margin: 0, paddingLeft: '3rem', fontSize: '0.9rem' }}>
                                     {step.actions.map((action, i) => (
-                                        <li key={i} style={{ marginBottom: '0.5rem' }}>{action}</li>
+                                        <li key={action || i} style={{ marginBottom: '0.5rem' }}>{action}</li>
                                     ))}
                                 </ul>
                                 {step.tips && (
@@ -255,7 +255,7 @@ const LearningContentViewer = ({ competencyCode }) => {
                                 <div style={{ fontWeight: '500', marginBottom: '0.75rem' }}>Assessment Points:</div>
                                 <div style={{ display: 'grid', gap: '0.5rem' }}>
                                     {content.learning_content.clinical_application.assessment_points.map((point, idx) => (
-                                        <div key={idx} style={{
+                                        <div key={point || idx} style={{
                                             display: 'flex',
                                             gap: '0.75rem',
                                             padding: '0.75rem',
@@ -301,7 +301,7 @@ const LearningContentViewer = ({ competencyCode }) => {
                         </div>
                         <div style={{ display: 'grid', gap: '0.5rem' }}>
                             {content.learning_content.case_study.determinants_identified.map((det, idx) => (
-                                <div key={idx} style={{
+                                <div key={det || idx} style={{
                                     padding: '0.75rem',
                                     backgroundColor: '#ECFDF5',
                                     borderRadius: '4px',
@@ -329,7 +329,7 @@ const LearningContentViewer = ({ competencyCode }) => {
                 <ExpandableSection title="Learning Resources" icon={Video}>
                     <div style={{ display: 'grid', gap: '0.75rem' }}>
                         {content.learning_content.learning_resources.map((resource, idx) => (
-                            <div key={idx} style={{
+                            <div key={resource.title || idx} style={{
                                 backgroundColor: 'white',
                                 padding: '1rem',
                                 borderRadius: '4px',
@@ -392,7 +392,7 @@ const LearningContentViewer = ({ competencyCode }) => {
                 <ExpandableSection title="Self-Assessment Questions" icon={FileText}>
                     <div style={{ display: 'grid', gap: '1rem' }}>
                         {content.learning_content.assessment_questions.map((q, idx) => (
-                            <div key={idx} style={{
+                            <div key={q.question || idx} style={{
                                 backgroundColor: 'white',
                                 padding: '1.25rem',
                                 borderRadius: '4px',

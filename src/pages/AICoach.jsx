@@ -103,9 +103,16 @@ const AICoach = () => {
     const [selectedProvider, setSelectedProvider] = useState('openrouter');
     const [selectedModel, setSelectedModel] = useState(0);
     const [providerStatus, setProviderStatus] = useState({});
+    const [visibleCount, setVisibleCount] = useState(50);
+    const createMessageId = () => (
+        typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
 
     // Cache bust: 2024-12-27-03:41
     const defaultGreeting = useMemo(() => ({
+        id: createMessageId(),
         role: 'assistant',
         content: `Hello ${profile?.full_name || 'Student'}! 👋 I'm your AI Medical Coach. I specialize in Family Adoption Programme (FAP) and Community Medicine. I can help you with:
 
@@ -145,6 +152,7 @@ What would you like to learn about today?`,
             if (cachedMessages && cachedMessages.length > 0) {
                 const parsed = cachedMessages.map(m => ({
                     ...m,
+                    id: m.id || createMessageId(),
                     timestamp: new Date(m.timestamp)
                 }));
                 setMessages(parsed);
@@ -184,6 +192,8 @@ const scrollToBottom = () => {
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    const visibleMessages = messages.slice(-visibleCount);
 
     // Speech Recognition
     const startListening = () => {
@@ -447,6 +457,7 @@ Guidelines:
         
         if (!isRetry) {
             const userMessage = { 
+                id: createMessageId(),
                 role: 'user', 
                 content: messageText, 
                 timestamp: new Date(),
@@ -541,6 +552,7 @@ Guidelines:
                 }
 
                 const assistantMessage = {
+                    id: createMessageId(),
                     role: 'assistant',
                     content: responseText,
                     timestamp: new Date(),
@@ -583,7 +595,7 @@ The AI model took too long to respond. Try:
                 errorMsg = `⚠️ Error: ${error.message}. Please try again.`;
             }
 
-            setMessages(prev => [...prev, { role: 'assistant', content: errorMsg, timestamp: new Date() }]);
+            setMessages(prev => [...prev, { id: createMessageId(), role: 'assistant', content: errorMsg, timestamp: new Date() }]);
         } finally {
             setIsLoading(false);
         }
@@ -745,6 +757,24 @@ The AI model took too long to respond. Try:
                 padding: '1rem',
                 background: '#F8FAFC'
             }}>
+                {messages.length > visibleCount && (
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                        <button
+                            onClick={() => setVisibleCount(prev => Math.min(messages.length, prev + 50))}
+                            style={{
+                                padding: '0.5rem 1rem',
+                                background: 'white',
+                                border: '1px solid #E5E7EB',
+                                borderRadius: '999px',
+                                cursor: 'pointer',
+                                fontSize: '0.8rem',
+                                color: '#4B5563'
+                            }}
+                        >
+                            Load older messages ({messages.length - visibleCount})
+                        </button>
+                    </div>
+                )}
                 {/* Quick Prompts */}
                 <AnimatePresence>
                     {showQuickPrompts && messages.length <= 1 && (
@@ -759,9 +789,9 @@ The AI model took too long to respond. Try:
                                 marginBottom: '1.5rem'
                             }}
                         >
-                            {quickPrompts.map((prompt, idx) => (
+                            {quickPrompts.map((prompt) => (
                                 <button
-                                    key={idx}
+                                    key={prompt.text}
                                     onClick={() => sendMessage(prompt.text)}
                                     style={{
                                         display: 'flex',
@@ -807,9 +837,9 @@ The AI model took too long to respond. Try:
                 </AnimatePresence>
 
                 {/* Message List */}
-                {messages.map((msg, idx) => (
+                {visibleMessages.map((msg) => (
                     <motion.div
-                        key={idx}
+                        key={msg.id || `${msg.role}-${msg.timestamp}`}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         style={{

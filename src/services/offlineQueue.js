@@ -53,6 +53,9 @@ export const processQueue = async () => {
     if (queue.length === 0) return;
 
     console.log(`[OfflineQueue] Processing ${queue.length} items...`);
+    window.dispatchEvent(new CustomEvent('fap-sync-progress', {
+        detail: { processed: 0, total: queue.length, successCount: 0, failCount: 0 }
+    }));
     const toastId = toast.loading(`Syncing ${queue.length} offline changes...`);
 
     let successCount = 0;
@@ -69,6 +72,9 @@ export const processQueue = async () => {
             // If it's a permanent error (e.g. validtation), we might want to remove it or flag it.
             // For now, we leave it in queue to retry or manual intervention.
         }
+        window.dispatchEvent(new CustomEvent('fap-sync-progress', {
+            detail: { processed: successCount + failCount, total: queue.length, successCount, failCount }
+        }));
     }
 
     toast.dismiss(toastId);
@@ -81,6 +87,9 @@ export const processQueue = async () => {
         // Dispatch event so hooks can listen and invalidate queries
         window.dispatchEvent(new Event('fap-sync-complete'));
     }
+    window.dispatchEvent(new CustomEvent('fap-sync-progress', {
+        detail: { processed: successCount + failCount, total: queue.length, successCount, failCount }
+    }));
 };
 
 /**

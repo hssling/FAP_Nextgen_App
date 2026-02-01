@@ -294,8 +294,8 @@ const TeacherDashboard = () => {
                                     { label: 'Hypertension', val: 65, color: '#F43F5E' },
                                     { label: 'Diabetes', val: 42, color: '#8B5CF6' },
                                     { label: 'Nutritional', val: 28, color: '#10B981' }
-                                ].map((stat, i) => (
-                                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }}>
+                                ].map((stat) => (
+                                    <div key={stat.label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }}>
                                         <span style={{ width: '80px', fontWeight: 600 }}>{stat.label}</span>
                                         <div style={{ flex: 1, height: '6px', background: '#E2E8F0', borderRadius: '3px' }}>
                                             <div style={{ width: `${stat.val}%`, height: '100%', background: stat.color, borderRadius: '3px' }}></div>

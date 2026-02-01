@@ -15,6 +15,16 @@ class ErrorBoundary extends React.Component {
         this.setState({ errorInfo });
     }
 
+    componentDidUpdate(prevProps) {
+        if (this.state.hasError && this.props.resetKey !== prevProps.resetKey) {
+            this.setState({ hasError: false, error: null, errorInfo: null });
+        }
+    }
+
+    handleReset = () => {
+        this.setState({ hasError: false, error: null, errorInfo: null });
+    };
+
     render() {
         if (this.state.hasError) {
             return (
@@ -25,9 +35,14 @@ class ErrorBoundary extends React.Component {
                         <br />
                         {this.state.errorInfo && this.state.errorInfo.componentStack}
                     </details>
-                    <button onClick={() => window.location.reload()} style={{ marginTop: '1rem', padding: '0.5rem 1rem' }}>
-                        Reload Page
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+                        <button onClick={this.handleReset} style={{ padding: '0.5rem 1rem' }}>
+                            Try Again
+                        </button>
+                        <button onClick={() => window.location.reload()} style={{ padding: '0.5rem 1rem' }}>
+                            Reload Page
+                        </button>
+                    </div>
                 </div>
             );
         }

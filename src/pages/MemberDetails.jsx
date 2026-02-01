@@ -259,10 +259,10 @@ const MemberDetails = () => {
                 <div style={{ marginBottom: '2rem' }}>
                     <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>Assessment History</h3>
                     <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-                        {member.assessments.map((a, idx) => {
+                        {member.assessments.map((a) => {
                             const schema = getFormSchema(a.formId);
                             return (
-                                <div key={idx} className="card" style={{ padding: '1rem', minWidth: '220px', position: 'relative' }}>
+                                <div key={a.id || `${a.formId}-${a.date}`} className="card" style={{ padding: '1rem', minWidth: '220px', position: 'relative' }}>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{a.date}</div>
                                     <div style={{ fontWeight: '600', marginBottom: '0.5rem' }}>{schema ? schema.title : a.formId}</div>
 

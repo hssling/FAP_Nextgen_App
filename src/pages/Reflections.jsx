@@ -110,6 +110,7 @@ const Reflections = () => {
     };
 
     const loadData = useCallback(async (forceRefresh = false) => {
+        if (!profile?.id) return;
         const cacheKey = `fap_reflections_full_${profile.id}`;
         if (!forceRefresh) {
             const cached = getCachedData(profile.id);
@@ -148,7 +149,7 @@ const Reflections = () => {
             setLoading(false);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [profile.id]);
+    }, [profile?.id]);
 
     useEffect(() => { if (profile) loadData(); }, [profile, loadData]);
 
@@ -961,8 +962,8 @@ const Reflections = () => {
                                                 { label: 'Description', val: viewingEntry.score_description },
                                                 { label: 'Emotions', val: viewingEntry.score_emotions },
                                                 { label: 'Analysis', val: viewingEntry.score_analysis }
-                                            ].map((s, i) => (
-                                                <div key={i} style={{ background: 'white', padding: '0.5rem', borderRadius: '6px', border: '1px solid #FED7AA', textAlign: 'center' }}>
+                                            ].map((s) => (
+                                                <div key={s.label} style={{ background: 'white', padding: '0.5rem', borderRadius: '6px', border: '1px solid #FED7AA', textAlign: 'center' }}>
                                                     <div style={{ fontSize: '0.7rem', color: '#9A3412', fontWeight: 600, textTransform: 'uppercase' }}>{s.label}</div>
                                                     <div style={{ fontWeight: 700, color: '#EA580C' }}>{s.val || 0}</div>
                                                 </div>

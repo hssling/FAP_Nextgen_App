@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, FileText, Settings, Activity, Map, GraduationCap, LogOut, BookOpen, BookmarkCheck, Target, Calculator, Menu, X, Shield, Sparkles } from 'lucide-react';
 import styles from './Layout.module.css';
 import ErrorBoundary from './ErrorBoundary';
@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 const Layout = () => {
     const { profile, signOut } = useAuth();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const location = useLocation();
 
     const isTeacher = profile?.role === 'teacher';
     const isAdmin = profile?.role === 'admin';
@@ -144,7 +145,7 @@ const Layout = () => {
 
             <main className={styles.main}>
                 <div className={styles.contentContainer}>
-                    <ErrorBoundary>
+                    <ErrorBoundary resetKey={location.pathname}>
                         <Outlet />
                     </ErrorBoundary>
                 </div>

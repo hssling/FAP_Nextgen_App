@@ -263,7 +263,7 @@ const LearningObjectives = () => {
                                     </div>
                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
                                         {comp.assessment_methods.map((method, i) => (
-                                            <span key={i} style={{
+                                            <span key={method || i} style={{
                                                 padding: '0.25rem 0.75rem',
                                                 backgroundColor: '#F8FAFC',
                                                 border: '1px solid var(--color-border)',
@@ -300,7 +300,7 @@ const LearningObjectives = () => {
                         <div style={{ display: 'grid', gap: '0.75rem' }}>
                             {yearData.specific_learning_objectives.map((slo, idx) => (
                                 <motion.div
-                                    key={idx}
+                                    key={slo || idx}
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: idx * 0.05 }}
@@ -325,7 +325,7 @@ const LearningObjectives = () => {
                     <div style={{ display: 'grid', gap: '1.5rem' }}>
                         {yearData.expected_activities.map((activity, idx) => (
                             <motion.div
-                                key={idx}
+                                key={activity.activity || idx}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: idx * 0.1 }}
@@ -375,7 +375,7 @@ const LearningObjectives = () => {
                                     </div>
                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                         {activity.competencies_addressed.map((code, i) => (
-                                            <span key={i} style={{
+                                            <span key={code || i} style={{
                                                 padding: '0.25rem 0.75rem',
                                                 backgroundColor: '#0F766E',
                                                 color: 'white',
@@ -402,8 +402,8 @@ const LearningObjectives = () => {
                                 Assessment Criteria - Year {yearNumber}
                             </h3>
                             <div style={{ display: 'grid', gap: '1rem' }}>
-                                {Object.entries(yearData.assessment_criteria).map(([key, value], idx) => (
-                                    <div key={idx} style={{
+                                {Object.entries(yearData.assessment_criteria).map(([key, value]) => (
+                                    <div key={key} style={{
                                         padding: '1rem',
                                         backgroundColor: '#F8FAFC',
                                         borderRadius: 'var(--radius-md)',
@@ -435,7 +435,7 @@ const LearningObjectives = () => {
                                 {Object.entries(competenciesData.grading_criteria[selectedYear]).map(([key, value], idx) => {
                                     if (key === 'total') {
                                         return (
-                                            <div key={idx} style={{
+                                            <div key={key} style={{
                                                 padding: '1rem',
                                                 backgroundColor: '#0F766E',
                                                 color: 'white',
@@ -452,7 +452,7 @@ const LearningObjectives = () => {
                                         );
                                     }
                                     return (
-                                        <div key={idx} style={{
+                                        <div key={key} style={{
                                             padding: '1rem',
                                             backgroundColor: '#F0F9FF',
                                             borderRadius: 'var(--radius-md)',
@@ -484,7 +484,7 @@ const LearningObjectives = () => {
                             </h3>
                             <div style={{ display: 'grid', gap: '1rem' }}>
                                 {competenciesData.assessment_tools.map((tool, idx) => (
-                                    <div key={idx} style={{
+                                    <div key={tool.tool || idx} style={{
                                         padding: '1rem',
                                         border: '1px solid var(--color-border)',
                                         borderRadius: 'var(--radius-md)'

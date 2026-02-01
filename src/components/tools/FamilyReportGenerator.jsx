@@ -65,7 +65,7 @@ const FamilyReportDocument = ({ family, members, visits, studentName }) => (
                 <Text style={[styles.text, styles.col2, { fontWeight: 'bold' }]}>Relationship</Text>
             </View>
             {members.map((m, i) => (
-                <View key={i} style={styles.tableRow}>
+                <View key={m.id || `${m.name}-${m.relationship}` || i} style={styles.tableRow}>
                     <Text style={[styles.text, styles.col1]}>{m.name}</Text>
                     <Text style={[styles.text, styles.col1]}>{m.age} / {m.gender}</Text>
                     <Text style={[styles.text, styles.col2]}>{m.relationship}</Text>
@@ -82,7 +82,7 @@ const FamilyReportDocument = ({ family, members, visits, studentName }) => (
                 <Text style={[styles.text, { padding: 10, fontStyle: 'italic' }]}>No visits recorded yet.</Text>
             ) : (
                 visits.map((v, i) => (
-                    <View key={i} style={styles.tableRow}>
+                    <View key={v.id || `${v.visit_date}-${v.activity_type}` || i} style={styles.tableRow}>
                         <Text style={[styles.text, styles.col1]}>{v.visit_date}</Text>
                         <Text style={[styles.text, styles.col2]}>{v.activity_type || 'General Visit'}</Text>
                         <Text style={[styles.text, styles.col3]}>{v.notes || '-'}</Text>

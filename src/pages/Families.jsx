@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, MapPin, Users, ArrowRight, Search } from 'lucide-react';
+import { Plus, MapPin, Users, ArrowRight, Search, RefreshCw, CloudOff, CloudCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,7 +7,6 @@ import { useFamilies } from '../hooks/useFamilies';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { getQueueCount, processQueue } from '../services/offlineQueue';
-import { RefreshCw, CloudOff, CloudCheck } from 'lucide-react';
 
 const Families = () => {
     const { profile } = useAuth();
@@ -16,6 +15,7 @@ const Families = () => {
     const [pendingCount, setPendingCount] = useState(0);
     const [isSyncing, setIsSyncing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [syncProgress, setSyncProgress] = useState({ processed: 0, total: 0, successCount: 0, failCount: 0, active: false });
 
     // Use React Query Hook
     const {
@@ -25,10 +25,15 @@ const Families = () => {
     } = useFamilies(profile?.id);
 
     // Smart Local Search (Offline-Ready)
+    const normalize = (value) => (value ?? '').toString().toLowerCase();
+    const normalizedQuery = normalize(searchQuery);
     const filteredFamilies = families.filter(f => 
-        f.head_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        f.village.toLowerCase().includes(searchQuery.toLowerCase())
+        normalize(f.head_name).includes(normalizedQuery) || 
+        normalize(f.village).includes(normalizedQuery)
     );
+    const syncPercent = syncProgress.total > 0
+        ? Math.round((syncProgress.processed / syncProgress.total) * 100)
+        : 0;
 
     useEffect(() => {
         const updateCount = async () => {
@@ -40,6 +45,17 @@ const Families = () => {
         
         // Update count on sync completion
         window.addEventListener('fap-sync-complete', updateCount);
+        const handleProgress = (event) => {
+            const detail = event.detail || {};
+            setSyncProgress({
+                processed: detail.processed || 0,
+                total: detail.total || 0,
+                successCount: detail.successCount || 0,
+                failCount: detail.failCount || 0,
+                active: detail.total > 0 && detail.processed < detail.total
+            });
+        };
+        window.addEventListener('fap-sync-progress', handleProgress);
         
         // Also check occasionally or when online
         const handleOnline = () => updateCount();
@@ -47,12 +63,14 @@ const Families = () => {
 
         return () => {
             window.removeEventListener('fap-sync-complete', updateCount);
+            window.removeEventListener('fap-sync-progress', handleProgress);
             window.removeEventListener('online', handleOnline);
         };
     }, []);
 
     const handleSync = async () => {
         setIsSyncing(true);
+        setSyncProgress({ processed: 0, total: pendingCount, successCount: 0, failCount: 0, active: pendingCount > 0 });
         try {
             await processQueue();
         } finally {
@@ -160,6 +178,22 @@ const Families = () => {
                                             ? 'Internet connection restored. You can sync your changes now.' 
                                             : 'No internet connection. Changes will be saved locally.'}
                                     </p>
+                                    {(isSyncing || syncProgress.total > 0) && (
+                                        <div style={{ marginTop: '0.5rem' }}>
+                                            <div style={{ fontSize: '0.75rem', color: navigator.onLine ? '#0D9488' : '#9A3412' }}>
+                                                Syncing: {syncProgress.processed}/{syncProgress.total} ({syncPercent}%)
+                                                {syncProgress.failCount > 0 ? ` â€¢ ${syncProgress.failCount} failed` : ''}
+                                            </div>
+                                            <div style={{ marginTop: '0.25rem', height: '6px', background: 'rgba(15,118,110,0.15)', borderRadius: '999px', overflow: 'hidden' }}>
+                                                <div style={{
+                                                    width: `${syncPercent}%`,
+                                                    height: '100%',
+                                                    background: navigator.onLine ? '#0D9488' : '#EA580C',
+                                                    transition: 'width 0.2s ease'
+                                                }} />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             {navigator.onLine && (

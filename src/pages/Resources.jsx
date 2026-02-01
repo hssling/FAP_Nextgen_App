@@ -233,7 +233,7 @@ const Resources = () => {
                             {/* Content Sections */}
                             <div style={{ display: 'grid', gap: '2rem' }}>
                                 {selectedResource.sections.map((section, idx) => (
-                                    <div key={idx}>
+                                    <div key={section.heading || idx}>
                                         <h3 style={{
                                             fontSize: '1.125rem',
                                             fontWeight: '600',
@@ -251,7 +251,7 @@ const Resources = () => {
                                             gap: '0.75rem'
                                         }}>
                                             {section.content.map((item, itemIdx) => (
-                                                <li key={itemIdx} style={{
+                                                <li key={`${section.heading || idx}-${item}` || itemIdx} style={{
                                                     padding: '0.75rem 1rem',
                                                     background: '#F8FAFC',
                                                     borderRadius: 'var(--radius-md)',

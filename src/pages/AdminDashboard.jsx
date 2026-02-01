@@ -523,7 +523,7 @@ const AdminDashboard = () => {
                                     const max = Math.max(...dailyCounts.map(d => d.count), 5); // Minimum scale of 5
 
                                     return dailyCounts.map((stat, idx) => (
-                                        <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                                        <div key={stat.day || idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
                                             <div style={{
                                                 width: '100%',
                                                 height: `${(stat.count / max) * 150}px`,

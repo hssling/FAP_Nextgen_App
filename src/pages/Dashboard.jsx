@@ -152,7 +152,7 @@ const Dashboard = () => {
                             </div>
                         ) : (
                             effectiveStats.recentActivity.map((act, i) => (
-                                <div key={i} style={{
+                                <div key={act.id || `${act.title}-${act.date}` || i} style={{
                                     padding: '1rem',
                                     border: '1px solid var(--color-border)',
                                     borderRadius: 'var(--radius-md)',

@@ -143,7 +143,7 @@ const DynamicForm = ({ schema, onSubmit, onCancel, initialData = {}, memberData 
                             >
                                 <option value="">Select...</option>
                                 {field.options.map((opt, idx) => (
-                                    <option key={idx} value={opt}>{opt}</option>
+                                    <option key={opt || idx} value={opt}>{opt}</option>
                                 ))}
                             </select>
                         )}
