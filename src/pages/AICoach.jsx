@@ -88,6 +88,7 @@ const AI_PROVIDERS = {
 
 const AICoach = () => {
     const { profile } = useAuth();
+    void motion; // Defensive reference for mobile bundlers
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -99,8 +100,8 @@ const AICoach = () => {
     const [selectedModel, setSelectedModel] = useState(0);
     const [providerStatus, setProviderStatus] = useState({});
 
-    // Initialize default greeting if no history
-    const defaultGreeting = {
+    // Cache bust: 2024-12-27-03:41
+    const defaultGreeting = useMemo(() => ({
         role: 'assistant',
         content: `Hello ${profile?.full_name || 'Student'}! 👋 I'm your AI Medical Coach. I specialize in Family Adoption Programme (FAP) and Community Medicine. I can help you with:
 
@@ -112,7 +113,7 @@ const AICoach = () => {
 
 What would you like to learn about today?`,
         timestamp: new Date()
-    };
+    }), [profile]);
 
     const quickPrompts = [
         { icon: BookOpen, text: "Explain social determinants of health", category: "Concept" },

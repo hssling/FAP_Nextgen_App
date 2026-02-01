@@ -67,6 +67,7 @@ const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
 };
 
 const Reflections = () => {
+    void motion; // Defensive reference
     const { profile } = useAuth();
     const [families, setFamilies] = useState([]);
     const [reflections, setReflections] = useState([]);
@@ -149,7 +150,8 @@ const Reflections = () => {
         } finally {
             setLoading(false);
         }
-    }, [profile.id, loading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [profile.id]);
 
     const runDiagnostics = async () => {
         setSysStatus('Testing upload permissions...');
