@@ -181,7 +181,15 @@ const FamilyDetails = () => {
         }
     };
 
-    // ...
+    const handleVisitBasicSubmit = (e) => {
+        e.preventDefault();
+        if (newVisit.protocol) {
+            setSelectedProtocol(newVisit.protocol);
+            setVisitStep(2);
+        } else {
+            finalizeVisit({});
+        }
+    };
 
     const finalizeVisit = async (protocolData) => {
         try {
