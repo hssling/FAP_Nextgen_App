@@ -1,94 +1,98 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { 
+    MessageCircle, Send, Sparkles, BookOpen, Stethoscope, Users, 
+    Loader, Mic, MicOff, Trash2, Settings, Zap, Brain, 
+    CheckCircle, AlertCircle, CloudOff 
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, Send, Sparkles, BookOpen, Stethoscope, Users, Loader, Mic, MicOff, Trash2, Settings, Zap, Brain, CheckCircle, AlertCircle, CloudOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabaseClient';
 import { get, set } from 'idb-keyval';
 
-// Available FREE AI Providers
-const AI_PROVIDERS = {
-    openrouter: {
-        name: 'OpenRouter',
-        description: 'Multiple free models (Recommended)',
-        apiKeyEnv: 'VITE_OPENROUTER_API_KEY',
-        endpoint: 'https://openrouter.ai/api/v1/chat/completions',
-        models: [
-            { id: 'google/gemma-2-9b-it:free', name: 'Google Gemma 2 9B', speed: 'Fast' },
-            { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Meta LLaMA 3.2 3B', speed: 'Very Fast' },
-            { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B', speed: 'Fast' },
-            { id: 'qwen/qwen-2-7b-instruct:free', name: 'Qwen 2 7B', speed: 'Fast' },
-            { id: 'huggingfaceh4/zephyr-7b-beta:free', name: 'Zephyr 7B', speed: 'Medium' }
-        ],
-        signupUrl: 'https://openrouter.ai/keys',
-        instructions: 'Sign up free with Google, no credit card needed'
-    },
-    xai: {
-        name: 'xAI (Grok)',
-        description: 'Advanced AI models by xAI',
-        apiKeyEnv: 'VITE_xAI_API_KEY',
-        endpoint: 'https://api.x.ai/v1/chat/completions',
-        models: [
-            { id: 'grok-beta', name: 'Grok Beta', speed: 'Fast' },
-            { id: 'grok-2', name: 'Grok 2', speed: 'Fast' },
-            { id: 'grok-vision-beta', name: 'Grok Vision', speed: 'Medium' }
-        ],
-        signupUrl: 'https://console.x.ai/',
-        instructions: 'Sign up at xAI Console to get your API key'
-    },
-    google: {
-        name: 'Google AI Studio',
-        description: 'Gemini models (Free)',
-        apiKeyEnv: 'VITE_GOOGLE_AI_KEY',
-        endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
-        models: [
-            { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', speed: 'Very Fast' },
-            { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', speed: 'Fast' }
-        ],
-        signupUrl: 'https://aistudio.google.com/app/apikey',
-        instructions: 'Free with Google account, no credit card'
-    },
-    mistral: {
-        name: 'Mistral AI',
-        description: 'Native Mistral models',
-        apiKeyEnv: 'VITE_MISTRAL_API_KEY',
-        endpoint: 'https://api.mistral.ai/v1/chat/completions',
-        models: [
-            { id: 'mistral-small-latest', name: 'Mistral Small', speed: 'Fast' },
-            { id: 'mistral-medium-latest', name: 'Mistral Medium', speed: 'Fast' },
-            { id: 'mistral-large-latest', name: 'Mistral Large', speed: 'Fast' }
-        ],
-        signupUrl: 'https://console.mistral.ai/',
-        instructions: 'Free tier available on Mistral La Plateforme'
-    },
-    cerebras: {
-        name: 'Cerebras',
-        description: 'Extreme speed inference',
-        apiKeyEnv: 'VITE_CEREBRAS_API_KEY',
-        endpoint: 'https://api.cerebras.ai/v1/chat/completions',
-        models: [
-            { id: 'llama3.1-8b', name: 'Llama 3.1 8B', speed: 'Instant' },
-            { id: 'llama3.1-70b', name: 'Llama 3.1 70B', speed: 'Very Fast' }
-        ],
-        signupUrl: 'https://cloud.cerebras.ai/',
-        instructions: 'Sign up for Cerebras Cloud API'
-    },
-    huggingface: {
-        name: 'Hugging Face',
-        description: 'Open source models',
-        apiKeyEnv: 'VITE_HUGGINGFACE_API_KEY',
-        endpoint: 'https://api-inference.huggingface.co/v1/chat/completions',
-        models: [
-            { id: 'meta-llama/Llama-3.1-8B-Instruct', name: 'Llama 3.1 8B', speed: 'Medium' },
-            { id: 'mistralai/Mistral-7B-Instruct-v0.3', name: 'Mistral 7B v0.3', speed: 'Medium' }
-        ],
-        signupUrl: 'https://huggingface.co/settings/tokens',
-        instructions: 'Create a Read token on Hugging Face'
-    }
-};
 
 const AICoach = () => {
     const { profile } = useAuth();
-    void motion; // Defensive reference for mobile bundlers
+
+    // Configuration moved inside component to avoid TDZ issues in production
+    const AI_PROVIDERS = useMemo(() => ({
+        openrouter: {
+            name: 'OpenRouter',
+            description: 'Multiple free models (Recommended)',
+            apiKeyEnv: 'VITE_OPENROUTER_API_KEY',
+            endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+            models: [
+                { id: 'google/gemma-2-9b-it:free', name: 'Google Gemma 2 9B', speed: 'Fast' },
+                { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Meta LLaMA 3.2 3B', speed: 'Very Fast' },
+                { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B', speed: 'Fast' },
+                { id: 'qwen/qwen-2-7b-instruct:free', name: 'Qwen 2 7B', speed: 'Fast' },
+                { id: 'huggingfaceh4/zephyr-7b-beta:free', name: 'Zephyr 7B', speed: 'Medium' }
+            ],
+            signupUrl: 'https://openrouter.ai/keys',
+            instructions: 'Sign up free with Google, no credit card needed'
+        },
+        xai: {
+            name: 'xAI (Grok)',
+            description: 'Advanced AI models by xAI',
+            apiKeyEnv: 'VITE_xAI_API_KEY',
+            endpoint: 'https://api.x.ai/v1/chat/completions',
+            models: [
+                { id: 'grok-beta', name: 'Grok Beta', speed: 'Fast' },
+                { id: 'grok-2', name: 'Grok 2', speed: 'Fast' },
+                { id: 'grok-vision-beta', name: 'Grok Vision', speed: 'Medium' }
+            ],
+            signupUrl: 'https://console.x.ai/',
+            instructions: 'Sign up at xAI Console to get your API key'
+        },
+        google: {
+            name: 'Google AI Studio',
+            description: 'Gemini models (Free)',
+            apiKeyEnv: 'VITE_GOOGLE_AI_KEY',
+            endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+            models: [
+                { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', speed: 'Very Fast' },
+                { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', speed: 'Fast' }
+            ],
+            signupUrl: 'https://aistudio.google.com/app/apikey',
+            instructions: 'Free with Google account, no credit card'
+        },
+        mistral: {
+            name: 'Mistral AI',
+            description: 'Native Mistral models',
+            apiKeyEnv: 'VITE_MISTRAL_API_KEY',
+            endpoint: 'https://api.mistral.ai/v1/chat/completions',
+            models: [
+                { id: 'mistral-small-latest', name: 'Mistral Small', speed: 'Fast' },
+                { id: 'mistral-medium-latest', name: 'Mistral Medium', speed: 'Fast' },
+                { id: 'mistral-large-latest', name: 'Mistral Large', speed: 'Fast' }
+            ],
+            signupUrl: 'https://console.mistral.ai/',
+            instructions: 'Free tier available on Mistral La Plateforme'
+        },
+        cerebras: {
+            name: 'Cerebras',
+            description: 'Extreme speed inference',
+            apiKeyEnv: 'VITE_CEREBRAS_API_KEY',
+            endpoint: 'https://api.cerebras.ai/v1/chat/completions',
+            models: [
+                { id: 'llama3.1-8b', name: 'Llama 3.1 8B', speed: 'Instant' },
+                { id: 'llama3.1-70b', name: 'Llama 3.1 70B', speed: 'Very Fast' }
+            ],
+            signupUrl: 'https://cloud.cerebras.ai/',
+            instructions: 'Sign up for Cerebras Cloud API'
+        },
+        huggingface: {
+            name: 'Hugging Face',
+            description: 'Open source models',
+            apiKeyEnv: 'VITE_HUGGINGFACE_API_KEY',
+            endpoint: 'https://api-inference.huggingface.co/v1/chat/completions',
+            models: [
+                { id: 'meta-llama/Llama-3.1-8B-Instruct', name: 'Llama 3.1 8B', speed: 'Medium' },
+                { id: 'mistralai/Mistral-7B-Instruct-v0.3', name: 'Mistral 7B v0.3', speed: 'Medium' }
+            ],
+            signupUrl: 'https://huggingface.co/settings/tokens',
+            instructions: 'Create a Read token on Hugging Face'
+        }
+    }), []);
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -453,7 +457,7 @@ Guidelines:
         return data.choices?.[0]?.message?.content || data.choices?.[0]?.text || "No content returned from Hugging Face.";
     };
 
-    const sendMessage = async (overrideMessage = null, isRetry = false) => {
+    const sendMessage = useCallback(async (overrideMessage = null, isRetry = false) => {
         const messageText = overrideMessage || input.trim();
         if (!messageText || (isLoading && !isRetry)) return;
 
@@ -603,7 +607,7 @@ The AI model took too long to respond. Try:
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [input, isLoading, selectedProvider, messages, AI_PROVIDERS, callCerebras, callGoogleAI, callHuggingFace, callMistral, callXAI, callOpenRouter, getSystemPrompt]);
 
     const handleKeyPress = (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {

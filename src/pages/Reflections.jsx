@@ -1,27 +1,17 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
     BookOpen, Save, Sparkles, X,
     Upload, FileText, CheckCircle, ChevronRight, ChevronLeft,
     Paperclip, Download, Plus, Calendar, TrendingUp, Trash2,
-    AlertCircle, Info, Loader2, Check, RefreshCw
+    AlertCircle, Info, Loader2, Check, RefreshCw, Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { addToQueue } from '../services/offlineQueue';
 import { get, set } from 'idb-keyval';
 import './Reflections.css';
 
-// --- Configuration ---
-const GIBBS_STAGES = [
-    { id: 'description', title: 'Description', prompt: 'What happened?', icon: '📝' },
-    { id: 'feelings', title: 'Feelings', prompt: 'What were you thinking & feeling?', icon: '💭' },
-    { id: 'evaluation', title: 'Evaluation', prompt: 'What was good & bad about it?', icon: '⚖️' },
-    { id: 'analysis', title: 'Analysis', prompt: 'What sense can you make of the situation?', icon: '🔬' },
-    { id: 'conclusion', title: 'Conclusion', prompt: 'What else could you have done?', icon: '💡' },
-    { id: 'actionPlan', title: 'Action Plan', prompt: 'If it arose again, what would you do?', icon: '🚀' }
-];
 
 /**
  * Compresses an image file before upload to save bandwidth and speed up mobile uploads.
@@ -67,8 +57,17 @@ const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
 };
 
 const Reflections = () => {
-    void motion; // Defensive reference
     const { profile } = useAuth();
+
+    // Configuration moved inside to avoid TDZ issues in production
+    const GIBBS_STAGES = useMemo(() => [
+        { id: 'description', title: 'Description', prompt: 'What happened?', icon: '📝' },
+        { id: 'feelings', title: 'Feelings', prompt: 'What were you thinking & feeling?', icon: '💭' },
+        { id: 'evaluation', title: 'Evaluation', prompt: 'What was good & bad about it?', icon: '⚖️' },
+        { id: 'analysis', title: 'Analysis', prompt: 'What sense can you make of the situation?', icon: '🔬' },
+        { id: 'conclusion', title: 'Conclusion', prompt: 'What else could you have done?', icon: '💡' },
+        { id: 'actionPlan', title: 'Action Plan', prompt: 'If it arose again, what would you do?', icon: '🚀' }
+    ], []);
     const [families, setFamilies] = useState([]);
     const [reflections, setReflections] = useState([]);
     const [loading, setLoading] = useState(true);
