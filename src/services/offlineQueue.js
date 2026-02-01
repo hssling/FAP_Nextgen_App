@@ -132,6 +132,22 @@ const executeAction = async (item) => {
             if (error) throw error;
             break;
         }
+        case 'UPDATE_COMPETENCY': {
+            const { code, status, evidenceType, evidenceId, studentId } = payload;
+            const { error } = await supabase
+                .from('student_competencies')
+                .upsert({
+                    student_id: studentId,
+                    competency_code: code,
+                    status,
+                    evidence_type: evidenceType,
+                    evidence_id: evidenceId,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'student_id, competency_code' });
+            
+            if (error) throw error;
+            break;
+        }
         default:
             throw new Error(`Unknown action type: ${type}`);
     }

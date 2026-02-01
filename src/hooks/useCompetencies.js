@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../services/supabaseClient';
+import { addToQueue } from '../services/offlineQueue';
 
 /**
  * Hook to manage student competency progress
@@ -26,6 +27,21 @@ export const useCompetencies = (studentId) => {
     // Update progress mutation
     const updateCompetency = useMutation({
         mutationFn: async ({ code, status, evidenceType, evidenceId }) => {
+            const isOffline = !navigator.onLine;
+
+            if (isOffline) {
+                const offlinePayload = { 
+                    code, 
+                    status, 
+                    evidenceType, 
+                    evidenceId, 
+                    studentId,
+                    updated_at: new Date().toISOString()
+                };
+                await addToQueue('UPDATE_COMPETENCY', offlinePayload);
+                return offlinePayload;
+            }
+
             const { data, error } = await supabase
                 .from('student_competencies')
                 .upsert({

@@ -190,8 +190,8 @@ const Reflections = () => {
 
                     console.log("📱 [UPLOAD] Starting Storage SDK upload...");
 
-                    // UPLOAD WITH TIMEOUT PROTECTION (60s for file uploads)
-                    const UPLOAD_TIMEOUT_MS = 60000;
+                    // UPLOAD WITH TIMEOUT PROTECTION (180s for mobile resilience)
+                    const UPLOAD_TIMEOUT_MS = 180000; 
                     let uploadTimeoutId;
 
                     const uploadPromise = supabase.storage
@@ -214,7 +214,7 @@ const Reflections = () => {
                     } catch (raceErr) {
                         clearTimeout(uploadTimeoutId);
                         if (raceErr.message === 'UPLOAD_TIMEOUT') {
-                            throw new Error("Upload timed out after 60 seconds. Please check your network connection and try again.");
+                            throw new Error("Upload timed out. Mobile networks can be slow; please try a smaller file or a stronger signal.");
                         }
                         throw raceErr;
                     }

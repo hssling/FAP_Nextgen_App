@@ -9,7 +9,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 const LearningObjectives = () => {
     const { profile } = useAuth();
-    const { progress, isLoading: loadingProgress } = useCompetencies(profile?.id);
+    const { progress } = useCompetencies(profile?.id);
     
     const [selectedYear, setSelectedYear] = useState('year_1');
     const [activeTab, setActiveTab] = useState('competencies');
