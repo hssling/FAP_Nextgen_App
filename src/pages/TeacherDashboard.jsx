@@ -14,7 +14,6 @@ import { calculateBadges } from '../utils/gamification';
 import BadgeDisplay from '../components/shared/BadgeDisplay';
 import './TeacherDashboard.css';
 
-import { generateClassReport } from '../utils/reportGenerator';
 
 const REFLECT_CRITERIA = [
     { id: 'score_exploration', label: 'Exploration', desc: 'Breadth/depth', max: 20 },
@@ -32,12 +31,13 @@ const TeacherDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const handleExport = () => {
+    const handleExport = async () => {
         try {
             if (!students || students.length === 0) {
                 alert("No student data to export yet.");
                 return;
             }
+            const { generateClassReport } = await import('../utils/reportGenerator');
             generateClassReport(students, 'Assigned Students');
         } catch (err) {
             console.error(err);

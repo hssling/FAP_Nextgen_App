@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import BMICalculator from '../components/tools/BMICalculator';
 import KuppuswamyCalculator from '../components/tools/KuppuswamyCalculator';
 import BGPrasadCalculator from '../components/tools/BGPrasadCalculator';
-import HealthTrends from '../components/tools/HealthTrends';
-import FamilyReportGenerator from '../components/tools/FamilyReportGenerator';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
 import './Tools.css';
+
+const HealthTrends = React.lazy(() => import('../components/tools/HealthTrends'));
+const FamilyReportGenerator = React.lazy(() => import('../components/tools/FamilyReportGenerator'));
 
 const Tools = () => {
     return (
@@ -24,8 +26,12 @@ const Tools = () => {
 
                 {/* Column 2: Visuals & Reports */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <HealthTrends />
-                    <FamilyReportGenerator />
+                    <Suspense fallback={<LoadingSpinner />}>
+                        <HealthTrends />
+                    </Suspense>
+                    <Suspense fallback={<LoadingSpinner />}>
+                        <FamilyReportGenerator />
+                    </Suspense>
                 </div>
             </div>
         </div>

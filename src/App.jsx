@@ -8,7 +8,7 @@ import FamilyDetails from './pages/FamilyDetails';
 import MemberDetails from './pages/MemberDetails';
 import Community from './pages/Community';
 const Reflections = React.lazy(() => import('./pages/Reflections'));
-import Reports from './pages/Reports';
+const Reports = React.lazy(() => import('./pages/Reports'));
 import Resources from './pages/Resources';
 import Tools from './pages/Tools';
 import Settings from './pages/Settings';

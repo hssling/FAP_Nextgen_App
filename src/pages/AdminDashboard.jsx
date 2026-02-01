@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { calculateBadges } from '../utils/gamification';
 import BadgeDisplay from '../components/shared/BadgeDisplay';
-import { generateAdminReport } from '../utils/reportGenerator';
 
 const AdminDashboard = () => {
     const { profile } = useAuth();
@@ -37,12 +36,13 @@ const AdminDashboard = () => {
         }
     }, [profile]);
 
-    const handleExport = () => {
+    const handleExport = async () => {
         try {
             console.log("Exporting Admin Report...");
             const topStudents = [...allStudents]
                 .sort((a, b) => (b.gradedCount || 0) - (a.gradedCount || 0))
                 .slice(0, 10); // Top 10 for report
+            const { generateAdminReport } = await import('../utils/reportGenerator');
             generateAdminReport(stats, topStudents);
             console.log("Export Complete");
         } catch (err) {
