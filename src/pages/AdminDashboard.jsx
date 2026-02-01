@@ -143,32 +143,49 @@ const AdminDashboard = () => {
             console.log('[Admin] Students fetched:', students?.length || 0);
 
             if (students && students.length > 0) {
-                // Batch fetch families count and reflections
-                const enrichedStudents = await Promise.all(students.map(async (s) => {
-                    const { count: famCount } = await supabase
-                        .from('families')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('student_id', s.id);
+                const studentIds = students.map(s => s.id);
 
-                    const { data: refs } = await supabase
-                        .from('reflections')
-                        .select('status, total_score, grade')
-                        .eq('student_id', s.id);
+                const { data: familiesData } = await supabase
+                    .from('families')
+                    .select('student_id')
+                    .in('student_id', studentIds);
 
-                    const totalRefs = refs?.length || 0;
-                    const gradedRefs = refs?.filter(r => r.status === 'Graded') || [];
-                    const avgScore = gradedRefs.length > 0
-                        ? (gradedRefs.reduce((a, b) => a + (b.total_score || 0), 0) / gradedRefs.length).toFixed(1)
+                const { data: refsData } = await supabase
+                    .from('reflections')
+                    .select('student_id, status, total_score, grade')
+                    .in('student_id', studentIds);
+
+                const familyCounts = (familiesData || []).reduce((acc, f) => {
+                    acc[f.student_id] = (acc[f.student_id] || 0) + 1;
+                    return acc;
+                }, {});
+
+                const reflectionBuckets = (refsData || []).reduce((acc, r) => {
+                    const bucket = acc[r.student_id] || { total: 0, graded: [], gradedCount: 0 };
+                    bucket.total += 1;
+                    if (r.status === 'Graded') {
+                        bucket.graded.push(r);
+                        bucket.gradedCount += 1;
+                    }
+                    acc[r.student_id] = bucket;
+                    return acc;
+                }, {});
+
+                const enrichedStudents = students.map(s => {
+                    const bucket = reflectionBuckets[s.id] || { total: 0, graded: [], gradedCount: 0 };
+                    const avgScore = bucket.graded.length > 0
+                        ? (bucket.graded.reduce((a, b) => a + (b.total_score || 0), 0) / bucket.graded.length).toFixed(1)
                         : '-';
 
                     return {
                         ...s,
-                        familyCount: famCount || 0,
-                        reflectionCount: totalRefs,
-                        gradedCount: gradedRefs.length,
+                        familyCount: familyCounts[s.id] || 0,
+                        reflectionCount: bucket.total,
+                        gradedCount: bucket.gradedCount,
                         avgScore: avgScore
                     };
-                }));
+                });
+
                 setAllStudents(enrichedStudents);
             } else {
                 setAllStudents([]);

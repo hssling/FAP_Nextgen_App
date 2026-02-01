@@ -9,6 +9,8 @@ const HealthTrends = React.lazy(() => import('../components/tools/HealthTrends')
 const FamilyReportGenerator = React.lazy(() => import('../components/tools/FamilyReportGenerator'));
 
 const Tools = () => {
+    const [showTrends, setShowTrends] = React.useState(false);
+    const [showReports, setShowReports] = React.useState(false);
     return (
         <div className="tools-container">
             <div className="tools-header">
@@ -26,12 +28,24 @@ const Tools = () => {
 
                 {/* Column 2: Visuals & Reports */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <Suspense fallback={<LoadingSpinner />}>
-                        <HealthTrends />
-                    </Suspense>
-                    <Suspense fallback={<LoadingSpinner />}>
-                        <FamilyReportGenerator />
-                    </Suspense>
+                    {showTrends ? (
+                        <Suspense fallback={<LoadingSpinner />}>
+                            <HealthTrends />
+                        </Suspense>
+                    ) : (
+                        <button className="btn btn-outline" onClick={() => setShowTrends(true)}>
+                            Load Health Trends
+                        </button>
+                    )}
+                    {showReports ? (
+                        <Suspense fallback={<LoadingSpinner />}>
+                            <FamilyReportGenerator />
+                        </Suspense>
+                    ) : (
+                        <button className="btn btn-outline" onClick={() => setShowReports(true)}>
+                            Load Report Generator
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
