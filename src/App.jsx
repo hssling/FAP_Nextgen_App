@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -7,7 +7,7 @@ import Families from './pages/Families';
 import FamilyDetails from './pages/FamilyDetails';
 import MemberDetails from './pages/MemberDetails';
 import Community from './pages/Community';
-import Reflections from './pages/Reflections';
+const Reflections = React.lazy(() => import('./pages/Reflections'));
 import Reports from './pages/Reports';
 import Resources from './pages/Resources';
 import Tools from './pages/Tools';
@@ -19,7 +19,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import UserManagement from './pages/UserManagement';
 import ForgotPassword from './pages/ForgotPassword';
 import LearningObjectives from './pages/LearningObjectives';
-import AICoach from './pages/AICoach';
+const AICoach = React.lazy(() => import('./pages/AICoach'));
 import DebugEnv from './pages/DebugEnv';
 import TeacherStudentAssignment from './components/TeacherStudentAssignment';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -213,7 +213,15 @@ function App() {
           <Toaster />
           <InstallPrompt />
           <OfflineSyncManager />
-          <AppRoutes />
+          <React.Suspense fallback={
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#F9FAFB' }}>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ color: '#0F766E', fontWeight: 600 }}>Loading section...</p>
+              </div>
+            </div>
+          }>
+            <AppRoutes />
+          </React.Suspense>
         </BrowserRouter>
       </AuthProvider>
     </PersistQueryClientProvider>
