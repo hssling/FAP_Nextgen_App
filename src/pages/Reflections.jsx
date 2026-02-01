@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     BookOpen, Save, Sparkles, X,
     Upload, FileText, CheckCircle, ChevronRight, ChevronLeft,
     Paperclip, Download, Plus, Calendar, TrendingUp, Trash2,
     AlertCircle, Info, Loader2, Check, RefreshCw
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
+import { Search } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { addToQueue } from '../services/offlineQueue';
@@ -22,6 +23,49 @@ const GIBBS_STAGES = [
     { id: 'actionPlan', title: 'Action Plan', prompt: 'If it arose again, what would you do?', icon: '🚀' }
 ];
 
+/**
+ * Compresses an image file before upload to save bandwidth and speed up mobile uploads.
+ */
+const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
+    return new Promise((resolve) => {
+        if (!file.type.startsWith('image/')) {
+            resolve(file); // Return original if not an image
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height = (maxWidth / width) * height;
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                    const compressedFile = new File([blob], file.name, {
+                        type: 'image/jpeg',
+                        lastModified: Date.now()
+                    });
+                    console.log(`📱 [COMPRESS] ${ (file.size / 1024).toFixed(1) }KB -> ${ (compressedFile.size / 1024).toFixed(1) }KB`);
+                    resolve(compressedFile);
+                }, 'image/jpeg', quality);
+            };
+        };
+    });
+};
+
 const Reflections = () => {
     const { profile } = useAuth();
     const [families, setFamilies] = useState([]);
@@ -31,6 +75,7 @@ const Reflections = () => {
     // UI State
     const [isWriting, setIsWriting] = useState(false);
     const [viewingEntry, setViewingEntry] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Form State
     const [activeTab, setActiveTab] = useState('write');
@@ -54,7 +99,7 @@ const Reflections = () => {
     const [aiFeedback, setAiFeedback] = useState(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-    useEffect(() => { if (profile) loadData(); }, [profile]);
+    useEffect(() => { if (profile) loadData(); }, [profile, loadData]);
 
     // Cache Helper
     const getCachedData = (id) => {
@@ -66,7 +111,7 @@ const Reflections = () => {
         return null;
     };
 
-    const loadData = async (forceRefresh = false) => {
+    const loadData = useCallback(async (forceRefresh = false) => {
         const cacheKey = `fap_reflections_full_${profile.id}`;
         if (!forceRefresh) {
             const cached = getCachedData(profile.id);
@@ -104,7 +149,7 @@ const Reflections = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [profile.id]);
 
     const runDiagnostics = async () => {
         setSysStatus('Testing upload permissions...');
@@ -184,11 +229,18 @@ const Reflections = () => {
 
             // 1. Handle File Upload if active
             if (activeTab === 'upload') {
-                if (!selectedFile) {
+                if (!selectedFile && !lastUploadedFile.current.id) {
                     alert("Please select a file to upload.");
                     setSubmitting(false);
                     setSubmissionStatus(null);
                     return;
+                }
+
+                let fileToUpload = selectedFile;
+                // COMPRESSION STEP for images
+                if (selectedFile && selectedFile.type.startsWith('image/')) {
+                    setSubmissionStatus('processing'); // Show "Compressing..." state if needed
+                    fileToUpload = await compressImage(selectedFile);
                 }
 
                 // CHECK CACHE: Did we already upload this exact file in a previous attempt?
@@ -217,7 +269,7 @@ const Reflections = () => {
 
                     const uploadPromise = supabase.storage
                         .from('reflection-files')
-                        .upload(path, selectedFile, {
+                        .upload(path, fileToUpload, {
                             cacheControl: '3600',
                             upsert: false
                         });
@@ -340,21 +392,14 @@ const Reflections = () => {
             const attemptInsert = async (attemptNum, timeoutMs) => {
                 console.log(`📱 [DB ATTEMPT ${attemptNum}/${MAX_RETRIES}] Timeout: ${timeoutMs}ms`);
 
-                return new Promise(async (resolve, reject) => {
-                    const timeoutId = setTimeout(() => {
-                        reject(new Error('DATABASE_TIMEOUT'));
-                    }, timeoutMs);
+                const insertPromise = supabase.from('reflections').insert([payload]);
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('DATABASE_TIMEOUT')), timeoutMs)
+                );
 
-                    try {
-                        const { error: insertError } = await supabase.from('reflections').insert([payload]);
-                        clearTimeout(timeoutId);
-                        if (insertError) reject(insertError);
-                        else resolve(true);
-                    } catch (err) {
-                        clearTimeout(timeoutId);
-                        reject(err);
-                    }
-                });
+                const result = await Promise.race([insertPromise, timeoutPromise]);
+                if (result.error) throw result.error;
+                return true;
             };
 
             let lastError;
@@ -426,6 +471,13 @@ const Reflections = () => {
         setUploadError("Cancelled by user.");
     }
 
+    const filteredReflections = reflections.filter(ref => {
+        const query = searchQuery.toLowerCase();
+        const headName = ref.families?.head_name?.toLowerCase() || '';
+        const gibbsContent = JSON.stringify(ref.content || ref.gibbs_description || '').toLowerCase();
+        return headName.includes(query) || gibbsContent.includes(query) || (ref.reflection_type || '').toLowerCase().includes(query);
+    });
+
     return (
         <div className="reflections-page">
             <div className="ambient-orb orb-1"></div>
@@ -433,14 +485,37 @@ const Reflections = () => {
 
             <div className="container" style={{ paddingTop: '3rem' }}>
 
-                <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
                     <div>
                         <h1 className="page-title">My Journal</h1>
                         <p className="page-subtitle">Your professional growth journey.</p>
                     </div>
-                    <button onClick={() => setIsWriting(true)} className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', borderRadius: '30px' }}>
-                        <Plus size={20} /> New Entry
-                    </button>
+
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                         {/* Instant Local Search */}
+                         <div style={{ position: 'relative' }}>
+                            <Search size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
+                            <input 
+                                type="text"
+                                placeholder="Search journal..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                style={{
+                                    padding: '0.6rem 1rem 0.6rem 2.5rem',
+                                    borderRadius: '20px',
+                                    border: '1px solid #E2E8F0',
+                                    fontSize: '0.9rem',
+                                    width: '200px',
+                                    background: 'rgba(255,255,255,0.8)',
+                                    backdropFilter: 'blur(4px)'
+                                }}
+                            />
+                        </div>
+
+                        <button onClick={() => setIsWriting(true)} className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', borderRadius: '30px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Plus size={20} /> New Entry
+                        </button>
+                    </div>
                 </div>
 
                 <div className="stats-grid">
@@ -448,7 +523,7 @@ const Reflections = () => {
                         <div className="stat-icon" style={{ background: '#3B82F6' }}><BookOpen size={24} /></div>
                         <div className="stat-content">
                             <h4>Total Entries</h4>
-                            <p>{reflections.length}</p>
+                            <p>{filteredReflections.length}</p>
                         </div>
                     </div>
 
@@ -494,16 +569,21 @@ const Reflections = () => {
 
                 <div className="timeline-container">
                     {loading ? <p style={{ textAlign: 'center', color: '#64748B' }}>Loading your journey...</p> :
-                        reflections.length === 0 ? (
+                        filteredReflections.length === 0 ? (
                             <div className="empty-state">
                                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: '#CBD5E1' }}>
                                     <FileText size={48} />
                                 </div>
-                                <h3>Canvas is Empty</h3>
-                                <button onClick={() => setIsWriting(true)} className="btn btn-outline" style={{ marginTop: '1rem' }}>Create your first reflection</button>
+                                <h3>{searchQuery ? "No matching entries" : "Canvas is Empty"}</h3>
+                                <button onClick={() => {
+                                    if(searchQuery) setSearchQuery('');
+                                    else setIsWriting(true);
+                                }} className="btn btn-outline" style={{ marginTop: '1rem' }}>
+                                    {searchQuery ? "Clear search" : "Create your first reflection"}
+                                </button>
                             </div>
                         ) :
-                            reflections.map((ref, idx) => (
+                            filteredReflections.map((ref, idx) => (
                                 <motion.div
                                     key={ref.id}
                                     className="timeline-entry"

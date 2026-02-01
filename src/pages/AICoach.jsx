@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, Send, Sparkles, BookOpen, Stethoscope, Users, Loader, Mic, MicOff, Trash2, Settings, Zap, Brain, CheckCircle, AlertCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { AnimatePresence } from 'framer-motion';
+import { MessageCircle, Send, Sparkles, BookOpen, Stethoscope, Users, Loader, Mic, MicOff, Trash2, Settings, Zap, Brain, CheckCircle, AlertCircle, CloudOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabaseClient';
 import { get, set } from 'idb-keyval';
@@ -148,7 +148,7 @@ What would you like to learn about today?`,
         };
         loadHistory();
         checkProviderStatus();
-    }, []);
+    }, [defaultGreeting, checkProviderStatus]);
 
     // Save Chat History
     useEffect(() => {
@@ -163,7 +163,26 @@ What would you like to learn about today?`,
         set('fap_ai_model', selectedModel);
     }, [selectedProvider, selectedModel]);
 
-    const checkProviderStatus = () => {
+    // Auto-retry pending messages when coming back online
+    useEffect(() => {
+        const handleOnline = () => {
+            const hasPending = messages.some(m => m.status === 'pending');
+            if (hasPending && !isLoading) {
+                console.log("📱 [AI] Online! Retrying pending messages...");
+                // Find first pending message
+                const pending = messages.find(m => m.status === 'pending');
+                if (pending) {
+                    // We need to re-send this
+                    sendMessage(pending.content, true);
+                }
+            }
+        };
+
+        window.addEventListener('online', handleOnline);
+        return () => window.removeEventListener('online', handleOnline);
+    }, [messages, isLoading, sendMessage]);
+
+    const checkProviderStatus = useCallback(() => {
         const status = {};
         Object.keys(AI_PROVIDERS).forEach(key => {
             const envKey = AI_PROVIDERS[key].apiKeyEnv;
@@ -171,7 +190,7 @@ What would you like to learn about today?`,
             status[key] = apiKey && apiKey.length > 10;
         });
         setProviderStatus(status);
-    };
+    }, []);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -433,15 +452,44 @@ Guidelines:
         return data.choices?.[0]?.message?.content || data.choices?.[0]?.text || "No content returned from Hugging Face.";
     };
 
-    const sendMessage = async (overrideMessage = null) => {
+    const sendMessage = async (overrideMessage = null, isRetry = false) => {
         const messageText = overrideMessage || input.trim();
-        if (!messageText || isLoading) return;
+        if (!messageText || (isLoading && !isRetry)) return;
+
+        const isOffline = !navigator.onLine;
 
         setShowQuickPrompts(false);
-        const userMessage = { role: 'user', content: messageText, timestamp: new Date() };
-        setMessages(prev => [...prev, userMessage]);
-        setInput('');
+        
+        if (!isRetry) {
+            const userMessage = { 
+                role: 'user', 
+                content: messageText, 
+                timestamp: new Date(),
+                status: isOffline ? 'pending' : 'sent'
+            };
+            setMessages(prev => [...prev, userMessage]);
+            setInput('');
+        } else {
+            // Update status of existing message if retrying
+            setMessages(prev => prev.map(m => 
+                (m.content === messageText && m.role === 'user') ? { ...m, status: 'sent' } : m
+            ));
+        }
+
+        if (isOffline) {
+            const offlineNote = { 
+                role: 'assistant', 
+                content: "📱 **Offline Note**: Your question is queued. I'll provide an answer automatically as soon as your device reconnects.", 
+                timestamp: new Date(),
+                is_system: true
+            };
+            if (!isRetry) setMessages(prev => [...prev, offlineNote]);
+            return;
+        }
+
         setIsLoading(true);
+        // Clear system notes when online
+        setMessages(prev => prev.filter(m => !m.is_system));
 
         try {
             const conversationMessages = [
@@ -772,12 +820,19 @@ The AI model took too long to respond. Try:
                             borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
                             background: msg.role === 'user' 
                                 ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
-                                : 'white',
+                                : msg.is_system ? '#F1F5F9' : 'white',
                             color: msg.role === 'user' ? 'white' : '#374151',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                            whiteSpace: 'pre-wrap'
+                            whiteSpace: 'pre-wrap',
+                            border: msg.status === 'pending' ? '1px dashed rgba(255,255,255,0.5)' : 'none',
+                            position: 'relative'
                         }}>
                             {msg.content}
+                            {msg.status === 'pending' && (
+                                <div style={{ fontSize: '0.6rem', opacity: 0.8, marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <CloudOff size={10} /> Queued (Offline)
+                                </div>
+                            )}
                             {msg.provider && msg.role === 'assistant' && (
                                 <div style={{ fontSize: '0.65rem', color: '#9CA3AF', marginTop: '0.5rem' }}>
                                     via {AI_PROVIDERS[msg.provider]?.name || msg.provider}

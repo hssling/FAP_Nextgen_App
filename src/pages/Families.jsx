@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, MapPin, Users, ArrowRight } from 'lucide-react';
+import { Plus, MapPin, Users, ArrowRight, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useFamilies } from '../hooks/useFamilies';
 import toast from 'react-hot-toast';
@@ -15,6 +15,7 @@ const Families = () => {
     const [newFamily, setNewFamily] = useState({ head_name: '', village: '', members_count: 1 });
     const [pendingCount, setPendingCount] = useState(0);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Use React Query Hook
     const {
@@ -22,6 +23,12 @@ const Families = () => {
         isLoading: loading,
         addFamily
     } = useFamilies(profile?.id);
+
+    // Smart Local Search (Offline-Ready)
+    const filteredFamilies = families.filter(f => 
+        f.head_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        f.village.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     useEffect(() => {
         const updateCount = async () => {
@@ -81,21 +88,43 @@ const Families = () => {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="page-header"
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}
             >
                 <div>
                     <h1 className="page-title">My Adopted Families</h1>
                     <p className="page-subtitle">Manage your adopted families and track their health status.</p>
                 </div>
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="btn btn-primary"
-                    onClick={() => setShowAddModal(true)}
-                >
-                    <Plus size={20} />
-                    Adopt New Family
-                </motion.button>
+
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {/* Instant Local Search */}
+                    <div style={{ position: 'relative' }}>
+                        <Search size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                        <input 
+                            type="text"
+                            placeholder="Search families..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            style={{
+                                padding: '0.6rem 1rem 0.6rem 2.5rem',
+                                borderRadius: '20px',
+                                border: '1px solid var(--color-border)',
+                                fontSize: '0.9rem',
+                                width: '220px',
+                                background: 'white'
+                            }}
+                        />
+                    </div>
+
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="btn btn-primary"
+                        onClick={() => setShowAddModal(true)}
+                    >
+                        <Plus size={20} />
+                        Adopt New Family
+                    </motion.button>
+                </div>
             </motion.header>
 
             {/* Offline Sync Banner */}
@@ -186,7 +215,7 @@ const Families = () => {
                 </motion.div>
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
-                    {families.map((family, index) => (
+                    {filteredFamilies.map((family, index) => (
                         <motion.div
                             key={family.id}
                             initial={{ opacity: 0, y: 20 }}

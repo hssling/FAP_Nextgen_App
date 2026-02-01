@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Search, BookOpen, Baby, Syringe, Activity, Heart, Users, AlertCircle, Brain, Apple, ChevronRight, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, BookOpen, Baby, Syringe, Activity, Heart, Users, AlertCircle, Brain, Apple, ChevronRight, X, CloudOff } from 'lucide-react';
+import { set } from 'idb-keyval';
 import { motion, AnimatePresence } from 'framer-motion';
 import clinicalGuidelines from '../data/resources/clinical_guidelines.json';
 
@@ -18,6 +19,23 @@ const Resources = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [selectedResource, setSelectedResource] = useState(null);
+    const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+    // Initial cache and sync offline status
+    useEffect(() => {
+        const persistData = async () => {
+            await set('fap_clinical_guidelines', clinicalGuidelines);
+        };
+        persistData();
+
+        const handleStatus = () => setIsOffline(!navigator.onLine);
+        window.addEventListener('online', handleStatus);
+        window.addEventListener('offline', handleStatus);
+        return () => {
+            window.removeEventListener('online', handleStatus);
+            window.removeEventListener('offline', handleStatus);
+        };
+    }, []);
 
     const categories = ['All', ...new Set(clinicalGuidelines.map(r => r.category))];
 
@@ -37,6 +55,11 @@ const Resources = () => {
             >
                 <h1 className="page-title">Clinical Resources</h1>
                 <p className="page-subtitle">Quick reference guides for field practice</p>
+                {isOffline && (
+                    <div style={{ padding: '0.5rem 1rem', background: '#FFF7ED', color: '#C2410C', borderRadius: '8px', fontSize: '0.8rem', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <CloudOff size={14} /> Offline Mode: Guides are loaded from local cache.
+                    </div>
+                )}
             </motion.div>
 
             {/* Search and Filter */}

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Page, Text, View, Document, StyleSheet, PDFDownloadLink } from '@react-pdf/renderer';
 import { supabase } from '../../services/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFamilies } from '../../hooks/useFamilies';
+import { get, set } from 'idb-keyval';
 
 // PDF Styles
 const styles = StyleSheet.create({
@@ -97,14 +99,24 @@ const FamilyReportDocument = ({ family, members, visits, studentName }) => (
 
 const FamilyReportGenerator = () => {
     const { profile } = useAuth();
-    const [families, setFamilies] = useState([]);
     const [selectedFamilyId, setSelectedFamilyId] = useState('');
     const [reportData, setReportData] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
+    // Sync offline status
     useEffect(() => {
-        if (profile) fetchFamilies();
-    }, [profile]);
+        const handleStatus = () => setIsOffline(!navigator.onLine);
+        window.addEventListener('online', handleStatus);
+        window.addEventListener('offline', handleStatus);
+        return () => {
+            window.removeEventListener('online', handleStatus);
+            window.removeEventListener('offline', handleStatus);
+        };
+    }, []);
+
+    // Use cached families hook
+    const { data: families = [] } = useFamilies(profile?.id);
 
     useEffect(() => {
         if (selectedFamilyId) {
@@ -114,24 +126,38 @@ const FamilyReportGenerator = () => {
         }
     }, [selectedFamilyId]);
 
-    const fetchFamilies = async () => {
-        const { data } = await supabase.from('families').select('*').eq('student_id', profile.id);
-        setFamilies(data || []);
-    };
-
     const prepareReport = async (famId) => {
         setLoading(true);
         try {
             const family = families.find(f => f.id === famId);
+            if (!family) throw new Error("Family not found");
 
-            const { data: members } = await supabase.from('family_members').select('*').eq('family_id', famId);
-            const { data: visits } = await supabase.from('family_visits').select('*').eq('family_id', famId).order('visit_date', { ascending: false });
+            let members = [];
+            let visits = [];
+
+            if (!isOffline) {
+                // Fetch fresh data
+                const { data: mData } = await supabase.from('family_members').select('*').eq('family_id', famId);
+                const { data: vData } = await supabase.from('family_visits').select('*').eq('family_id', famId).order('visit_date', { ascending: false });
+                members = mData || [];
+                visits = vData || [];
+                
+                // Cache for offline use
+                await set(`fap_report_cache_${famId}`, { members, visits });
+            } else {
+                // Try to load from cache
+                const cached = await get(`fap_report_cache_${famId}`);
+                if (cached) {
+                    members = cached.members;
+                    visits = cached.visits;
+                }
+            }
 
             setReportData({
                 family,
-                members: members || [],
-                visits: visits || [],
-                studentName: profile.full_name || profile.email
+                members,
+                visits,
+                studentName: profile?.full_name || profile?.email
             });
         } catch (err) {
             console.error(err);
@@ -163,19 +189,27 @@ const FamilyReportGenerator = () => {
 
             <div style={{ display: 'flex', gap: '1rem' }}>
                 {selectedFamilyId && reportData && !loading ? (
-                    <PDFDownloadLink
-                        document={<FamilyReportDocument {...reportData} />}
-                        fileName={`FAP_Report_${reportData.family.head_name.replace(/\s+/g, '_')}.pdf`}
-                    >
-                        {({ blob, url, loading: pdfLoading, error }) =>
-                            <button style={btnStyle} disabled={pdfLoading}>
-                                {pdfLoading ? 'Building PDF...' : `Download Report for ${reportData.family.head_name}`}
-                            </button>
-                        }
-                    </PDFDownloadLink>
+                    <div style={{ width: '100%' }}>
+                        <PDFDownloadLink
+                            document={<FamilyReportDocument {...reportData} />}
+                            fileName={`FAP_Report_${reportData.family.head_name.replace(/\s+/g, '_')}.pdf`}
+                            style={{ textDecoration: 'none' }}
+                        >
+                            {({ loading: pdfLoading }) =>
+                                <button style={{ ...btnStyle, width: '100%' }} disabled={pdfLoading}>
+                                    {pdfLoading ? 'Building PDF...' : `Download ${reportData.family.head_name}'s Record`}
+                                </button>
+                            }
+                        </PDFDownloadLink>
+                        {isOffline && (
+                            <div style={{ fontSize: '0.75rem', color: '#C2410C', marginTop: '0.5rem', textAlign: 'center' }}>
+                                ⚠️ Offline Mode: Record generated from local cache
+                            </div>
+                        )}
+                    </div>
                 ) : (
-                    <button style={{ ...btnStyle, opacity: 0.5, cursor: 'not-allowed' }} disabled>
-                        {loading ? 'Fetching Real Data...' : 'Select a Family to Generate'}
+                    <button style={{ ...btnStyle, opacity: 0.5, cursor: 'not-allowed', width: '100%' }} disabled>
+                        {loading ? 'Crunching Numbers...' : 'Select a Family to Generate'}
                     </button>
                 )}
             </div>
