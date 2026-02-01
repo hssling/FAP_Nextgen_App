@@ -37,8 +37,25 @@ export default defineConfig({
         ]
       },
       workbox: {
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4MB
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/auth\/v1\//,
+            handler: 'NetworkOnly'
+          },
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\//,
+            handler: 'NetworkOnly'
+          },
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/realtime\/v1\//,
+            handler: 'NetworkOnly'
+          }
+        ]
       }
     })
   ],
