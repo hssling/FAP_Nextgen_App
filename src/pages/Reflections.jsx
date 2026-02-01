@@ -96,7 +96,6 @@ const Reflections = () => {
     });
 
     const [selectedFile, setSelectedFile] = useState(null);
-    const [aiFeedback, setAiFeedback] = useState(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
     // Cache Helper
@@ -179,7 +178,6 @@ const Reflections = () => {
     const handleAICoach = () => {
         setIsAnalyzing(true);
         setTimeout(() => {
-            setAiFeedback("Coach Tip: Your analysis is strong, but try to connect your 'Feelings' more directly to the 'Action Plan'. How did your emotions drive your decision making?");
             setIsAnalyzing(false);
         }, 1500);
     };

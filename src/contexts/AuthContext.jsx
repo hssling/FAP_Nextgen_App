@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { get, set, del } from 'idb-keyval';
@@ -150,40 +151,36 @@ export const AuthProvider = ({ children }) => {
 
     // Sign in
     const signIn = async (username, password) => {
-        try {
-            // Normalize username to lowercase for case-insensitive lookup
-            const normalizedUsername = username.trim().toLowerCase();
-            
-            const { data: userProfile, error: profileError } = await supabase
-                .rpc('get_user_by_username', { p_username: normalizedUsername });
+        // Normalize username to lowercase for case-insensitive lookup
+        const normalizedUsername = username.trim().toLowerCase();
+        
+        const { data: userProfile, error: profileError } = await supabase
+            .rpc('get_user_by_username', { p_username: normalizedUsername });
 
-            if (profileError) {
-                console.error('RPC error:', profileError);
-                throw new Error('Unable to verify username. Please try again.');
-            }
-            
-            if (!userProfile || userProfile.length === 0) {
-                throw new Error('Invalid username or password');
-            }
-
-            const profile = userProfile[0];
-            
-            // Validate email exists
-            if (!profile.email) {
-                throw new Error('Account configuration error. Contact admin.');
-            }
-
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email: profile.email,
-                password: password,
-            });
-
-            if (error) throw error;
-
-            return { data, profile };
-        } catch (error) {
-            throw error;
+        if (profileError) {
+            console.error('RPC error:', profileError);
+            throw new Error('Unable to verify username. Please try again.');
         }
+        
+        if (!userProfile || userProfile.length === 0) {
+            throw new Error('Invalid username or password');
+        }
+
+        const profile = userProfile[0];
+        
+        // Validate email exists
+        if (!profile.email) {
+            throw new Error('Account configuration error. Contact admin.');
+        }
+
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: profile.email,
+            password: password,
+        });
+
+        if (error) throw error;
+
+        return { data, profile };
     };
 
     // Sign out

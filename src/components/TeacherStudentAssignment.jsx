@@ -100,7 +100,7 @@ const TeacherStudentAssignment = () => {
             if (deactivateError) console.warn("Deactivation warning:", deactivateError);
 
             // Upsert the new mapping
-            const { data, error: upsertError } = await supabase
+            const { error: upsertError } = await supabase
                 .from('teacher_student_mappings')
                 .upsert([{
                     teacher_id: selectedTeacher,

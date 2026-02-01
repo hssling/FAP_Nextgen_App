@@ -1,33 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../services/supabaseClient';
 
-const fetchDashboardStats = async (studentId) => {
-    if (!studentId) return null;
-
-    // Run queries in parallel for better performance
-    const [familiesResult, membersResult] = await Promise.all([
-        // 1. Get Families (ordered by date for "Recent Activity")
-        supabase
-            .from('families')
-            .select('id, head_name, created_at, village')
-            .eq('student_id', studentId)
-            .order('created_at', { ascending: false }),
-
-        // 2. Get All Members (optimized: only select health_data)
-        // Note: For large datasets, we should use .count() or a database function,
-        // but for <100 families, fetching this light payload is fine.
-        supabase
-            .from('family_members')
-            .select('family_id, health_data')
-        // No easy way to filter by student_id directly on members without a join,
-        // so we fetch all members for this student's families
-        // Optimization: Just get all members linked to families owned by this student
-        // WE NEED TO DO A JOIN OR TWO-STEP. 
-        // In the original code, it fetched families first, then members WHERE family_id IN IDs.
-        // Let's replicate that efficiently.
-    ]);
-};
-
 // Refined fetch function
 const fetchOptimizedStats = async (studentId) => {
     if (!studentId) return null;

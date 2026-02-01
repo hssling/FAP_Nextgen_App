@@ -273,10 +273,9 @@ export const calculateBarthelIndex = (responses) => {
  * Auto-calculate based on form type
  * @param {string} formId - Form identifier
  * @param {object} data - Form data
- * @param {object} memberData - Additional member data (age, gender, etc.)
  * @returns {object} - Calculated fields
  */
-export const autoCalculate = (formId, data, memberData = {}) => {
+export const autoCalculate = (formId, data) => {
     const calculations = {};
 
     switch (formId) {

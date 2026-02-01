@@ -251,7 +251,7 @@ const Resources = () => {
                                             gap: '0.75rem'
                                         }}>
                                             {section.content.map((item, itemIdx) => (
-                                                <li key={`${section.heading || idx}-${item}` || itemIdx} style={{
+                                                <li key={`${section.heading || idx}-${itemIdx}`} style={{
                                                     padding: '0.75rem 1rem',
                                                     background: '#F8FAFC',
                                                     borderRadius: 'var(--radius-md)',

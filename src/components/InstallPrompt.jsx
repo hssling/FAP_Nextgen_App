@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const InstallPrompt = () => {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [showPrompt, setShowPrompt] = useState(false);
+    const [isStandalone] = useState(() => window.matchMedia('(display-mode: standalone)').matches);
 
     useEffect(() => {
         const handler = (e) => {
@@ -16,15 +17,12 @@ const InstallPrompt = () => {
             setShowPrompt(true);
         };
 
+        if (isStandalone) return;
+
         window.addEventListener('beforeinstallprompt', handler);
 
-        // Check if already installed
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-            setShowPrompt(false);
-        }
-
         return () => window.removeEventListener('beforeinstallprompt', handler);
-    }, []);
+    }, [isStandalone]);
 
     const handleInstallClick = async () => {
         if (!deferredPrompt) return;

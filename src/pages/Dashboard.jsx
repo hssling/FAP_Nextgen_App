@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Users, Calendar, AlertCircle, TrendingUp, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
@@ -46,7 +45,6 @@ const Dashboard = () => {
     const {
         data: stats,
         isLoading: loading,
-        error
     } = useDashboardStats(profile?.id);
 
     // Default stats if loading or error (prevents crash)

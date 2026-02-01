@@ -318,8 +318,9 @@ const calculateGradingSummary = (reflections) => {
     
     const distribution = { A: 0, B: 0, C: 0, D: 0, F: 0 };
     graded.forEach(r => {
-        if (r.grade && distribution.hasOwnProperty(r.grade.charAt(0))) {
-            distribution[r.grade.charAt(0)]++;
+        const key = r.grade?.charAt(0);
+        if (key && Object.prototype.hasOwnProperty.call(distribution, key)) {
+            distribution[key]++;
         }
     });
     

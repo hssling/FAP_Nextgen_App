@@ -1,14 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Bell, BellOff, Send } from 'lucide-react';
-import { supabase } from '../services/supabaseClient';
 import toast from 'react-hot-toast';
 
 const NotificationManager = () => {
     const [permission, setPermission] = useState(Notification.permission);
-
-    useEffect(() => {
-        setPermission(Notification.permission);
-    }, []);
 
     const requestPermission = async () => {
         try {
@@ -17,7 +12,6 @@ const NotificationManager = () => {
             if (result === 'granted') {
                 toast.success('Notifications enabled!');
                 // Here we would normally subscribe to PushManager
-                // subscribeToPush(); 
             } else {
                 toast.error('Notifications blocked.');
             }
@@ -50,25 +44,6 @@ const NotificationManager = () => {
         } else {
             toast.error('Please enable notifications first.');
         }
-    };
-
-    // Placeholder for future VAPID implementation
-    const subscribeToPush = async () => {
-        // Needs proper VAPID Key from backend env
-        const publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-        if (!publicKey) {
-            console.log('Skipping Push Subscription: No VAPID Key');
-            return;
-        }
-
-        /* 
-        const registration = await navigator.serviceWorker.ready;
-        const sub = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(publicKey)
-        });
-        // Save 'sub' to Supabase 'push_subscriptions'
-        */
     };
 
     if (permission === 'denied') {

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { User, Download, Trash2, Database, Save, Check } from 'lucide-react';
+import React from 'react';
+import { User, Download, Database } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import NotificationManager from '../components/NotificationManager';

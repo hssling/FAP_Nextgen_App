@@ -183,7 +183,7 @@ const TeacherDashboard = () => {
 
         try {
             // Use RPC for robust security-definer execution (Bypasses flakey RLS)
-            const { data, error } = await supabase.rpc('grade_reflection', {
+            const { error } = await supabase.rpc('grade_reflection', {
                 p_reflection_id: gradingTarget.id,
                 p_teacher_id: profile.id,
                 p_scores: scores,

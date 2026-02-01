@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import DynamicForm from '../components/DynamicForm';
-import { invalidateAnalyticsCache } from '../utils/cacheUtils';
 import formRegistry from '../data/forms/registry.json';
 
 import { useFamilyActions } from '../hooks/useFamilyActions';

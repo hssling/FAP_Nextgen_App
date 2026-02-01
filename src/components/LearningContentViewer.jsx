@@ -4,6 +4,51 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, CheckCircle, AlertCircle, Lightbulb, FileText, Video, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import learningContent from '../data/competencies/curriculum_data.json';
 
+const ExpandableSection = ({ title, children, icon: Icon, defaultExpanded = false, expandedSections, onToggle }) => {
+    const sectionKey = title.replace(/\s/g, '_');
+    const isExpanded = expandedSections[sectionKey] ?? defaultExpanded;
+
+    return (
+        <div style={{ marginBottom: '1rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+            <button
+                onClick={() => onToggle(sectionKey)}
+                style={{
+                    width: '100%',
+                    padding: '1rem',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    backgroundColor: isExpanded ? '#F0F9FF' : 'white',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s'
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {Icon && <Icon size={20} color="#0F766E" />}
+                    <span style={{ fontWeight: '600', fontSize: '1rem' }}>{title}</span>
+                </div>
+                {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </button>
+            <AnimatePresence>
+                {isExpanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                        style={{ overflow: 'hidden' }}
+                    >
+                        <div style={{ padding: '1.5rem', backgroundColor: '#FAFAFA' }}>
+                            {children}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
 const LearningContentViewer = ({ competencyCode }) => {
     const [expandedSections, setExpandedSections] = useState({});
     const lookupKey = competencyCode.replace(/\s+/g, '_');
@@ -28,51 +73,6 @@ const LearningContentViewer = ({ competencyCode }) => {
         }));
     };
 
-    const ExpandableSection = ({ title, children, icon: Icon, defaultExpanded = false }) => {
-        const sectionKey = title.replace(/\s/g, '_');
-        const isExpanded = expandedSections[sectionKey] ?? defaultExpanded;
-
-        return (
-            <div style={{ marginBottom: '1rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-                <button
-                    onClick={() => toggleSection(sectionKey)}
-                    style={{
-                        width: '100%',
-                        padding: '1rem',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        backgroundColor: isExpanded ? '#F0F9FF' : 'white',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.2s'
-                    }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        {Icon && <Icon size={20} color="#0F766E" />}
-                        <span style={{ fontWeight: '600', fontSize: '1rem' }}>{title}</span>
-                    </div>
-                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                </button>
-                <AnimatePresence>
-                    {isExpanded && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                            style={{ overflow: 'hidden' }}
-                        >
-                            <div style={{ padding: '1.5rem', backgroundColor: '#FAFAFA' }}>
-                                {children}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-        );
-    };
-
     return (
         <div style={{ maxHeight: '70vh', overflowY: 'auto', padding: '1rem' }}>
             {/* Introduction */}
@@ -92,7 +92,7 @@ const LearningContentViewer = ({ competencyCode }) => {
 
             {/* Key Concepts */}
             {content.learning_content.key_concepts && (
-                <ExpandableSection title="Key Concepts" icon={BookOpen} defaultExpanded={true}>
+                <ExpandableSection title="Key Concepts" icon={BookOpen} defaultExpanded={true} expandedSections={expandedSections} onToggle={toggleSection}>
                     {content.learning_content.key_concepts.map((concept, idx) => (
                         <div key={concept.concept || idx} style={{ marginBottom: idx < content.learning_content.key_concepts.length - 1 ? '2rem' : 0 }}>
                             <h5 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.75rem', color: '#0F766E' }}>
@@ -182,7 +182,7 @@ const LearningContentViewer = ({ competencyCode }) => {
 
             {/* Step-by-Step Guide */}
             {content.learning_content.step_by_step_guide && (
-                <ExpandableSection title="Step-by-Step Guide" icon={FileText}>
+                <ExpandableSection title="Step-by-Step Guide" icon={FileText} expandedSections={expandedSections} onToggle={toggleSection}>
                     <h5 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem' }}>
                         {content.learning_content.step_by_step_guide.title}
                     </h5>
@@ -245,7 +245,7 @@ const LearningContentViewer = ({ competencyCode }) => {
 
             {/* Clinical Application */}
             {content.learning_content.clinical_application && (
-                <ExpandableSection title="Clinical Application in FAP" icon={CheckCircle}>
+                <ExpandableSection title="Clinical Application in FAP" icon={CheckCircle} expandedSections={expandedSections} onToggle={toggleSection}>
                     <div style={{ backgroundColor: 'white', padding: '1.25rem', borderRadius: '4px' }}>
                         <p style={{ fontWeight: '500', marginBottom: '1rem' }}>
                             {content.learning_content.clinical_application.in_fap}
@@ -285,7 +285,7 @@ const LearningContentViewer = ({ competencyCode }) => {
 
             {/* Case Study */}
             {content.learning_content.case_study && (
-                <ExpandableSection title="Case Study" icon={FileText}>
+                <ExpandableSection title="Case Study" icon={FileText} expandedSections={expandedSections} onToggle={toggleSection}>
                     <div style={{ backgroundColor: 'white', padding: '1.25rem', borderRadius: '4px' }}>
                         <div style={{
                             padding: '1rem',
@@ -326,7 +326,7 @@ const LearningContentViewer = ({ competencyCode }) => {
 
             {/* Learning Resources */}
             {content.learning_content.learning_resources && (
-                <ExpandableSection title="Learning Resources" icon={Video}>
+                <ExpandableSection title="Learning Resources" icon={Video} expandedSections={expandedSections} onToggle={toggleSection}>
                     <div style={{ display: 'grid', gap: '0.75rem' }}>
                         {content.learning_content.learning_resources.map((resource, idx) => (
                             <div key={resource.title || idx} style={{
@@ -389,7 +389,7 @@ const LearningContentViewer = ({ competencyCode }) => {
 
             {/* Assessment Questions */}
             {content.learning_content.assessment_questions && (
-                <ExpandableSection title="Self-Assessment Questions" icon={FileText}>
+                <ExpandableSection title="Self-Assessment Questions" icon={FileText} expandedSections={expandedSections} onToggle={toggleSection}>
                     <div style={{ display: 'grid', gap: '1rem' }}>
                         {content.learning_content.assessment_questions.map((q, idx) => (
                             <div key={q.question || idx} style={{

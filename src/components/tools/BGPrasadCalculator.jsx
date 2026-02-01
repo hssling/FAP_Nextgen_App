@@ -1,10 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 
 const BGPrasadCalculator = () => {
     const [income, setIncome] = useState('');
     const [members, setMembers] = useState('');
-    const [perCapita, setPerCapita] = useState(0);
-    const [socialClass, setSocialClass] = useState('');
+    const { perCapita, socialClass } = useMemo(() => {
+        if (income && members && members > 0) {
+            const pc = Math.round(parseFloat(income) / parseInt(members));
+
+            let cls = '';
+            if (pc >= 8667) cls = "Class I (Upper High)";
+            else if (pc >= 4333) cls = "Class II (High Middle)";
+            else if (pc >= 2600) cls = "Class III (Middle)";
+            else if (pc >= 1300) cls = "Class IV (Low Middle)";
+            else cls = "Class V (Lower)";
+
+            return { perCapita: pc, socialClass: cls };
+        }
+
+        return { perCapita: 0, socialClass: '' };
+    }, [income, members]);
 
     // BG Prasad Scale (Approximate for 2024)
     // Based on CPI(IW) 2016 Base ≈ 139 (April 2024)
@@ -13,22 +27,6 @@ const BGPrasadCalculator = () => {
     // Class III: 2600 - 4332
     // Class IV: 1300 - 2599
     // Class V:  < 1300
-
-    useEffect(() => {
-        if (income && members && members > 0) {
-            const pc = Math.round(parseFloat(income) / parseInt(members));
-            setPerCapita(pc);
-
-            if (pc >= 8667) setSocialClass("Class I (Upper High)");
-            else if (pc >= 4333) setSocialClass("Class II (High Middle)");
-            else if (pc >= 2600) setSocialClass("Class III (Middle)");
-            else if (pc >= 1300) setSocialClass("Class IV (Low Middle)");
-            else setSocialClass("Class V (Lower)");
-        } else {
-            setSocialClass('');
-            setPerCapita(0);
-        }
-    }, [income, members]);
 
     return (
         <div className="tool-card">

@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const KuppuswamyCalculator = () => {
     const [education, setEducation] = useState('0');
     const [occupation, setOccupation] = useState('0');
     const [income, setIncome] = useState('');
-    const [incomeScore, setIncomeScore] = useState(0);
-    const [totalScore, setTotalScore] = useState(0);
-    const [socialClass, setSocialClass] = useState('');
+    const incomeScore = getIncomeScore(income);
+    const totalScore = parseInt(education) + parseInt(occupation) + incomeScore;
+    const socialClass = education !== '0' && occupation !== '0' && income
+        ? calculateClass(totalScore)
+        : '';
 
     // Income Ranges (Approx. April 2024 - CPI base)
     // These values often need updating. We use a recent standard update.
@@ -29,18 +31,6 @@ const KuppuswamyCalculator = () => {
         if (score >= 5) return "Upper Lower (IV)";
         return "Lower (V)";
     };
-
-    useEffect(() => {
-        const incScore = getIncomeScore(income);
-        setIncomeScore(incScore);
-        const total = parseInt(education) + parseInt(occupation) + incScore;
-        setTotalScore(total);
-        if (education !== '0' && occupation !== '0' && income) {
-            setSocialClass(calculateClass(total));
-        } else {
-            setSocialClass('');
-        }
-    }, [education, occupation, income]);
 
     const educationOptions = [
         { score: 7, label: "Professional / Honours" },

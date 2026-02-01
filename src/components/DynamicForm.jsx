@@ -1,19 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { calculateBMI, calculateWHR, calculateIBW } from '../utils/calculations';
 import { autoCalculate } from '../utils/riskScoring';
 import { AlertCircle, CheckCircle, Info } from 'lucide-react';
 
 const DynamicForm = ({ schema, onSubmit, onCancel, initialData = {}, memberData = {} }) => {
     const [formData, setFormData] = useState(initialData);
-    const [calculatedResults, setCalculatedResults] = useState(null);
-
-    const handleChange = (key, value) => {
-        setFormData(prev => ({ ...prev, [key]: value }));
-    };
-
-    // Auto-calculate when relevant fields change
-    useEffect(() => {
-        if (!schema || !schema.auto_calculate) return;
+    const calculatedResults = useMemo(() => {
+        if (!schema || !schema.auto_calculate) return null;
 
         let results = {};
 
@@ -45,10 +38,13 @@ const DynamicForm = ({ schema, onSubmit, onCancel, initialData = {}, memberData 
             }
         }
 
-        if (Object.keys(results).length > 0) {
-            setCalculatedResults(results);
-        }
-    }, [formData, schema, memberData]);
+        return Object.keys(results).length > 0 ? results : null;
+    }, [formData, memberData, schema]);
+
+    const handleChange = (key, value) => {
+        setFormData(prev => ({ ...prev, [key]: value }));
+    };
+
 
     const handleSubmit = (e) => {
         e.preventDefault();

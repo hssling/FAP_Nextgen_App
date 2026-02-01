@@ -432,7 +432,7 @@ const LearningObjectives = () => {
                                 Grading Rubric - Year {yearNumber}
                             </h3>
                             <div style={{ display: 'grid', gap: '0.75rem' }}>
-                                {Object.entries(competenciesData.grading_criteria[selectedYear]).map(([key, value], idx) => {
+                                {Object.entries(competenciesData.grading_criteria[selectedYear]).map(([key, value]) => {
                                     if (key === 'total') {
                                         return (
                                             <div key={key} style={{
