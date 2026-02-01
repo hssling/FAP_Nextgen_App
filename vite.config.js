@@ -42,4 +42,18 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          supabase: ['@supabase/supabase-js'],
+          charts: ['recharts'],
+          pdf: ['jspdf', 'jspdf-autotable', '@react-pdf/renderer'],
+          pwa: ['workbox-window'],
+          motion: ['framer-motion']
+        }
+      }
+    }
+  }
 })
