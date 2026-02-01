@@ -58,43 +58,44 @@ const AdminDashboard = () => {
         try {
             console.log('[Admin] Starting data fetch...');
 
-            // Fetch student count
-            const { count: studentCount, error: e1 } = await supabase
-                .from('profiles')
-                .select('*', { count: 'exact', head: true })
-                .eq('role', 'student')
-                .eq('is_active', true);
+            const [
+                { count: studentCount, error: e1 },
+                { count: teacherCount, error: e2 },
+                { count: familyCount, error: e3 },
+                { data: reflections, error: e4 },
+                { data: students, error: e5 }
+            ] = await Promise.all([
+                supabase
+                    .from('profiles')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('role', 'student')
+                    .eq('is_active', true),
+                supabase
+                    .from('profiles')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('role', 'teacher')
+                    .eq('is_active', true),
+                supabase
+                    .from('families')
+                    .select('*', { count: 'exact', head: true }),
+                supabase
+                    .from('reflections')
+                    .select('id, student_id, created_at, status, grade, total_score, teacher_feedback')
+                    .order('created_at', { ascending: false })
+                    .limit(200),
+                supabase
+                    .from('profiles')
+                    .select('id, full_name, registration_number, email, year')
+                    .eq('role', 'student')
+                    .eq('is_active', true)
+                    .order('full_name')
+            ]);
 
             if (e1) console.error('[Admin] Student count error:', e1);
-
-            // Fetch teacher count
-            const { count: teacherCount, error: e2 } = await supabase
-                .from('profiles')
-                .select('*', { count: 'exact', head: true })
-                .eq('role', 'teacher')
-                .eq('is_active', true);
-
             if (e2) console.error('[Admin] Teacher count error:', e2);
-
-            // Fetch total families
-            const { count: familyCount, error: e3 } = await supabase
-                .from('families')
-                .select('*', { count: 'exact', head: true });
-
             if (e3) console.error('[Admin] Families count error:', e3);
-
-            // Fetch all reflections - simpler query first
-            const { data: reflections, error: e4 } = await supabase
-                .from('reflections')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(200);
-
-            if (e4) {
-                console.error('[Admin] Reflections error:', e4);
-            }
-
-            console.log('[Admin] Reflections fetched:', reflections?.length || 0);
+            if (e4) console.error('[Admin] Reflections error:', e4);
+            if (e5) console.error('[Admin] Students fetch error:', e5);
 
             const pending = reflections?.filter(r => r.status === 'Pending' || !r.status).length || 0;
             const graded = reflections?.filter(r => r.status === 'Graded').length || 0;
@@ -108,17 +109,9 @@ const AdminDashboard = () => {
                 gradedReflections: graded
             });
 
-            // Now enrich reflections with student names
             if (reflections && reflections.length > 0) {
-                const studentIds = [...new Set(reflections.map(r => r.student_id).filter(Boolean))];
-
-                const { data: studentProfiles } = await supabase
-                    .from('profiles')
-                    .select('id, full_name, registration_number')
-                    .in('id', studentIds);
-
                 const studentMap = {};
-                (studentProfiles || []).forEach(s => { studentMap[s.id] = s; });
+                (students || []).forEach(s => { studentMap[s.id] = s; });
 
                 const enrichedReflections = reflections.map(r => ({
                     ...r,
@@ -130,30 +123,22 @@ const AdminDashboard = () => {
                 setAllReflections([]);
             }
 
-            // Fetch all students
-            const { data: students, error: e5 } = await supabase
-                .from('profiles')
-                .select('id, full_name, registration_number, email, year')
-                .eq('role', 'student')
-                .eq('is_active', true)
-                .order('full_name');
-
-            if (e5) console.error('[Admin] Students fetch error:', e5);
-
+            console.log('[Admin] Reflections fetched:', reflections?.length || 0);
             console.log('[Admin] Students fetched:', students?.length || 0);
 
             if (students && students.length > 0) {
                 const studentIds = students.map(s => s.id);
 
-                const { data: familiesData } = await supabase
-                    .from('families')
-                    .select('student_id')
-                    .in('student_id', studentIds);
-
-                const { data: refsData } = await supabase
-                    .from('reflections')
-                    .select('student_id, status, total_score, grade')
-                    .in('student_id', studentIds);
+                const [{ data: familiesData }, { data: refsData }] = await Promise.all([
+                    supabase
+                        .from('families')
+                        .select('student_id')
+                        .in('student_id', studentIds),
+                    supabase
+                        .from('reflections')
+                        .select('student_id, status, total_score, grade')
+                        .in('student_id', studentIds)
+                ]);
 
                 const familyCounts = (familiesData || []).reduce((acc, f) => {
                     acc[f.student_id] = (acc[f.student_id] || 0) + 1;

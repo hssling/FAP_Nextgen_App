@@ -271,3 +271,7 @@ Notes (Desktop first-login intermittent error)
 PWA reliability (Phase 2)
 - Added a PWA update/offline banner to surface new versions and connectivity changes.
 - This forces safer reload behavior and avoids stale SW bundles lingering after deploys.
+
+Admin dashboard performance (Phase 3)
+- Parallelized count/summary queries and limited reflection fields to reduce payload.
+- Reused student list for reflection enrichment to avoid extra profile query.
