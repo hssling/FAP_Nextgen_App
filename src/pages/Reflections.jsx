@@ -5,7 +5,7 @@ import {
     Paperclip, Download, Plus, Calendar, TrendingUp, Trash2,
     AlertCircle, Info, Loader2, Check, RefreshCw
 } from 'lucide-react';
-import { AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Search } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';

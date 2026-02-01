@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Send, Sparkles, BookOpen, Stethoscope, Users, Loader, Mic, MicOff, Trash2, Settings, Zap, Brain, CheckCircle, AlertCircle, CloudOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabaseClient';

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, MapPin, Users, ArrowRight, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useFamilies } from '../hooks/useFamilies';
 import toast from 'react-hot-toast';
