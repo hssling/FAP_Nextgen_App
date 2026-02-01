@@ -8,6 +8,7 @@ import {
 import { generateCommunityHealthReport } from '../services/analytics';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabaseClient';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
 
 const SectionHeader = ({ icon: Icon, title, color }) => (
@@ -49,7 +50,7 @@ const ExpandableCard = ({ title, icon: Icon, children, defaultOpen = false }) =>
 };
 
 const Reports = () => {
-    const { profile } = useAuth();
+    const { profile, loading: authLoading } = useAuth();
     const navigate = useNavigate();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -123,6 +124,22 @@ const Reports = () => {
             loadFeedback();
         }
     }, [profile]);
+
+    if (authLoading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+                <LoadingSpinner size={40} />
+            </div>
+        );
+    }
+
+    if (!profile?.id) {
+        return (
+            <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>
+                <p style={{ color: '#6B7280' }}>Loading your profile…</p>
+            </div>
+        );
+    }
 
     const handlePrint = () => {
         window.print();
