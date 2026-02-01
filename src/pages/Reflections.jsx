@@ -149,7 +149,7 @@ const Reflections = () => {
         } finally {
             setLoading(false);
         }
-    }, [profile.id]);
+    }, [profile.id, loading]);
 
     const runDiagnostics = async () => {
         setSysStatus('Testing upload permissions...');
