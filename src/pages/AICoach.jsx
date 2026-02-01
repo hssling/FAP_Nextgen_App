@@ -6,12 +6,20 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { supabase } from '../services/supabaseClient';
 import { get, set } from 'idb-keyval';
 
 
 const AICoach = () => {
-    const { profile } = useAuth();
+    const { profile, loading } = useAuth();
+    if (loading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+                <LoadingSpinner size={40} />
+            </div>
+        );
+    }
 
     // Configuration moved inside component to avoid TDZ issues in production
     const AI_PROVIDERS = useMemo(() => ({

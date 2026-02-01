@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useState } from 'react';
 import BMICalculator from '../components/tools/BMICalculator';
 import KuppuswamyCalculator from '../components/tools/KuppuswamyCalculator';
 import BGPrasadCalculator from '../components/tools/BGPrasadCalculator';
@@ -9,8 +9,8 @@ const HealthTrends = React.lazy(() => import('../components/tools/HealthTrends')
 const FamilyReportGenerator = React.lazy(() => import('../components/tools/FamilyReportGenerator'));
 
 const Tools = () => {
-    const [showTrends, setShowTrends] = React.useState(false);
-    const [showReports, setShowReports] = React.useState(false);
+    const [showTrends, setShowTrends] = useState(false);
+    const [showReports, setShowReports] = useState(false);
     return (
         <div className="tools-container">
             <div className="tools-header">

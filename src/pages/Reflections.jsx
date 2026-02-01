@@ -8,6 +8,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { addToQueue } from '../services/offlineQueue';
 import { get, set } from 'idb-keyval';
 import './Reflections.css';
@@ -57,7 +58,14 @@ const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
 };
 
 const Reflections = () => {
-    const { profile } = useAuth();
+    const { profile, loading: authLoading } = useAuth();
+    if (authLoading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+                <LoadingSpinner size={40} />
+            </div>
+        );
+    }
 
     // Configuration moved inside to avoid TDZ issues in production
     const GIBBS_STAGES = useMemo(() => [
