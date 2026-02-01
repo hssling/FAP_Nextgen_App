@@ -8,6 +8,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
+import { addToQueue } from '../services/offlineQueue';
+import { get, set } from 'idb-keyval';
 import './Reflections.css';
 
 // --- Configuration ---
@@ -65,30 +67,43 @@ const Reflections = () => {
     };
 
     const loadData = async (forceRefresh = false) => {
+        const cacheKey = `fap_reflections_full_${profile.id}`;
         if (!forceRefresh) {
             const cached = getCachedData(profile.id);
             if (cached) {
                 setFamilies(cached.families);
                 setReflections(cached.reflections);
                 setLoading(false);
-                return; // Return early if cache hit
+                return;
+            }
+            
+            const persistentCached = await get(cacheKey);
+            if (persistentCached) {
+                setFamilies(persistentCached.families);
+                setReflections(persistentCached.reflections);
+                setLoading(false);
             }
         }
 
-        if (forceRefresh) setLoading(true); // Only show spinner on force refresh or initial load if no cache
+        if (forceRefresh || !loading) setLoading(true);
 
-        const { data: fams } = await supabase.from('families').select('id, head_name').eq('student_id', profile.id);
-        const { data: refs } = await supabase.from('reflections').select('*').eq('student_id', profile.id).order('created_at', { ascending: false });
+        try {
+            const { data: fams } = await supabase.from('families').select('id, head_name').eq('student_id', profile.id);
+            const { data: refs } = await supabase.from('reflections').select('*').eq('student_id', profile.id).order('created_at', { ascending: false });
 
-        const result = { families: fams || [], reflections: refs || [] };
+            const result = { families: fams || [], reflections: refs || [] };
 
-        setFamilies(result.families);
-        setReflections(result.reflections);
+            setFamilies(result.families);
+            setReflections(result.reflections);
 
-        // Save to cache
-        sessionStorage.setItem(`reflections_cache_${profile.id}`, JSON.stringify({ timestamp: Date.now(), data: result }));
-
-        setLoading(false);
+            // Save to both session and persistent cache
+            sessionStorage.setItem(`reflections_cache_${profile.id}`, JSON.stringify({ timestamp: Date.now(), data: result }));
+            await set(cacheKey, result);
+        } catch (err) {
+            console.error("Error loading reflections:", err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const runDiagnostics = async () => {
@@ -158,8 +173,14 @@ const Reflections = () => {
         }
 
         setSubmitting(true);
+        const isOffline = !navigator.onLine;
+
         try {
             let fileData = null;
+
+            if (isOffline && activeTab === 'upload') {
+                throw new Error("File uploads require an active internet connection. Please save your reflection as text (Structured) to work offline.");
+            }
 
             // 1. Handle File Upload if active
             if (activeTab === 'upload') {
@@ -281,6 +302,30 @@ const Reflections = () => {
 
                 status: 'Pending'
             };
+
+            if (isOffline) {
+                console.log("📱 [OFFLINE] Queueing reflection...");
+                await addToQueue('ADD_REFLECTION', payload);
+                
+                // Optimistic UI update
+                const optimisticRef = { 
+                    id: crypto.randomUUID(), 
+                    created_at: new Date().toISOString(),
+                    ...payload,
+                    families: families.find(f => f.id === formData.familyId) || null
+                };
+                setReflections(prev => [optimisticRef, ...prev]);
+                
+                setSubmissionStatus('success');
+                setTimeout(() => {
+                    setIsWriting(false);
+                    setSubmissionStatus(null);
+                    setFormData({ familyId: '', phase: 'Phase I', gibbs: { description: '', feelings: '', evaluation: '', analysis: '', conclusion: '', actionPlan: '' } });
+                    setActiveTab('write');
+                    setCurrentStage(0);
+                }, 1500);
+                return;
+            }
 
             console.log("📱 [STEP 5] Sending to database...", {
                 student_id: payload.student_id,

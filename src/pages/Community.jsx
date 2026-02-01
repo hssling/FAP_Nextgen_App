@@ -7,6 +7,9 @@ import DynamicForm from '../components/DynamicForm';
 import { invalidateAnalyticsCache } from '../utils/cacheUtils';
 import formRegistry from '../data/forms/registry.json';
 
+import { addToQueue } from '../services/offlineQueue';
+import { get, set } from 'idb-keyval';
+
 const Community = () => {
     const { profile } = useAuth();
     const [villages, setVillages] = useState([]);
@@ -19,6 +22,7 @@ const Community = () => {
     }, [profile]);
 
     const loadData = async () => {
+        const cacheKey = `fap_villages_${profile.id}`;
         try {
             const { data, error } = await supabase
                 .from('villages')
@@ -27,23 +31,33 @@ const Community = () => {
 
             if (error) throw error;
 
-            // Map Supabase layout to component layout (merge 'data' col with top level)
+            // Map Supabase layout to component layout
             const mapped = (data || []).map(v => ({
                 id: v.id,
-                ...v.data, // Spread the JSONB data
-                village_name: v.village_name // Ensure name is preserved
+                ...v.data,
+                village_name: v.village_name
             }));
 
             setVillages(mapped);
+            await set(cacheKey, mapped);
+            
             if (mapped.length > 0 && !selectedVillage) {
                 setSelectedVillage(mapped[0]);
             }
         } catch (error) {
             console.error('Error loading villages:', error);
+            const cached = await get(cacheKey);
+            if (cached) {
+                setVillages(cached);
+                if (cached.length > 0 && !selectedVillage) {
+                    setSelectedVillage(cached[0]);
+                }
+            }
         }
     };
 
     const handleSave = async (formData) => {
+        const isOffline = !navigator.onLine;
         try {
             const villageName = formData.village_name || 'Unnamed Village';
             const payload = {
@@ -51,6 +65,26 @@ const Community = () => {
                 village_name: villageName,
                 data: formData
             };
+
+            if (isOffline) {
+                await addToQueue('UPDATE_VILLAGE', { 
+                    id: selectedVillage?.id, 
+                    payload 
+                });
+                
+                // Optimistic UI update
+                const optimisticVillage = { id: selectedVillage?.id || 'temp', ...formData, village_name: villageName };
+                if (selectedVillage) {
+                    setVillages(prev => prev.map(v => v.id === selectedVillage.id ? optimisticVillage : v));
+                    setSelectedVillage(optimisticVillage);
+                } else {
+                    setVillages([optimisticVillage]);
+                    setSelectedVillage(optimisticVillage);
+                }
+                
+                setIsEditing(false);
+                return;
+            }
 
             if (selectedVillage) {
                 // Update

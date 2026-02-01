@@ -148,6 +148,24 @@ const executeAction = async (item) => {
             if (error) throw error;
             break;
         }
+        case 'UPDATE_VILLAGE': {
+            const { id, payload: data } = payload;
+            if (id) {
+                // Update
+                const { error } = await supabase.from('villages').update(data).eq('id', id);
+                if (error) throw error;
+            } else {
+                // Insert
+                const { error } = await supabase.from('villages').insert([data]);
+                if (error) throw error;
+            }
+            break;
+        }
+        case 'ADD_REFLECTION': {
+            const { error } = await supabase.from('reflections').insert([payload]);
+            if (error) throw error;
+            break;
+        }
         default:
             throw new Error(`Unknown action type: ${type}`);
     }
