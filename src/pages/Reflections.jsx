@@ -11,6 +11,8 @@ import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { addToQueue } from '../services/offlineQueue';
 import { get, set } from 'idb-keyval';
+import { callProviderChat } from '../services/aiClient';
+import { AI_PROVIDERS, DEFAULT_AI_PROVIDER } from '../services/aiProviders';
 import './Reflections.css';
 
 
@@ -176,11 +178,55 @@ const Reflections = () => {
         }
     };
 
-    const handleAICoach = () => {
-        setIsAnalyzing(true);
-        setTimeout(() => {
+    const handleAICoach = async () => {
+        if (!navigator.onLine) {
+            alert('AI Tip needs an internet connection.');
+            return;
+        }
+
+        const stage = GIBBS_STAGES[currentStage];
+        const currentText = formData.gibbs[stage.id] || '';
+
+        try {
+            setIsAnalyzing(true);
+            const preferredProvider = (await get('fap_ai_provider')) || DEFAULT_AI_PROVIDER;
+            const preferredModel = (await get('fap_ai_model')) ?? 0;
+
+            const tip = await callProviderChat({
+                providerKey: preferredProvider,
+                selectedModelIndex: preferredModel,
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are an expert medical education mentor for Indian MBBS students in Community Medicine. Give practical reflection-writing guidance in concise bullet points.'
+                    },
+                    {
+                        role: 'user',
+                        content: `I am writing a Gibbs reflective entry for stage "${stage.title}" with prompt "${stage.prompt}". Existing text: "${currentText}". Provide 4 practical improvement tips and 1 sample sentence I can adapt.`
+                    }
+                ]
+            });
+
+            setFormData((prev) => ({
+                ...prev,
+                gibbs: {
+                    ...prev.gibbs,
+                    [stage.id]: prev.gibbs[stage.id]
+                        ? `${prev.gibbs[stage.id]}\n\nAI Tip:\n${tip}`
+                        : `AI Tip:\n${tip}`
+                }
+            }));
+        } catch (err) {
+            console.error('Reflection AI Tip failed:', err);
+            if (err.message === 'API_KEY_REQUIRED') {
+                const provider = AI_PROVIDERS[(await get('fap_ai_provider')) || DEFAULT_AI_PROVIDER];
+                alert(`API key required for ${provider.name}. Open Settings -> AI Integrations and save your key.`);
+            } else {
+                alert(`AI Tip failed: ${err.message}`);
+            }
+        } finally {
             setIsAnalyzing(false);
-        }, 1500);
+        }
     };
 
     // Handle file selection - clear cache if file changes
