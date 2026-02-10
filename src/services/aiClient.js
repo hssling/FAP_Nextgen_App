@@ -113,6 +113,10 @@ const callOpenAiCompatible = async (providerKey, apiKey, messages, controller, s
             const msg = (err?.message || '').toLowerCase();
             const isRecoverable =
                 msg.includes('no endpoints found') ||
+                msg.includes('provider returned error') ||
+                msg.includes('upstream error') ||
+                msg.includes('bad gateway') ||
+                msg.includes('service unavailable') ||
                 msg.includes('rate limit') ||
                 msg.includes('429') ||
                 msg.includes('temporarily unavailable');

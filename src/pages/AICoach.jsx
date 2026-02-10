@@ -298,6 +298,8 @@ The AI model took too long to respond. Try:
 • Switching to a faster model in ⚙️ Settings`;
             } else if (error.message.includes('429')) {
                 errorMsg = '⚠️ Rate limit reached. Please wait a moment and try again.';
+            } else if (error.message.toLowerCase().includes('provider returned error')) {
+                errorMsg = '⚠️ Temporary provider issue. The app already tried fallback models. Please try again or switch provider in Settings.';
             } else if (error.message.includes('Failed to fetch') || error.message.includes('network')) {
                 errorMsg = '⚠️ Network error. Please check your internet connection.';
             } else {
@@ -716,4 +718,6 @@ The AI model took too long to respond. Try:
 };
 
 export default AICoach;
+
+
 
