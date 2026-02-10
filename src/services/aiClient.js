@@ -76,7 +76,9 @@ const callOpenAiCompatible = async (providerKey, apiKey, messages, controller, s
     const provider = AI_PROVIDERS[providerKey];
     if (!provider) throw new Error('Unsupported provider selected');
 
-    const model = provider.models[selectedModelIndex] || provider.models[0];
+    const preferredModel = provider.models[selectedModelIndex] || provider.models[0];
+    const fallbackModels = provider.models.filter((m) => m.id !== preferredModel.id);
+    const modelsToTry = [preferredModel, ...fallbackModels];
     const headers = {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`
@@ -87,21 +89,41 @@ const callOpenAiCompatible = async (providerKey, apiKey, messages, controller, s
         headers['X-Title'] = 'FAP Medical Coach';
     }
 
-    const response = await fetch(provider.endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-            model: model.id,
-            messages,
-            temperature: 0.7,
-            max_tokens: 1000
-        }),
-        signal: controller?.signal
-    });
+    let lastError = null;
+    for (let i = 0; i < modelsToTry.length; i += 1) {
+        const model = modelsToTry[i];
+        try {
+            const response = await fetch(provider.endpoint, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    model: model.id,
+                    messages,
+                    temperature: 0.7,
+                    max_tokens: 1000
+                }),
+                signal: controller?.signal
+            });
 
-    await throwIfBadResponse(response, `${provider.name} Error`);
-    const data = await response.json();
-    return normalizeOpenAiStyleResponse(data) || 'No response received.';
+            await throwIfBadResponse(response, `${provider.name} Error`);
+            const data = await response.json();
+            return normalizeOpenAiStyleResponse(data) || 'No response received.';
+        } catch (err) {
+            lastError = err;
+            const msg = (err?.message || '').toLowerCase();
+            const isRecoverable =
+                msg.includes('no endpoints found') ||
+                msg.includes('rate limit') ||
+                msg.includes('429') ||
+                msg.includes('temporarily unavailable');
+
+            if (!isRecoverable || i === modelsToTry.length - 1) {
+                throw err;
+            }
+        }
+    }
+
+    throw lastError || new Error(`${provider.name} Error`);
 };
 
 export const hasProviderKey = async (providerKey) => {
