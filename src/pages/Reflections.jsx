@@ -13,6 +13,8 @@ import { addToQueue } from '../services/offlineQueue';
 import { get, set } from 'idb-keyval';
 import { callProviderChat } from '../services/aiClient';
 import { AI_PROVIDERS, DEFAULT_AI_PROVIDER } from '../services/aiProviders';
+import { extractGibbsFromText } from '../services/gibbsExtractor';
+import { extractDocumentText } from '../services/documentTextExtractor';
 import './Reflections.css';
 
 
@@ -100,6 +102,26 @@ const Reflections = () => {
 
     const [selectedFile, setSelectedFile] = useState(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [uploadText, setUploadText] = useState('');
+    const [isExtractingGibbs, setIsExtractingGibbs] = useState(false);
+    const [aiExtractionMeta, setAiExtractionMeta] = useState(null);
+    const [isParsingDocumentText, setIsParsingDocumentText] = useState(false);
+    const [documentParseError, setDocumentParseError] = useState(null);
+
+    const resetReflectionForm = useCallback(() => {
+        setFormData({
+            familyId: '',
+            phase: 'Phase I',
+            gibbs: { description: '', feelings: '', evaluation: '', analysis: '', conclusion: '', actionPlan: '' }
+        });
+        setSelectedFile(null);
+        setUploadText('');
+        setAiExtractionMeta(null);
+        setDocumentParseError(null);
+        setIsParsingDocumentText(false);
+        setActiveTab('write');
+        setCurrentStage(0);
+    }, []);
 
     // Cache Helper
     const getCachedData = (id) => {
@@ -154,6 +176,32 @@ const Reflections = () => {
     }, [profile?.id]);
 
     useEffect(() => { if (profile) loadData(); }, [profile, loadData]);
+
+    const parseDocumentFromFile = useCallback(async (file, { preserveExistingText = false } = {}) => {
+        if (!file) return;
+        setDocumentParseError(null);
+        setIsParsingDocumentText(true);
+
+        try {
+            const extracted = await extractDocumentText(file);
+            if (!extracted) {
+                if (!preserveExistingText) setUploadText('');
+                setDocumentParseError('No text could be extracted. You can paste text manually.');
+                return;
+            }
+            setUploadText(extracted);
+        } catch (err) {
+            if (!preserveExistingText) setUploadText('');
+            setDocumentParseError(err.message || 'Failed to parse attached document.');
+        } finally {
+            setIsParsingDocumentText(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!selectedFile) return;
+        parseDocumentFromFile(selectedFile);
+    }, [selectedFile, parseDocumentFromFile]);
 
     const runDiagnostics = async () => {
         setSysStatus('Testing upload permissions...');
@@ -229,6 +277,72 @@ const Reflections = () => {
         }
     };
 
+    const handleExtractFromUploadText = async () => {
+        if (isParsingDocumentText) {
+            alert('Document parsing is still running. Please wait a moment.');
+            return;
+        }
+
+        if (!navigator.onLine) {
+            alert('AI extraction requires internet connection.');
+            return;
+        }
+
+        const text = uploadText.trim();
+        if (text.length < 50) {
+            alert('Please paste at least 50 characters from the reflection text.');
+            return;
+        }
+
+        try {
+            setIsExtractingGibbs(true);
+            const preferredProvider = (await get('fap_ai_provider')) || DEFAULT_AI_PROVIDER;
+            const preferredModel = (await get('fap_ai_model')) ?? 0;
+
+            const extracted = await extractGibbsFromText({
+                text,
+                providerKey: preferredProvider,
+                selectedModelIndex: preferredModel
+            });
+
+            setFormData((prev) => ({
+                ...prev,
+                gibbs: {
+                    description: extracted.sections.description,
+                    feelings: extracted.sections.feelings,
+                    evaluation: extracted.sections.evaluation,
+                    analysis: extracted.sections.analysis,
+                    conclusion: extracted.sections.conclusion,
+                    actionPlan: extracted.sections.action_plan
+                }
+            }));
+
+            setAiExtractionMeta({
+                extracted_text: text,
+                provider: extracted.provider,
+                model: extracted.model,
+                confidence: extracted.confidence,
+                missing_sections: extracted.missingSections,
+                flags: extracted.flags,
+                status: 'completed',
+                extracted_at: new Date().toISOString()
+            });
+
+            setActiveTab('write');
+            setCurrentStage(0);
+        } catch (err) {
+            console.error('Gibbs extraction failed:', err);
+            if (err.message === 'API_KEY_REQUIRED') {
+                const provider = AI_PROVIDERS[(await get('fap_ai_provider')) || DEFAULT_AI_PROVIDER];
+                alert(`API key required for ${provider.name}. Open Settings -> AI Integrations and save your key.`);
+            } else {
+                alert(`Gibbs extraction failed: ${err.message}`);
+            }
+        } finally {
+            setIsExtractingGibbs(false);
+        }
+    };
+
     // Handle file selection - clear cache if file changes
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
@@ -236,6 +350,9 @@ const Reflections = () => {
             setSelectedFile(file);
             lastUploadedFile.current = { id: null, data: null };
             setUploadError(null);
+            setAiExtractionMeta(null);
+            setDocumentParseError(null);
+            setUploadText('');
         }
     };
 
@@ -399,6 +516,15 @@ const Reflections = () => {
                 file_size: fileData?.size,
                 file_type: fileData?.type,
 
+                ai_extraction_status: aiExtractionMeta?.status || 'not_requested',
+                ai_extraction_provider: aiExtractionMeta?.provider || null,
+                ai_extraction_model: aiExtractionMeta?.model || null,
+                ai_extraction_confidence: aiExtractionMeta?.confidence || null,
+                ai_extraction_missing_sections: aiExtractionMeta?.missing_sections || [],
+                ai_extraction_flags: aiExtractionMeta?.flags || [],
+                ai_extracted_text: aiExtractionMeta?.extracted_text || null,
+                ai_extracted_at: aiExtractionMeta?.extracted_at || null,
+
                 status: 'Pending'
             };
 
@@ -419,9 +545,7 @@ const Reflections = () => {
                 setTimeout(() => {
                     setIsWriting(false);
                     setSubmissionStatus(null);
-                    setFormData({ familyId: '', phase: 'Phase I', gibbs: { description: '', feelings: '', evaluation: '', analysis: '', conclusion: '', actionPlan: '' } });
-                    setActiveTab('write');
-                    setCurrentStage(0);
+                    resetReflectionForm();
                 }, 1500);
                 return;
             }
@@ -495,10 +619,7 @@ const Reflections = () => {
             setTimeout(() => {
                 setIsWriting(false);
                 setSubmissionStatus(null);
-                setFormData({ familyId: '', phase: 'Phase I', gibbs: { description: '', feelings: '', evaluation: '', analysis: '', conclusion: '', actionPlan: '' } });
-                setSelectedFile(null);
-                setActiveTab('write');
-                setCurrentStage(0);
+                resetReflectionForm();
                 loadData(true);
             }, 1500);
 
@@ -854,6 +975,19 @@ const Reflections = () => {
                                                         <h3 className="stage-prompt">{GIBBS_STAGES[currentStage].prompt}</h3>
                                                     </div>
 
+                                                    {aiExtractionMeta?.flags?.length > 0 && (
+                                                        <div style={{ marginBottom: '0.75rem', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '0.5rem', padding: '0.6rem' }}>
+                                                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9A3412', marginBottom: '0.35rem' }}>
+                                                                AI Quality Flags
+                                                            </div>
+                                                            {aiExtractionMeta.flags.slice(0, 3).map((flag) => (
+                                                                <div key={flag.code} style={{ fontSize: '0.78rem', color: '#7C2D12' }}>
+                                                                    - {flag.message}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
                                                     <textarea
                                                         className="journal-input"
                                                         placeholder="Type your reflection here..."
@@ -909,6 +1043,56 @@ const Reflections = () => {
                                                     <p style={{ marginTop: '1rem', color: '#94A3B8', fontSize: '0.875rem' }}>Supported: PDF, Doc, Image (Max 10MB)</p>
                                                 </div>
 
+                                                <div style={{ marginTop: '1rem', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '0.75rem', padding: '0.85rem' }}>
+                                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.4rem' }}>
+                                                        Document Text (optional)
+                                                    </label>
+                                                    <textarea
+                                                        value={uploadText}
+                                                        onChange={(e) => setUploadText(e.target.value)}
+                                                        placeholder="Paste OCR or document text here, then run AI Segmentation."
+                                                        style={{ width: '100%', minHeight: '120px', border: '1px solid #CBD5E1', borderRadius: '0.5rem', padding: '0.75rem', fontSize: '0.9rem' }}
+                                                    />
+                                                    <div style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                        <span style={{ fontSize: '0.75rem', color: documentParseError ? '#B91C1C' : '#64748B' }}>
+                                                            {isParsingDocumentText
+                                                                ? 'Parsing attached document...'
+                                                                : documentParseError
+                                                                    ? `Parse warning: ${documentParseError}`
+                                                                    : uploadText
+                                                                        ? `Auto-extracted ${uploadText.length} characters. You can edit before segmentation.`
+                                                                        : 'Attach a file to auto-extract text.'}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => parseDocumentFromFile(selectedFile, { preserveExistingText: true })}
+                                                            disabled={!selectedFile || isParsingDocumentText}
+                                                            className="btn-text"
+                                                            style={{ fontSize: '0.75rem', color: '#0F766E', fontWeight: 600 }}
+                                                        >
+                                                            Re-parse File
+                                                        </button>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                                        <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
+                                                            Uses your selected AI provider/model from Settings.
+                                                        </span>
+                                                        <button
+                                                            onClick={handleExtractFromUploadText}
+                                                            disabled={isExtractingGibbs || isParsingDocumentText}
+                                                            className="ai-btn"
+                                                            style={{ minWidth: '170px', justifyContent: 'center' }}
+                                                        >
+                                                            <Sparkles size={16} className={isExtractingGibbs ? 'animate-spin' : ''} />
+                                                            {isExtractingGibbs ? 'Extracting...' : 'AI Segment to Gibbs'}
+                                                        </button>
+                                                    </div>
+                                                    {aiExtractionMeta && (
+                                                        <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: '#0F766E', fontWeight: 600 }}>
+                                                            AI extraction complete: {aiExtractionMeta.provider} • {aiExtractionMeta.model}
+                                                        </div>
+                                                    )}
+                                                </div>
+
                                                 <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: '0.5rem' }}>
                                                     <button onClick={runDiagnostics} className="btn-text" style={{ fontSize: '0.75rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                                         <RefreshCw size={12} /> Check Connection Status
@@ -920,7 +1104,7 @@ const Reflections = () => {
                                                     <div className="file-preview" style={{ marginTop: '1.5rem' }}>
                                                         <FileText size={20} style={{ color: '#475569' }} />
                                                         <div className="file-info">{selectedFile.name}</div>
-                                                        <button onClick={() => setSelectedFile(null)} className="remove-file">Remove</button>
+                                                        <button onClick={() => { setSelectedFile(null); setAiExtractionMeta(null); setUploadText(''); setDocumentParseError(null); }} className="remove-file">Remove</button>
                                                     </div>
                                                 )}
 
@@ -988,6 +1172,22 @@ const Reflections = () => {
                                             <div className="view-section">
                                                 <div className="view-label">Content</div>
                                                 <p className="view-text">{viewingEntry.content}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {viewingEntry.ai_extraction_status === 'completed' && (
+                                    <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid #D1FAE5', borderRadius: '10px', background: '#ECFDF5' }}>
+                                        <div style={{ fontSize: '0.8rem', color: '#065F46', fontWeight: 700, marginBottom: '0.35rem' }}>
+                                            AI Segmentation Metadata
+                                        </div>
+                                        <div style={{ fontSize: '0.82rem', color: '#065F46' }}>
+                                            Provider: {viewingEntry.ai_extraction_provider || 'N/A'} | Model: {viewingEntry.ai_extraction_model || 'N/A'}
+                                        </div>
+                                        {(viewingEntry.ai_extraction_missing_sections || []).length > 0 && (
+                                            <div style={{ marginTop: '0.35rem', fontSize: '0.82rem', color: '#B45309' }}>
+                                                Missing stages: {viewingEntry.ai_extraction_missing_sections.join(', ')}
                                             </div>
                                         )}
                                     </div>
