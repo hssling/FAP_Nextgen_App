@@ -14,6 +14,7 @@ import { get, set } from 'idb-keyval';
 import { callProviderChat } from '../services/aiClient';
 import { AI_PROVIDERS, DEFAULT_AI_PROVIDER } from '../services/aiProviders';
 import { extractGibbsFromText } from '../services/gibbsExtractor';
+import { extractDocumentText } from '../services/documentTextExtractor';
 import './Reflections.css';
 
 
@@ -104,6 +105,8 @@ const Reflections = () => {
     const [uploadText, setUploadText] = useState('');
     const [isExtractingGibbs, setIsExtractingGibbs] = useState(false);
     const [aiExtractionMeta, setAiExtractionMeta] = useState(null);
+    const [isParsingDocumentText, setIsParsingDocumentText] = useState(false);
+    const [documentParseError, setDocumentParseError] = useState(null);
 
     const resetReflectionForm = useCallback(() => {
         setFormData({
@@ -114,6 +117,8 @@ const Reflections = () => {
         setSelectedFile(null);
         setUploadText('');
         setAiExtractionMeta(null);
+        setDocumentParseError(null);
+        setIsParsingDocumentText(false);
         setActiveTab('write');
         setCurrentStage(0);
     }, []);
@@ -171,6 +176,32 @@ const Reflections = () => {
     }, [profile?.id]);
 
     useEffect(() => { if (profile) loadData(); }, [profile, loadData]);
+
+    const parseDocumentFromFile = useCallback(async (file, { preserveExistingText = false } = {}) => {
+        if (!file) return;
+        setDocumentParseError(null);
+        setIsParsingDocumentText(true);
+
+        try {
+            const extracted = await extractDocumentText(file);
+            if (!extracted) {
+                if (!preserveExistingText) setUploadText('');
+                setDocumentParseError('No text could be extracted. You can paste text manually.');
+                return;
+            }
+            setUploadText(extracted);
+        } catch (err) {
+            if (!preserveExistingText) setUploadText('');
+            setDocumentParseError(err.message || 'Failed to parse attached document.');
+        } finally {
+            setIsParsingDocumentText(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!selectedFile) return;
+        parseDocumentFromFile(selectedFile);
+    }, [selectedFile, parseDocumentFromFile]);
 
     const runDiagnostics = async () => {
         setSysStatus('Testing upload permissions...');
@@ -247,6 +278,11 @@ const Reflections = () => {
     };
 
     const handleExtractFromUploadText = async () => {
+        if (isParsingDocumentText) {
+            alert('Document parsing is still running. Please wait a moment.');
+            return;
+        }
+
         if (!navigator.onLine) {
             alert('AI extraction requires internet connection.');
             return;
@@ -315,6 +351,8 @@ const Reflections = () => {
             lastUploadedFile.current = { id: null, data: null };
             setUploadError(null);
             setAiExtractionMeta(null);
+            setDocumentParseError(null);
+            setUploadText('');
         }
     };
 
@@ -1015,13 +1053,32 @@ const Reflections = () => {
                                                         placeholder="Paste OCR or document text here, then run AI Segmentation."
                                                         style={{ width: '100%', minHeight: '120px', border: '1px solid #CBD5E1', borderRadius: '0.5rem', padding: '0.75rem', fontSize: '0.9rem' }}
                                                     />
+                                                    <div style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                        <span style={{ fontSize: '0.75rem', color: documentParseError ? '#B91C1C' : '#64748B' }}>
+                                                            {isParsingDocumentText
+                                                                ? 'Parsing attached document...'
+                                                                : documentParseError
+                                                                    ? `Parse warning: ${documentParseError}`
+                                                                    : uploadText
+                                                                        ? `Auto-extracted ${uploadText.length} characters. You can edit before segmentation.`
+                                                                        : 'Attach a file to auto-extract text.'}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => parseDocumentFromFile(selectedFile, { preserveExistingText: true })}
+                                                            disabled={!selectedFile || isParsingDocumentText}
+                                                            className="btn-text"
+                                                            style={{ fontSize: '0.75rem', color: '#0F766E', fontWeight: 600 }}
+                                                        >
+                                                            Re-parse File
+                                                        </button>
+                                                    </div>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', gap: '0.75rem', flexWrap: 'wrap' }}>
                                                         <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
                                                             Uses your selected AI provider/model from Settings.
                                                         </span>
                                                         <button
                                                             onClick={handleExtractFromUploadText}
-                                                            disabled={isExtractingGibbs}
+                                                            disabled={isExtractingGibbs || isParsingDocumentText}
                                                             className="ai-btn"
                                                             style={{ minWidth: '170px', justifyContent: 'center' }}
                                                         >
@@ -1047,7 +1104,7 @@ const Reflections = () => {
                                                     <div className="file-preview" style={{ marginTop: '1.5rem' }}>
                                                         <FileText size={20} style={{ color: '#475569' }} />
                                                         <div className="file-info">{selectedFile.name}</div>
-                                                        <button onClick={() => { setSelectedFile(null); setAiExtractionMeta(null); }} className="remove-file">Remove</button>
+                                                        <button onClick={() => { setSelectedFile(null); setAiExtractionMeta(null); setUploadText(''); setDocumentParseError(null); }} className="remove-file">Remove</button>
                                                     </div>
                                                 )}
 
