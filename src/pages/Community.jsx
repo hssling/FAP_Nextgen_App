@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Map, Users, Droplets, Activity, PlusCircle, Edit, Flag, ClipboardList, Heart, Syringe, Baby, TrendingUp, AlertTriangle, Package, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
@@ -17,11 +17,8 @@ const Community = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [activeSection, setActiveSection] = useState('overview');
 
-    useEffect(() => {
-        if (profile) loadData();
-    }, [profile]);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
+        if (!profile?.id) return;
         const cacheKey = `fap_villages_${profile.id}`;
         const sessionKey = `fap_villages_session_${profile.id}`;
 
@@ -71,7 +68,11 @@ const Community = () => {
             const cached = await get(cacheKey);
             if (cached) applyVillageState(cached);
         }
-    };
+    }, [profile?.id]);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
 
     const handleSave = async (formData) => {
         const isOffline = !navigator.onLine;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { User, Activity, AlertCircle, CheckCircle, Pill, Utensils, FileText, ClipboardList, Plus, ShieldCheck, CreditCard, ChevronRight } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
@@ -22,11 +22,7 @@ const MemberDetails = () => {
     const [abhaId, setAbhaId] = useState('');
     const [abhaVerified, setAbhaVerified] = useState(false);
 
-    useEffect(() => {
-        loadMember();
-    }, [memberId]);
-
-    const loadMember = async () => {
+    const loadMember = useCallback(async () => {
         try {
             const { data, error } = await supabase
                 .from('family_members')
@@ -57,7 +53,11 @@ const MemberDetails = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [memberId]);
+
+    useEffect(() => {
+        loadMember();
+    }, [loadMember]);
 
     const handleUpdateMember = async (updatedMember) => {
         try {

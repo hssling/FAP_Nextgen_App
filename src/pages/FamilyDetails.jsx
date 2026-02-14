@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { User, Activity, Calendar, Droplets, Home, Trash2, PlusCircle, FileText, ArrowRight, ClipboardList, Camera, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -49,10 +49,6 @@ const FamilyDetails = () => {
     const [isLocating, setIsLocating] = useState(false);
     const [locationError, setLocationError] = useState(null);
 
-    useEffect(() => {
-        if (profile) loadData();
-    }, [id, profile]);
-
     // Capture GPS when visit modal opens
     useEffect(() => {
         if (showVisitModal && visitStep === 1) {
@@ -74,7 +70,8 @@ const FamilyDetails = () => {
         }
     };
 
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
+        if (!profile?.id) return;
         const cacheKeys = {
             family: `fap_family_${id}`,
             members: `fap_members_${id}`,
@@ -151,7 +148,11 @@ const FamilyDetails = () => {
                 toast.error("Failed to load data and no cache found.");
             }
         }
-    };
+    }, [id, profile?.id]);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
 
     const handleAddMember = async (e) => {
         e.preventDefault();

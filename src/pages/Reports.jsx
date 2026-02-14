@@ -11,6 +11,7 @@ import { supabase } from '../services/supabaseClient';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
 import { get, set, del } from 'idb-keyval';
+import { withRetry } from '../utils/retryUtils';
 
 const SectionHeader = ({ icon: Icon, title, color }) => (
     <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: color || 'var(--color-text)' }}>
@@ -119,7 +120,7 @@ const Reports = () => {
 
                 // Generate fresh report
                 console.log('[Reports] Generating fresh analytics...');
-                const result = await generateCommunityHealthReport(profile.id);
+                const result = await withRetry(() => generateCommunityHealthReport(profile.id), { retries: 2 });
 
                 const sanitized = sanitizeReportData(result);
                 if (sanitized) {
@@ -208,7 +209,7 @@ const Reports = () => {
         sessionStorage.removeItem(`analytics_${profile.id}`);
         del(`analytics_persistent_${profile.id}`).catch(() => {});
         setLoading(true);
-        generateCommunityHealthReport(profile.id).then(result => {
+        withRetry(() => generateCommunityHealthReport(profile.id), { retries: 2 }).then(result => {
             const sanitized = sanitizeReportData(result);
             setData(sanitized);
             const payload = { timestamp: Date.now(), reportData: sanitized };

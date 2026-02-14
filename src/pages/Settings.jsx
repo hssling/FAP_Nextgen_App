@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import NotificationManager from '../components/NotificationManager';
 import { AI_PROVIDERS } from '../services/aiProviders';
 import { getAllSavedAiKeys, saveAiProviderKey, clearAiProviderKey } from '../services/aiKeyStore';
+import { clearClientCaches } from '../utils/cacheUtils';
 
 const maskKey = (value) => {
     if (!value) return '';
@@ -19,6 +20,7 @@ const Settings = () => {
     const [draftKeys, setDraftKeys] = useState({});
     const [visible, setVisible] = useState({});
     const [saving, setSaving] = useState({});
+    const [cacheClearing, setCacheClearing] = useState(false);
 
     const providerEntries = useMemo(() => Object.entries(AI_PROVIDERS), []);
 
@@ -100,6 +102,23 @@ const Settings = () => {
             setDraftKeys((prev) => ({ ...prev, [providerKey]: '' }));
         } finally {
             setSaving((prev) => ({ ...prev, [providerKey]: false }));
+        }
+    };
+
+    const handleClearLocalCache = async () => {
+        const confirmed = window.confirm('Clear local cached app data on this browser? You can still fetch fresh data from the server.');
+        if (!confirmed) return;
+
+        setCacheClearing(true);
+        try {
+            const result = await clearClientCaches();
+            alert(`Local cache cleared.\nSession keys removed: ${result.sessionRemoved}\nOffline store keys removed: ${result.idbRemoved}`);
+            window.location.reload();
+        } catch (error) {
+            console.error('Failed to clear client cache:', error);
+            alert('Failed to clear local cache.');
+        } finally {
+            setCacheClearing(false);
         }
     };
 
@@ -268,6 +287,14 @@ const Settings = () => {
                     style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'center' }}
                 >
                     <Download size={18} /> {backupLoading ? 'Generating Backup...' : 'Download Full Backup'}
+                </button>
+                <button
+                    className="btn btn-outline"
+                    onClick={handleClearLocalCache}
+                    disabled={cacheClearing}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'center', marginTop: '0.75rem', color: '#991B1B', borderColor: '#FECACA' }}
+                >
+                    <Trash2 size={18} /> {cacheClearing ? 'Clearing Local Cache...' : 'Clear Local Cache'}
                 </button>
             </div>
 

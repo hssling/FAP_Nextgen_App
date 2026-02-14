@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabaseClient';
 import {
@@ -9,6 +9,7 @@ import {
 import { calculateBadges } from '../utils/gamification';
 import BadgeDisplay from '../components/shared/BadgeDisplay';
 import { get, set } from 'idb-keyval';
+import { withRetry } from '../utils/retryUtils';
 
 const AdminDashboard = () => {
     const { profile } = useAuth();
@@ -44,12 +45,6 @@ const AdminDashboard = () => {
         };
     }, []);
 
-    useEffect(() => {
-        if (profile?.id) {
-            fetchDashboardData();
-        }
-    }, [profile]);
-
     const handleExport = async () => {
         try {
             console.log("Exporting Admin Report...");
@@ -78,7 +73,8 @@ const AdminDashboard = () => {
         }
     };
 
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = useCallback(async () => {
+        if (!profile?.id) return;
         setLoading(true);
         setError(null);
 
@@ -139,32 +135,34 @@ const AdminDashboard = () => {
                 { count: familyCount, error: e3 },
                 { data: reflections, error: e4 },
                 { data: students, error: e5 }
-            ] = await Promise.all([
-                supabase
-                    .from('profiles')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('role', 'student')
-                    .eq('is_active', true),
-                supabase
-                    .from('profiles')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('role', 'teacher')
-                    .eq('is_active', true),
-                supabase
-                    .from('families')
-                    .select('*', { count: 'exact', head: true }),
-                supabase
-                    .from('reflections')
-                    .select('id, student_id, created_at, status, grade, total_score, teacher_feedback')
-                    .order('created_at', { ascending: false })
-                    .limit(200),
-                supabase
-                    .from('profiles')
-                    .select('id, full_name, registration_number, email, year')
-                    .eq('role', 'student')
-                    .eq('is_active', true)
-                    .order('full_name')
-            ]);
+            ] = await withRetry(() => Promise.all([
+                    supabase
+                        .from('profiles')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('role', 'student')
+                        .eq('is_active', true),
+                    supabase
+                        .from('profiles')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('role', 'teacher')
+                        .eq('is_active', true),
+                    supabase
+                        .from('families')
+                        .select('*', { count: 'exact', head: true }),
+                    supabase
+                        .from('reflections')
+                        .select('id, student_id, created_at, status, grade, total_score, teacher_feedback')
+                        .order('created_at', { ascending: false })
+                        .limit(200),
+                    supabase
+                        .from('profiles')
+                        .select('id, full_name, registration_number, email, year')
+                        .eq('role', 'student')
+                        .eq('is_active', true)
+                        .order('full_name')
+                ]),
+                { retries: 2 }
+            );
 
             if (e1) console.error('[Admin] Student count error:', e1);
             if (e2) console.error('[Admin] Teacher count error:', e2);
@@ -277,7 +275,11 @@ const AdminDashboard = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [profile?.id]);
+
+    useEffect(() => {
+        fetchDashboardData();
+    }, [fetchDashboardData]);
 
     const filteredStudents = allStudents.filter(s =>
         s.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

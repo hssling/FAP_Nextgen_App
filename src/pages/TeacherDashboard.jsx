@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Users, BookOpen, CheckCircle, Download, Star,
     Search, Filter, LayoutGrid, List, ChevronRight,
@@ -13,6 +13,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { calculateBadges } from '../utils/gamification';
 import BadgeDisplay from '../components/shared/BadgeDisplay';
 import { get, set } from 'idb-keyval';
+import { withRetry } from '../utils/retryUtils';
 import './TeacherDashboard.css';
 
 
@@ -100,9 +101,8 @@ const TeacherDashboard = () => {
         };
     }, []);
 
-    useEffect(() => { if (profile?.id) fetchClassroomData(); }, [profile]);
-
-    const fetchClassroomData = async () => {
+    const fetchClassroomData = useCallback(async () => {
+        if (!profile?.id) return;
         setLoading(true);
         setLoadError('');
 
@@ -153,10 +153,13 @@ const TeacherDashboard = () => {
         }
 
         try {
-            const { data: mappings, error: mappingsError } = await supabase.from('teacher_student_mappings')
-                .select('student:profiles!student_id(id, full_name, registration_number, email)')
-                .eq('teacher_id', profile.id)
-                .eq('is_active', true);
+            const { data: mappings, error: mappingsError } = await withRetry(
+                () => supabase.from('teacher_student_mappings')
+                    .select('student:profiles!student_id(id, full_name, registration_number, email)')
+                    .eq('teacher_id', profile.id)
+                    .eq('is_active', true),
+                { retries: 2 }
+            );
 
             if (mappingsError) throw mappingsError;
 
@@ -230,7 +233,9 @@ const TeacherDashboard = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [profile?.id]);
+
+    useEffect(() => { fetchClassroomData(); }, [fetchClassroomData]);
 
     const openStudent = async (student) => {
         setActiveStudent(student);
