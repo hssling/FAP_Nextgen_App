@@ -51,6 +51,19 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleLocalExport = async (language = 'kn') => {
+        try {
+            const topStudents = [...allStudents]
+                .sort((a, b) => (b.gradedCount || 0) - (a.gradedCount || 0))
+                .slice(0, 10);
+            const { generateAdminLocalStaffReport } = await import('../utils/reportGenerator');
+            generateAdminLocalStaffReport(stats, topStudents, language);
+        } catch (err) {
+            console.error(err);
+            alert(`Local language export failed: ${err.message}`);
+        }
+    };
+
     const fetchDashboardData = async () => {
         setLoading(true);
         setError(null);
@@ -376,6 +389,44 @@ const AdminDashboard = () => {
                     >
                         <Download size={16} />
                         Export
+                    </button>
+                    <button
+                        onClick={() => handleLocalExport('kn')}
+                        disabled={loading}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                            padding: '0.75rem 1rem',
+                            backgroundColor: '#ECFDF5',
+                            color: '#065F46',
+                            border: '1px solid #A7F3D0',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontWeight: '700'
+                        }}
+                    >
+                        ಕನ್ನಡ
+                    </button>
+                    <button
+                        onClick={() => handleLocalExport('hi')}
+                        disabled={loading}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                            padding: '0.75rem 1rem',
+                            backgroundColor: '#FEFCE8',
+                            color: '#854D0E',
+                            border: '1px solid #FDE68A',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontWeight: '700'
+                        }}
+                    >
+                        हिंदी
                     </button>
                 </div>
             </div>

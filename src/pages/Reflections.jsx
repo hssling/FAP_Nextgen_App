@@ -1040,7 +1040,7 @@ const Reflections = () => {
                                                         accept="image/*,application/pdf,.doc,.docx,.txt"
                                                         style={{ width: '100%' }}
                                                     />
-                                                    <p style={{ marginTop: '1rem', color: '#94A3B8', fontSize: '0.875rem' }}>Supported: PDF, Doc, Image (Max 10MB)</p>
+                                                    <p style={{ marginTop: '1rem', color: '#94A3B8', fontSize: '0.875rem' }}>Supported: PDF, Doc, Image (Max 10MB) | OCR: English + Hindi + Kannada</p>
                                                 </div>
 
                                                 <div style={{ marginTop: '1rem', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '0.75rem', padding: '0.85rem' }}>

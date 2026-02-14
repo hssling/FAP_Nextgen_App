@@ -45,6 +45,20 @@ const TeacherDashboard = () => {
         }
     };
 
+    const handleLocalExport = async (language = 'kn') => {
+        try {
+            if (!students || students.length === 0) {
+                alert("No student data to export yet.");
+                return;
+            }
+            const { generateClassLocalStaffReport } = await import('../utils/reportGenerator');
+            generateClassLocalStaffReport(students, 'Assigned Students', language);
+        } catch (err) {
+            console.error(err);
+            alert(`Local language export failed: ${err.message}`);
+        }
+    };
+
     // Stats
     const [stats, setStats] = useState({
         totalStudents: 0,
@@ -247,6 +261,44 @@ const TeacherDashboard = () => {
                         >
                             <Download size={16} />
                             <span>Export Data</span>
+                        </button>
+                        <button
+                            onClick={() => handleLocalExport('kn')}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                padding: '0.5rem 0.75rem',
+                                backgroundColor: '#ECFDF5',
+                                color: '#065F46',
+                                border: '1px solid #A7F3D0',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontWeight: '700',
+                                fontSize: '0.82rem',
+                                height: '40px'
+                            }}
+                        >
+                            <span>ಕನ್ನಡ</span>
+                        </button>
+                        <button
+                            onClick={() => handleLocalExport('hi')}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                padding: '0.5rem 0.75rem',
+                                backgroundColor: '#FEFCE8',
+                                color: '#854D0E',
+                                border: '1px solid #FDE68A',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontWeight: '700',
+                                fontSize: '0.82rem',
+                                height: '40px'
+                            }}
+                        >
+                            <span>हिंदी</span>
                         </button>
                     </div>
                 </div>

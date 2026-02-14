@@ -1,6 +1,7 @@
 import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 const MAX_TEXT_LENGTH = 12000;
+const OCR_LANGUAGES = 'eng+hin+kan';
 
 const normalizeText = (value) => {
     const text = (value || '')
@@ -55,12 +56,22 @@ const extractFromPdf = async (file) => {
 
 const extractFromImageWithOcr = async (file) => {
     const { createWorker } = await import('tesseract.js');
-    const worker = await createWorker('eng');
+    const worker = await createWorker(OCR_LANGUAGES);
     try {
         const result = await worker.recognize(file);
-        return normalizeText(result?.data?.text || '');
+        const parsed = normalizeText(result?.data?.text || '');
+        if (parsed) return parsed;
     } finally {
         await worker.terminate();
+    }
+
+    // Fallback to English-only if multilingual model yields no usable text.
+    const fallbackWorker = await createWorker('eng');
+    try {
+        const fallback = await fallbackWorker.recognize(file);
+        return normalizeText(fallback?.data?.text || '');
+    } finally {
+        await fallbackWorker.terminate();
     }
 };
 
