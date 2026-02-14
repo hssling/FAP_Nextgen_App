@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabaseClient';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
+import { get, set, del } from 'idb-keyval';
 
 const SectionHeader = ({ icon: Icon, title, color }) => (
     <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: color || 'var(--color-text)' }}>
@@ -85,6 +86,7 @@ const Reports = () => {
             try {
                 // Check cache first (5 minute cache)
                 const cacheKey = `analytics_${profile.id}`;
+                const persistentCacheKey = `analytics_persistent_${profile.id}`;
                 let cached = null;
                 try {
                     cached = sessionStorage.getItem(cacheKey);
@@ -99,6 +101,15 @@ const Reports = () => {
                             setLoading(false);
                             return;
                         }
+                    }
+
+                    // Persistent offline fallback
+                    const persistent = await get(persistentCacheKey);
+                    const persistentTimestamp = Number(persistent?.timestamp);
+                    const persistentReport = sanitizeReportData(persistent?.reportData);
+                    if (Number.isFinite(persistentTimestamp) && persistentReport) {
+                        setData(persistentReport);
+                        setLoading(false);
                     }
                 } catch (cacheErr) {
                     console.warn('[Reports] Invalid analytics cache. Clearing.', cacheErr);
@@ -122,14 +133,21 @@ const Reports = () => {
                     });
                     setData(sanitized);
                     // Cache the result
-                    sessionStorage.setItem(cacheKey, JSON.stringify({
-                        timestamp: Date.now(),
-                        reportData: sanitized
-                    }));
+                    const payload = { timestamp: Date.now(), reportData: sanitized };
+                    sessionStorage.setItem(cacheKey, JSON.stringify(payload));
+                    await set(persistentCacheKey, payload);
                 }
                 setLoading(false);
             } catch (error) {
                 console.error('[Reports] Error loading report:', error);
+                // Last chance persistent fallback when online fetch fails
+                try {
+                    const persistent = await get(`analytics_persistent_${profile.id}`);
+                    const fallback = sanitizeReportData(persistent?.reportData);
+                    if (fallback) setData(fallback);
+                } catch (fallbackErr) {
+                    console.warn('[Reports] Persistent fallback failed:', fallbackErr);
+                }
                 setLoading(false);
             }
         };
@@ -176,9 +194,14 @@ const Reports = () => {
 
     const refreshData = () => {
         sessionStorage.removeItem(`analytics_${profile.id}`);
+        del(`analytics_persistent_${profile.id}`).catch(() => {});
         setLoading(true);
         generateCommunityHealthReport(profile.id).then(result => {
-            setData(sanitizeReportData(result));
+            const sanitized = sanitizeReportData(result);
+            setData(sanitized);
+            const payload = { timestamp: Date.now(), reportData: sanitized };
+            sessionStorage.setItem(`analytics_${profile.id}`, JSON.stringify(payload));
+            set(`analytics_persistent_${profile.id}`, payload).catch(() => {});
             setLoading(false);
         }).catch(err => {
             console.error('[Reports] Refresh failed:', err);

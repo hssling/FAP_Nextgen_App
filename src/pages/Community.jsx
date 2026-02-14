@@ -23,7 +23,31 @@ const Community = () => {
 
     const loadData = async () => {
         const cacheKey = `fap_villages_${profile.id}`;
+        const sessionKey = `fap_villages_session_${profile.id}`;
+
+        const applyVillageState = (mapped) => {
+            const next = Array.isArray(mapped) ? mapped : [];
+            setVillages(next);
+            setSelectedVillage((prev) => {
+                if (!next.length) return null;
+                if (!prev) return next[0];
+                return next.find((v) => v.id === prev.id) || next[0];
+            });
+        };
+
         try {
+            // Fast path: session cache for instant paint
+            try {
+                const cachedSession = sessionStorage.getItem(sessionKey);
+                if (cachedSession) {
+                    const parsed = JSON.parse(cachedSession);
+                    if (Array.isArray(parsed)) applyVillageState(parsed);
+                }
+            } catch (cacheErr) {
+                console.warn('Community session cache invalid, clearing.', cacheErr);
+                sessionStorage.removeItem(sessionKey);
+            }
+
             const { data, error } = await supabase
                 .from('villages')
                 .select('*')
@@ -38,21 +62,14 @@ const Community = () => {
                 village_name: v.village_name
             }));
 
-            setVillages(mapped);
+            applyVillageState(mapped);
             await set(cacheKey, mapped);
-            
-            if (mapped.length > 0 && !selectedVillage) {
-                setSelectedVillage(mapped[0]);
-            }
+            sessionStorage.setItem(sessionKey, JSON.stringify(mapped));
         } catch (error) {
             console.error('Error loading villages:', error);
+            // Persistent fallback (works across browser restarts/offline re-login)
             const cached = await get(cacheKey);
-            if (cached) {
-                setVillages(cached);
-                if (cached.length > 0 && !selectedVillage) {
-                    setSelectedVillage(cached[0]);
-                }
-            }
+            if (cached) applyVillageState(cached);
         }
     };
 
@@ -81,6 +98,12 @@ const Community = () => {
                     setVillages([optimisticVillage]);
                     setSelectedVillage(optimisticVillage);
                 }
+
+                const updatedVillages = selectedVillage
+                    ? villages.map(v => v.id === selectedVillage.id ? optimisticVillage : v)
+                    : [optimisticVillage, ...villages];
+                await set(`fap_villages_${profile.id}`, updatedVillages);
+                sessionStorage.setItem(`fap_villages_session_${profile.id}`, JSON.stringify(updatedVillages));
                 
                 setIsEditing(false);
                 return;
@@ -103,6 +126,7 @@ const Community = () => {
 
             // Invalidate analytics cache
             invalidateAnalyticsCache(profile.id);
+            sessionStorage.removeItem(`fap_villages_session_${profile.id}`);
 
             setIsEditing(false);
             loadData();
