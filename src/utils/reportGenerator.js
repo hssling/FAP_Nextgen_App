@@ -1,7 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// Helper to format date
 const formatDate = () => {
     const d = new Date();
     return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
@@ -10,7 +9,7 @@ const formatDate = () => {
 const LOCALIZATION = {
     kn: {
         headingAdmin: 'FAP NextGen - ಸ್ಥಳೀಯ ಆರೋಗ್ಯ ವರದಿ',
-        headingClass: 'FAP NextGen - ತರಗತಿ ಕಾರ್ಯಕ್ಷಮತಾ ವರದಿ',
+        headingClass: 'FAP NextGen - ತರಗತಿ ಕಾರ್ಯಕ್ಷಮತೆ ವರದಿ',
         generatedOn: 'ರಚಿಸಿದ ದಿನಾಂಕ',
         confidentiality: 'ಅಧಿಕೃತ ಬಳಕೆಗೆ ಮಾತ್ರ',
         summary: 'ಸಂಕ್ಷಿಪ್ತ ವಿವರ',
@@ -61,7 +60,8 @@ const LOCALIZATION = {
 };
 
 const downloadTextFile = (filename, content) => {
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    // UTF-8 BOM ensures Hindi/Kannada render correctly in Windows editors.
+    const blob = new Blob(['\uFEFF', content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -70,17 +70,11 @@ const downloadTextFile = (filename, content) => {
     URL.revokeObjectURL(url);
 };
 
-/**
- * Generates a comprehensive Admin Report
- * @param {Object} stats - Dashboard stats (totalStudents, etc.)
- * @param {Array} topStudents - Array of top student objects
- */
 export const generateAdminReport = (stats, topStudents) => {
     const doc = new jsPDF();
 
-    // Header
     doc.setFontSize(20);
-    doc.setTextColor(15, 118, 110); // Teal color
+    doc.setTextColor(15, 118, 110);
     doc.text('FAP NextGen - Administrative Report', 14, 22);
 
     doc.setFontSize(10);
@@ -88,7 +82,6 @@ export const generateAdminReport = (stats, topStudents) => {
     doc.text(`Generated on: ${formatDate()}`, 14, 30);
     doc.text('Confidential - For Official Use Only', 14, 35);
 
-    // Section 1: System Overview
     doc.setFontSize(14);
     doc.setTextColor(0);
     doc.text('1. System Overview', 14, 50);
@@ -111,7 +104,6 @@ export const generateAdminReport = (stats, topStudents) => {
         headStyles: { fillColor: [15, 118, 110] }
     });
 
-    // Section 2: Top Performers
     const finalY = doc.lastAutoTable.finalY + 20;
     doc.text('2. Top Performing Students', 14, finalY);
 
@@ -129,12 +121,11 @@ export const generateAdminReport = (stats, topStudents) => {
         head: [['Rank', 'Student Name', 'Reg. No', 'Families', 'Reflections', 'Avg Score']],
         body: studentData,
         theme: 'grid',
-        headStyles: { fillColor: [59, 130, 246] } // Blue
+        headStyles: { fillColor: [59, 130, 246] }
     });
 
-    // Footer
     const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
+    for (let i = 1; i <= pageCount; i += 1) {
         doc.setPage(i);
         doc.setFontSize(8);
         doc.text(`Page ${i} of ${pageCount}`, 190, 290, { align: 'right' });
@@ -143,18 +134,12 @@ export const generateAdminReport = (stats, topStudents) => {
     doc.save(`FAP_Admin_Report_${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
-/**
- * Generates a Class Report for Teachers
- * @param {Array} students - Array of student objects with grades/stats
- * @param {string} className - Optional class identifier
- */
 export const generateClassReport = (students, className = 'Assigned Class') => {
     const doc = new jsPDF();
 
-    // Header
     doc.setFontSize(20);
     doc.setTextColor(15, 118, 110);
-    doc.text(`FAP NextGen - Class Performance Report`, 14, 22);
+    doc.text('FAP NextGen - Class Performance Report', 14, 22);
 
     doc.setFontSize(12);
     doc.setTextColor(80);
@@ -163,8 +148,7 @@ export const generateClassReport = (students, className = 'Assigned Class') => {
     doc.setFontSize(10);
     doc.text(`Date: ${formatDate()}`, 14, 38);
 
-    // Table
-    const tableData = students.map(s => [
+    const tableData = students.map((s) => [
         s.full_name,
         s.registration_number || '-',
         s.familyCount,
@@ -183,12 +167,10 @@ export const generateClassReport = (students, className = 'Assigned Class') => {
         styles: { fontSize: 9 }
     });
 
-    // Summary
     const finalY = doc.lastAutoTable.finalY + 15;
     doc.setFontSize(10);
     doc.text(`Total Students: ${students.length}`, 14, finalY);
 
-    // Signature Area
     doc.text('Signature of Faculty Mentor:', 14, finalY + 20);
     doc.line(60, finalY + 20, 120, finalY + 20);
 

@@ -1,6 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Kannada:wght@400;500;600;700&display=swap');
 
 :root {
+  --font-ui: 'Inter', 'Noto Sans', 'Noto Sans Devanagari', 'Noto Sans Kannada', 'Nirmala UI', 'Segoe UI', Arial, sans-serif;
   --color-primary: #0F766E; /* Teal 700 */
   --color-primary-light: #14B8A6; /* Teal 500 */
   --color-primary-dark: #0D9488; /* Teal 600 */
@@ -33,7 +34,7 @@
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-ui);
   background-color: var(--color-bg-root);
   color: var(--color-text-main);
   line-height: 1.5;

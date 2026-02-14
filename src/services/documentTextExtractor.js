@@ -35,7 +35,8 @@ const normalizeText = (value) => {
         .replace(/\r\n/g, '\n')
         .replace(/[ \t]+\n/g, '\n')
         .replace(/\n{3,}/g, '\n\n')
-        .trim();
+        .trim()
+        .normalize('NFC');
     return text.length > MAX_TEXT_LENGTH ? text.slice(0, MAX_TEXT_LENGTH) : text;
 };
 
