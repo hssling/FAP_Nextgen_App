@@ -1,5 +1,6 @@
 import { callProviderChat } from './aiClient';
 import { AI_PROVIDERS, DEFAULT_AI_PROVIDER, getConfiguredProviderKeys } from './aiProviders';
+import { AI_FALLBACK_MODES } from './aiPreferences';
 
 const SECTION_KEYS = [
     'description',
@@ -89,7 +90,7 @@ const normalizeConfidenceFromParsed = (parsed) => ({
     action_plan: clamp01(parsed?.confidence?.action_plan || parsed?.confidence?.actionPlan)
 });
 
-const buildProviderFallbackOrder = async (preferredProviderKey) => {
+const buildProviderFallbackOrder = async (preferredProviderKey, fallbackMode = AI_FALLBACK_MODES.allConfigured) => {
     const configured = await getConfiguredProviderKeys();
     if (!configured.length) return [];
 
@@ -99,7 +100,16 @@ const buildProviderFallbackOrder = async (preferredProviderKey) => {
     };
 
     add(preferredProviderKey);
+
+    if (fallbackMode === AI_FALLBACK_MODES.preferredOnly) {
+        return order;
+    }
+
     add(DEFAULT_AI_PROVIDER);
+    if (fallbackMode === AI_FALLBACK_MODES.preferredThenDefault) {
+        return order;
+    }
+
     configured.forEach(add);
 
     return order;
@@ -202,13 +212,14 @@ Rules:
 export const extractGibbsFromText = async ({
     text,
     providerKey,
+    fallbackMode = AI_FALLBACK_MODES.allConfigured,
     selectedModelIndex = 0,
     controller
 }) => {
     const cleanText = (text || '').trim();
     if (!cleanText) throw new Error('No text provided for Gibbs extraction');
 
-    const providerOrder = await buildProviderFallbackOrder(providerKey);
+    const providerOrder = await buildProviderFallbackOrder(providerKey, fallbackMode);
     if (!providerOrder.length) {
         const noProviderError = new Error('NO_PROVIDER_KEYS');
         noProviderError.code = 'NO_PROVIDER_KEYS';

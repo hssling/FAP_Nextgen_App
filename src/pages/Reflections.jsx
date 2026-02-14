@@ -15,6 +15,8 @@ import { callProviderChat } from '../services/aiClient';
 import { AI_PROVIDERS, DEFAULT_AI_PROVIDER } from '../services/aiProviders';
 import { extractGibbsFromText } from '../services/gibbsExtractor';
 import { extractDocumentText } from '../services/documentTextExtractor';
+import { runMicroAiGibbsPipeline, isMicroAiConfigured } from '../services/microAiClient';
+import { getAiFallbackMode, getMicroPipelineEnabled } from '../services/aiPreferences';
 import './Reflections.css';
 
 
@@ -192,6 +194,21 @@ const Reflections = () => {
             console.debug('AI audit log insert skipped:', err?.message || err);
         }
     }, [profile?.id]);
+
+    const saveReflectionVersion = useCallback(async ({ reflectionId, versionType = 'auto', gibbsPayload, notes }) => {
+        if (!reflectionId || !gibbsPayload) return;
+        try {
+            await supabase.from('reflection_ai_versions').insert([{
+                reflection_id: reflectionId,
+                version_type: versionType,
+                gibbs_payload: gibbsPayload,
+                notes: notes || null
+            }]);
+        } catch (err) {
+            // Non-blocking while RLS is still being rolled out.
+            console.debug('Reflection version insert skipped:', err?.message || err);
+        }
+    }, []);
 
     // Cache Helper
     const getCachedData = (id) => {
@@ -384,6 +401,8 @@ const Reflections = () => {
             setIsExtractingGibbs(true);
             const preferredProvider = (await get('fap_ai_provider')) || DEFAULT_AI_PROVIDER;
             const preferredModel = (await get('fap_ai_model')) ?? 0;
+            const fallbackMode = await getAiFallbackMode();
+            const microPipelineEnabled = await getMicroPipelineEnabled();
             const extractionRunId = crypto.randomUUID();
             const extractionStartedAt = Date.now();
 
@@ -408,7 +427,8 @@ const Reflections = () => {
                 metadata: {
                     status: 'queued',
                     providerPreference: preferredProvider,
-                    modelPreference: preferredModel
+                    modelPreference: preferredModel,
+                    fallbackMode
                 }
             });
 
@@ -417,11 +437,23 @@ const Reflections = () => {
                 status: 'processing'
             }));
 
-            const extractionPromise = extractGibbsFromText({
-                text,
-                providerKey: preferredProvider,
-                selectedModelIndex: preferredModel
-            });
+            const useMicroPipeline =
+                activeTab === 'upload' &&
+                selectedFile &&
+                microPipelineEnabled &&
+                isMicroAiConfigured();
+
+            let extractionPromise;
+            if (useMicroPipeline) {
+                extractionPromise = runMicroAiGibbsPipeline({ file: selectedFile });
+            } else {
+                extractionPromise = extractGibbsFromText({
+                    text,
+                    providerKey: preferredProvider,
+                    fallbackMode,
+                    selectedModelIndex: preferredModel
+                });
+            }
             const timeoutPromise = new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('Extraction timed out. Please retry.')), 90000)
             );
@@ -452,6 +484,7 @@ const Reflections = () => {
                 gibbs: extracted.gibbs || null,
                 telemetry: {
                     ...(extracted.telemetry || {}),
+                    source: extracted?.telemetry?.source || (useMicroPipeline ? 'micro_ai_service' : 'provider_fallback'),
                     totalDurationMs
                 },
                 error: null,
@@ -728,24 +761,25 @@ const Reflections = () => {
             const attemptInsert = async (attemptNum, timeoutMs) => {
                 console.log(`📱 [DB ATTEMPT ${attemptNum}/${MAX_RETRIES}] Timeout: ${timeoutMs}ms`);
 
-                const insertPromise = supabase.from('reflections').insert([payload]);
+                const insertPromise = supabase.from('reflections').insert([payload]).select('id').single();
                 const timeoutPromise = new Promise((_, reject) => 
                     setTimeout(() => reject(new Error('DATABASE_TIMEOUT')), timeoutMs)
                 );
 
                 const result = await Promise.race([insertPromise, timeoutPromise]);
                 if (result.error) throw result.error;
-                return true;
+                return result.data;
             };
 
             let lastError;
+            let insertedReflection = null;
             let slowHintId = setTimeout(() => setSubmissionStatus('saving_slow'), 10000);
 
             for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
                 try {
                     // Exponential backoff: 15s, 30s, 60s
                     const timeoutMs = INITIAL_TIMEOUT_MS * Math.pow(2, attempt - 1);
-                    await attemptInsert(attempt, timeoutMs);
+                    insertedReflection = await attemptInsert(attempt, timeoutMs);
 
                     clearTimeout(slowHintId);
                     console.log("📱 [STEP 6] Database success on attempt", attempt);
@@ -777,6 +811,23 @@ const Reflections = () => {
 
             console.log("📱 [STEP 7] SUCCESS!");
             setSubmissionStatus('success');
+
+            if (insertedReflection?.id && aiExtractionMeta?.status === 'completed') {
+                const autoGibbsPayload = aiExtractionMeta?.gibbs || {
+                    description: { text: formData.gibbs.description, evidence_spans: [] },
+                    feelings: { text: formData.gibbs.feelings, evidence_spans: [] },
+                    evaluation: { text: formData.gibbs.evaluation, evidence_spans: [] },
+                    analysis: { text: formData.gibbs.analysis, evidence_spans: [] },
+                    conclusion: { text: formData.gibbs.conclusion, evidence_spans: [] },
+                    action_plan: { text: formData.gibbs.actionPlan, evidence_spans: [] }
+                };
+                await saveReflectionVersion({
+                    reflectionId: insertedReflection.id,
+                    versionType: 'auto',
+                    gibbsPayload: autoGibbsPayload,
+                    notes: `Auto-segmented via ${aiExtractionMeta.provider || 'AI'} (${aiExtractionMeta.model || 'unknown model'})`
+                });
+            }
 
             // Success cleanup
             lastUploadedFile.current = { id: null, data: null };
@@ -1287,6 +1338,20 @@ const Reflections = () => {
                                                                         aiExtractionMeta.status === 'completed' ? '#059669' : '#0F766E'
                                                                 }} />
                                                             </div>
+                                                            {aiExtractionMeta?.telemetry && (
+                                                                <div style={{ marginTop: '0.6rem', fontSize: '0.72rem', color: '#334155', fontWeight: 500, lineHeight: 1.45 }}>
+                                                                    <div>
+                                                                        Source: {aiExtractionMeta.telemetry.source || 'provider_fallback'} | Duration: {Math.round((aiExtractionMeta.telemetry.totalDurationMs || aiExtractionMeta.telemetry.elapsedMs || 0) / 1000)}s
+                                                                    </div>
+                                                                    <div>
+                                                                        Providers tried: {(aiExtractionMeta.telemetry.providersTried || []).join(', ') || (aiExtractionMeta.provider || 'N/A')}
+                                                                    </div>
+                                                                    <div>
+                                                                        Attempts: {aiExtractionMeta.telemetry.attemptCount || aiExtractionMeta.telemetry.attempts?.length || 1}
+                                                                        {typeof aiExtractionMeta.telemetry.fallbackUsed === 'boolean' ? ` | Fallback used: ${aiExtractionMeta.telemetry.fallbackUsed ? 'Yes' : 'No'}` : ''}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>

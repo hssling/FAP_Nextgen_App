@@ -6,6 +6,13 @@ import NotificationManager from '../components/NotificationManager';
 import { AI_PROVIDERS } from '../services/aiProviders';
 import { getAllSavedAiKeys, saveAiProviderKey, clearAiProviderKey } from '../services/aiKeyStore';
 import { clearClientCaches } from '../utils/cacheUtils';
+import {
+    AI_FALLBACK_MODES,
+    getAiFallbackMode,
+    getMicroPipelineEnabled,
+    setAiFallbackMode,
+    setMicroPipelineEnabled
+} from '../services/aiPreferences';
 
 const maskKey = (value) => {
     if (!value) return '';
@@ -21,6 +28,8 @@ const Settings = () => {
     const [visible, setVisible] = useState({});
     const [saving, setSaving] = useState({});
     const [cacheClearing, setCacheClearing] = useState(false);
+    const [fallbackMode, setFallbackModeState] = useState(AI_FALLBACK_MODES.allConfigured);
+    const [microPipelineEnabled, setMicroPipelineEnabledState] = useState(true);
 
     const providerEntries = useMemo(() => Object.entries(AI_PROVIDERS), []);
 
@@ -31,6 +40,18 @@ const Settings = () => {
             setDraftKeys(saved);
         };
         loadKeys();
+    }, []);
+
+    useEffect(() => {
+        const loadAiPreferences = async () => {
+            const [mode, microEnabled] = await Promise.all([
+                getAiFallbackMode(),
+                getMicroPipelineEnabled()
+            ]);
+            setFallbackModeState(mode);
+            setMicroPipelineEnabledState(microEnabled);
+        };
+        loadAiPreferences();
     }, []);
 
     const handleLogout = async () => {
@@ -240,6 +261,43 @@ const Settings = () => {
                             </div>
                         );
                     })}
+                </div>
+
+                <div style={{ marginTop: '1rem', borderTop: '1px solid #E5E7EB', paddingTop: '1rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Reflection AI Reliability Controls</h3>
+                    <p style={{ margin: '0.35rem 0 0.75rem', fontSize: '0.85rem', color: '#6B7280' }}>
+                        Control how provider fallback and micro-AI job pipeline behave for Gibbs extraction.
+                    </p>
+
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>
+                        Provider fallback mode
+                    </label>
+                    <select
+                        value={fallbackMode}
+                        onChange={async (e) => {
+                            const mode = e.target.value;
+                            setFallbackModeState(mode);
+                            await setAiFallbackMode(mode);
+                        }}
+                        style={{ width: '100%', maxWidth: '360px', padding: '0.6rem 0.75rem', border: '1px solid #D1D5DB', borderRadius: '8px' }}
+                    >
+                        <option value={AI_FALLBACK_MODES.allConfigured}>Try all configured providers</option>
+                        <option value={AI_FALLBACK_MODES.preferredThenDefault}>Preferred then default only</option>
+                        <option value={AI_FALLBACK_MODES.preferredOnly}>Preferred provider only</option>
+                    </select>
+
+                    <label style={{ marginTop: '0.75rem', display: 'inline-flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.85rem', color: '#1F2937' }}>
+                        <input
+                            type="checkbox"
+                            checked={microPipelineEnabled}
+                            onChange={async (e) => {
+                                const next = e.target.checked;
+                                setMicroPipelineEnabledState(next);
+                                await setMicroPipelineEnabled(next);
+                            }}
+                        />
+                        Prefer micro-AI job pipeline for file uploads (falls back automatically if unavailable)
+                    </label>
                 </div>
             </div>
 
