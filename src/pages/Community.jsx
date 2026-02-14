@@ -11,7 +11,7 @@ import { addToQueue } from '../services/offlineQueue';
 import { get, set } from 'idb-keyval';
 
 const Community = () => {
-    const { profile } = useAuth();
+    const { profile, loading: authLoading } = useAuth();
     const [villages, setVillages] = useState([]);
     const [selectedVillage, setSelectedVillage] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
@@ -150,6 +150,22 @@ const Community = () => {
         { id: 'planning', label: 'Annual Planning', icon: Calendar },
         { id: 'health', label: 'Health Status', icon: Activity }
     ];
+
+    if (authLoading) {
+        return (
+            <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>
+                <p style={{ color: '#6B7280' }}>Loading your profile...</p>
+            </div>
+        );
+    }
+
+    if (!profile?.id) {
+        return (
+            <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>
+                <p style={{ color: '#6B7280' }}>Loading your profile...</p>
+            </div>
+        );
+    }
 
     return (
         <div>

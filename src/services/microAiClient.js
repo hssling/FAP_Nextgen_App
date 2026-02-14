@@ -1,4 +1,5 @@
-const BASE_URL = import.meta.env.VITE_MICRO_AI_BASE_URL || 'http://localhost:8000';
+const rawBaseUrl = import.meta.env.VITE_MICRO_AI_BASE_URL || 'http://localhost:8000';
+const BASE_URL = rawBaseUrl.replace(/\/+$/, '');
 const MICRO_AI_TIMEOUT_MS = 120000;
 const MICRO_AI_POLL_MS = 2000;
 
@@ -17,6 +18,9 @@ export const ingestMicroAiFile = async (file) => {
 
     if (!response.ok) {
         const message = await response.text();
+        if (response.status === 404 || response.status === 405) {
+            throw new Error(`MICRO_AI_ENDPOINT_NOT_FOUND (${response.status})`);
+        }
         throw new Error(message || `Ingest failed: ${response.status}`);
     }
 

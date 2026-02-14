@@ -82,7 +82,7 @@ const Reports = () => {
     };
 
     useEffect(() => {
-        if (!profile) return;
+        if (!profile?.id) return;
 
         const loadReport = async () => {
             try {
@@ -157,7 +157,7 @@ const Reports = () => {
         loadReport();
 
         // Load feedback for students
-        if (profile?.role === 'student') {
+        if (profile?.id && profile?.role === 'student') {
             const loadFeedback = async () => {
                 const { data } = await supabase
                     .from('teacher_student_mappings')
@@ -172,7 +172,7 @@ const Reports = () => {
             };
             loadFeedback();
         }
-    }, [profile]);
+    }, [profile?.id, profile?.role]);
 
     useEffect(() => {
         const beforePrint = () => setIsPrintMode(true);

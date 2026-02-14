@@ -443,21 +443,38 @@ const Reflections = () => {
                 microPipelineEnabled &&
                 isMicroAiConfigured();
 
-            let extractionPromise;
-            if (useMicroPipeline) {
-                extractionPromise = runMicroAiGibbsPipeline({ file: selectedFile });
-            } else {
-                extractionPromise = extractGibbsFromText({
+            const runProviderExtraction = () =>
+                extractGibbsFromText({
                     text,
                     providerKey: preferredProvider,
                     fallbackMode,
                     selectedModelIndex: preferredModel
                 });
+
+            const withTimeout = (promise) =>
+                Promise.race([
+                    promise,
+                    new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Extraction timed out. Please retry.')), 90000)
+                    )
+                ]);
+
+            let extracted;
+            if (useMicroPipeline) {
+                try {
+                    extracted = await withTimeout(runMicroAiGibbsPipeline({ file: selectedFile }));
+                } catch (microErr) {
+                    console.warn('Micro-AI pipeline failed, falling back to provider extraction:', microErr);
+                    extracted = await withTimeout(runProviderExtraction());
+                    extracted.telemetry = {
+                        ...(extracted.telemetry || {}),
+                        microFallbackReason: microErr?.message || 'micro_pipeline_failed',
+                        microFallbackApplied: true
+                    };
+                }
+            } else {
+                extracted = await withTimeout(runProviderExtraction());
             }
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Extraction timed out. Please retry.')), 90000)
-            );
-            const extracted = await Promise.race([extractionPromise, timeoutPromise]);
             const totalDurationMs = Date.now() - extractionStartedAt;
 
             setFormData((prev) => ({
@@ -866,6 +883,14 @@ const Reflections = () => {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
                 <LoadingSpinner size={40} />
+            </div>
+        );
+    }
+
+    if (!profile?.id) {
+        return (
+            <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>
+                <p style={{ color: '#6B7280' }}>Loading your profile...</p>
             </div>
         );
     }
