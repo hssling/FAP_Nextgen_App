@@ -288,6 +288,7 @@ const Reports = () => {
                     .no-print { display: none !important; }
                     .print-show { display: block !important; }
                     .print-break { page-break-before: always; }
+                    .section-visible.print-break { page-break-before: auto; }
                     body { background: white; font-size: 12pt; }
                     .card { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; }
                     h1, h2, h3 { color: black !important; }
@@ -297,7 +298,8 @@ const Reports = () => {
                 .section-hidden { display: none; }
                 .section-visible { display: block; }
                 @media print {
-                    .section-hidden { display: block !important; }
+                    .section-hidden { display: none !important; }
+                    .section-visible { display: block !important; }
                 }
                 @media (max-width: 640px) {
                     .reports-header {
