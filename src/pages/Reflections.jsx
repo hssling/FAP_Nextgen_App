@@ -125,37 +125,53 @@ const Reflections = () => {
 
     // Cache Helper
     const getCachedData = (id) => {
-        const cache = sessionStorage.getItem(`reflections_cache_${id}`);
-        if (cache) {
-            const { timestamp, data } = JSON.parse(cache);
-            if (Date.now() - timestamp < 60000) return data; // 1 min cache for journal (stricter)
+        try {
+            const cache = sessionStorage.getItem(`reflections_cache_${id}`);
+            if (!cache) return null;
+
+            const parsed = JSON.parse(cache);
+            const timestamp = Number(parsed?.timestamp);
+            const data = parsed?.data;
+            const families = Array.isArray(data?.families) ? data.families : [];
+            const refs = Array.isArray(data?.reflections) ? data.reflections : [];
+
+            if (!Number.isFinite(timestamp)) return null;
+            if (Date.now() - timestamp >= 60000) return null; // 1 min cache for journal (stricter)
+
+            return { families, reflections: refs };
+        } catch (err) {
+            console.warn('Invalid reflections session cache. Clearing cache entry.', err);
+            sessionStorage.removeItem(`reflections_cache_${id}`);
+            return null;
         }
-        return null;
     };
 
     const loadData = useCallback(async (forceRefresh = false) => {
         if (!profile?.id) return;
         const cacheKey = `fap_reflections_full_${profile.id}`;
-        if (!forceRefresh) {
-            const cached = getCachedData(profile.id);
-            if (cached) {
-                setFamilies(cached.families);
-                setReflections(cached.reflections);
-                setLoading(false);
-                return;
-            }
-            
-            const persistentCached = await get(cacheKey);
-            if (persistentCached) {
-                setFamilies(persistentCached.families);
-                setReflections(persistentCached.reflections);
-                setLoading(false);
-            }
-        }
-
-        if (forceRefresh || !loading) setLoading(true);
 
         try {
+            if (!forceRefresh) {
+                const cached = getCachedData(profile.id);
+                if (cached) {
+                    setFamilies(cached.families);
+                    setReflections(cached.reflections);
+                    setLoading(false);
+                    return;
+                }
+
+                const persistentCached = await get(cacheKey);
+                if (persistentCached && typeof persistentCached === 'object') {
+                    const familiesCached = Array.isArray(persistentCached.families) ? persistentCached.families : [];
+                    const refsCached = Array.isArray(persistentCached.reflections) ? persistentCached.reflections : [];
+                    setFamilies(familiesCached);
+                    setReflections(refsCached);
+                    setLoading(false);
+                }
+            }
+
+            if (forceRefresh || !loading) setLoading(true);
+
             const { data: fams } = await supabase.from('families').select('id, head_name').eq('student_id', profile.id);
             const { data: refs } = await supabase.from('reflections').select('*').eq('student_id', profile.id).order('created_at', { ascending: false });
 
