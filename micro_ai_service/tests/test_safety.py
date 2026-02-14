@@ -1,4 +1,4 @@
-from app.safety import has_disallowed_medical_claims
+from micro_ai_service.app.safety import has_disallowed_medical_claims
 
 
 def test_disallowed_claim_detected():
