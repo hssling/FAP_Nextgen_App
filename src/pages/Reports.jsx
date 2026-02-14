@@ -57,6 +57,27 @@ const Reports = () => {
     const [activeTab, setActiveTab] = useState('community');
     const [feedback, setFeedback] = useState(null);
 
+    const sanitizeReportData = (raw) => {
+        if (!raw || typeof raw !== 'object') return null;
+        return {
+            demographics: raw.demographics || { totalPopulation: 0, totalFamilies: 0, genderRatio: { ratio: 0 }, dependencyRatio: 0, ageDistribution: {} },
+            maternalHealth: raw.maternalHealth || { registeredPregnancies: 0, highRiskPregnancies: 0 },
+            childHealth: raw.childHealth || { totalUnder5: 0, fullyImmunized: 0 },
+            morbidity: raw.morbidity || {},
+            socioEconomic: raw.socioEconomic || {},
+            environmental: raw.environmental || { safeWater: 0, sanitaryLatrine: 0, wasteSegregation: 0 },
+            logbook: {
+                visits: raw.logbook?.visits || 0,
+                reflections: raw.logbook?.reflections || 0,
+                visitLog: Array.isArray(raw.logbook?.visitLog) ? raw.logbook.visitLog : [],
+                reflectionLog: Array.isArray(raw.logbook?.reflectionLog) ? raw.logbook.reflectionLog : []
+            },
+            familyDetails: Array.isArray(raw.familyDetails) ? raw.familyDetails : [],
+            assessmentSummary: raw.assessmentSummary || {},
+            interventionSummary: raw.interventionSummary || { completed: 0, pending: 0, total: 0, byType: {} }
+        };
+    };
+
     useEffect(() => {
         if (!profile) return;
 
@@ -64,38 +85,46 @@ const Reports = () => {
             try {
                 // Check cache first (5 minute cache)
                 const cacheKey = `analytics_${profile.id}`;
-                const cached = sessionStorage.getItem(cacheKey);
-
-                if (cached) {
-                    const { timestamp, reportData } = JSON.parse(cached);
-                    // Use cache if less than 5 minutes old
-                    if (Date.now() - timestamp < 300000) {
-                        console.log('[Reports] Using cached data');
-                        setData(reportData);
-                        setLoading(false);
-                        return;
+                let cached = null;
+                try {
+                    cached = sessionStorage.getItem(cacheKey);
+                    if (cached) {
+                        const parsed = JSON.parse(cached);
+                        const timestamp = Number(parsed?.timestamp);
+                        const cachedReport = sanitizeReportData(parsed?.reportData);
+                        // Use cache if less than 5 minutes old
+                        if (Number.isFinite(timestamp) && Date.now() - timestamp < 300000 && cachedReport) {
+                            console.log('[Reports] Using cached data');
+                            setData(cachedReport);
+                            setLoading(false);
+                            return;
+                        }
                     }
+                } catch (cacheErr) {
+                    console.warn('[Reports] Invalid analytics cache. Clearing.', cacheErr);
+                    sessionStorage.removeItem(cacheKey);
                 }
 
                 // Generate fresh report
                 console.log('[Reports] Generating fresh analytics...');
                 const result = await generateCommunityHealthReport(profile.id);
 
-                if (result) {
+                const sanitized = sanitizeReportData(result);
+                if (sanitized) {
                     console.log('[Reports] Data loaded:', {
-                        families: result.demographics?.totalFamilies,
-                        members: result.demographics?.totalPopulation,
-                        visits: result.logbook?.visits,
-                        reflections: result.logbook?.reflections,
-                        visitLog: result.logbook?.visitLog?.length,
-                        reflectionLog: result.logbook?.reflectionLog?.length,
-                        familyDetails: result.familyDetails?.length
+                        families: sanitized.demographics?.totalFamilies,
+                        members: sanitized.demographics?.totalPopulation,
+                        visits: sanitized.logbook?.visits,
+                        reflections: sanitized.logbook?.reflections,
+                        visitLog: sanitized.logbook?.visitLog?.length,
+                        reflectionLog: sanitized.logbook?.reflectionLog?.length,
+                        familyDetails: sanitized.familyDetails?.length
                     });
-                    setData(result);
+                    setData(sanitized);
                     // Cache the result
                     sessionStorage.setItem(cacheKey, JSON.stringify({
                         timestamp: Date.now(),
-                        reportData: result
+                        reportData: sanitized
                     }));
                 }
                 setLoading(false);
@@ -149,7 +178,10 @@ const Reports = () => {
         sessionStorage.removeItem(`analytics_${profile.id}`);
         setLoading(true);
         generateCommunityHealthReport(profile.id).then(result => {
-            setData(result);
+            setData(sanitizeReportData(result));
+            setLoading(false);
+        }).catch(err => {
+            console.error('[Reports] Refresh failed:', err);
             setLoading(false);
         });
     };
@@ -162,7 +194,7 @@ const Reports = () => {
         </div>
     );
 
-    const { demographics, maternalHealth, childHealth, morbidity, socioEconomic, environmental, logbook, familyDetails, assessmentSummary, interventionSummary } = data;
+    const { demographics, maternalHealth, childHealth, morbidity, socioEconomic, environmental, logbook, familyDetails, assessmentSummary, interventionSummary } = sanitizeReportData(data) || {};
 
     return (
         <div>
