@@ -143,6 +143,33 @@
     display: none;
 }
 
+@media print {
+    .layout {
+        display: block !important;
+        height: auto !important;
+        overflow: visible !important;
+        background: white !important;
+    }
+
+    .sidebar,
+    .mobileToggle,
+    .overlay {
+        display: none !important;
+    }
+
+    .main {
+        overflow: visible !important;
+        height: auto !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+
+    .contentContainer {
+        max-width: none !important;
+        margin: 0 !important;
+    }
+}
+
 @media (max-width: 768px) {
     .sidebar {
         position: fixed;

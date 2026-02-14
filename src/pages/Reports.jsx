@@ -26,7 +26,7 @@ const ReportCard = ({ label, value, subtext, color }) => (
     </div>
 );
 
-const ExpandableCard = ({ title, icon: Icon, children, defaultOpen = false }) => {
+const ExpandableCard = ({ title, icon: Icon, children, defaultOpen = false, forceOpen = false }) => {
     const [isOpen, setIsOpen] = useState(defaultOpen);
     return (
         <div className="card" style={{ padding: '1.5rem', marginBottom: '1rem' }}>
@@ -45,7 +45,7 @@ const ExpandableCard = ({ title, icon: Icon, children, defaultOpen = false }) =>
                 </div>
                 {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
             </div>
-            {isOpen && <div style={{ marginTop: '1.5rem' }}>{children}</div>}
+            {(isOpen || forceOpen) && <div style={{ marginTop: '1.5rem' }}>{children}</div>}
         </div>
     );
 };
@@ -57,6 +57,7 @@ const Reports = () => {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('community');
     const [feedback, setFeedback] = useState(null);
+    const [isPrintMode, setIsPrintMode] = useState(false);
 
     const sanitizeReportData = (raw) => {
         if (!raw || typeof raw !== 'object') return null;
@@ -171,6 +172,17 @@ const Reports = () => {
             loadFeedback();
         }
     }, [profile]);
+
+    useEffect(() => {
+        const beforePrint = () => setIsPrintMode(true);
+        const afterPrint = () => setIsPrintMode(false);
+        window.addEventListener('beforeprint', beforePrint);
+        window.addEventListener('afterprint', afterPrint);
+        return () => {
+            window.removeEventListener('beforeprint', beforePrint);
+            window.removeEventListener('afterprint', afterPrint);
+        };
+    }, []);
 
     if (authLoading) {
         return (
@@ -294,6 +306,8 @@ const Reports = () => {
                     h1, h2, h3 { color: black !important; }
                     .grid-layout { display: block !important; }
                     .grid-layout > div { marginBottom: 2rem; }
+                    .print-full-content { max-height: none !important; overflow: visible !important; }
+                    .print-no-truncate { max-width: none !important; overflow: visible !important; text-overflow: clip !important; white-space: normal !important; }
                 }
                 .section-hidden { display: none; }
                 .section-visible { display: block; }
@@ -466,7 +480,7 @@ const Reports = () => {
                 </div>
 
                 {/* Visit Log */}
-                <ExpandableCard title={`Visit History (${logbook.visitLog?.length || 0} Visits)`} icon={Calendar} defaultOpen={true}>
+                <ExpandableCard title={`Visit History (${logbook.visitLog?.length || 0} Visits)`} icon={Calendar} defaultOpen={true} forceOpen={isPrintMode}>
                     {logbook.visitLog?.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '2rem', color: '#6B7280' }}>
                             <Clock size={32} style={{ color: '#CBD5E1', marginBottom: '0.5rem' }} />
@@ -476,7 +490,7 @@ const Reports = () => {
                             </button>
                         </div>
                     ) : (
-                        <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                        <div className="print-full-content" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                                 <thead style={{ background: '#F8FAFC', position: 'sticky', top: 0 }}>
                                     <tr>
@@ -504,7 +518,7 @@ const Reports = () => {
                                                     {visit.protocol.replace(/_v\d+$/, '').replace(/_/g, ' ')}
                                                 </span>
                                             </td>
-                                            <td style={{ padding: '0.75rem', color: '#6B7280', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            <td className="print-no-truncate" style={{ padding: '0.75rem', color: '#6B7280', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                 {visit.notes || visit.reflection || '-'}
                                             </td>
                                         </tr>
@@ -516,7 +530,7 @@ const Reports = () => {
                 </ExpandableCard>
 
                 {/* Reflection Log */}
-                <ExpandableCard title={`Reflections & Journals (${logbook.reflectionLog?.length || 0} Entries)`} icon={BookOpen}>
+                <ExpandableCard title={`Reflections & Journals (${logbook.reflectionLog?.length || 0} Entries)`} icon={BookOpen} forceOpen={isPrintMode}>
                     {logbook.reflectionLog?.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '2rem', color: '#6B7280' }}>
                             <FileText size={32} style={{ color: '#CBD5E1', marginBottom: '0.5rem' }} />
@@ -592,7 +606,7 @@ const Reports = () => {
                 </ExpandableCard>
 
                 {/* Assessment Summary */}
-                <ExpandableCard title="Assessment Types Completed" icon={ClipboardList}>
+                <ExpandableCard title="Assessment Types Completed" icon={ClipboardList} forceOpen={isPrintMode}>
                     {Object.keys(assessmentSummary || {}).length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '2rem', color: '#6B7280' }}>No assessments completed yet.</div>
                     ) : (
@@ -620,7 +634,7 @@ const Reports = () => {
                 </ExpandableCard>
 
                 {/* Intervention Summary */}
-                <ExpandableCard title="Interventions Tracking" icon={Target}>
+                <ExpandableCard title="Interventions Tracking" icon={Target} forceOpen={isPrintMode}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
                         <div style={{ textAlign: 'center', padding: '1rem', background: '#F0FDF4', borderRadius: '8px' }}>
                             <div style={{ fontSize: '2rem', fontWeight: '700', color: '#10B981' }}>{interventionSummary?.completed || 0}</div>
