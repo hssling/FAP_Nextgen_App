@@ -177,38 +177,42 @@ const Settings = () => {
                                     </a>
                                 </div>
 
-                                <div className="ai-key-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                    <input
-                                        type={visible[providerKey] ? 'text' : 'password'}
-                                        value={value}
-                                        onChange={(e) => setDraftKeys((prev) => ({ ...prev, [providerKey]: e.target.value }))}
-                                        placeholder={`Paste ${provider.name} API key`}
-                                        style={{ flex: '1 1 260px', minWidth: 0, width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #D1D5DB', borderRadius: '8px' }}
-                                    />
-                                    <button
-                                        className="btn btn-outline"
-                                        onClick={() => setVisible((prev) => ({ ...prev, [providerKey]: !prev[providerKey] }))}
-                                        style={{ minWidth: '42px', padding: '0.6rem 0.75rem', flexShrink: 0 }}
-                                        title={visible[providerKey] ? 'Hide key' : 'Show key'}
-                                    >
-                                        {visible[providerKey] ? <EyeOff size={16} /> : <Eye size={16} />}
-                                    </button>
-                                    <button
-                                        className="btn btn-primary"
-                                        disabled={saving[providerKey]}
-                                        onClick={() => handleSaveAiKey(providerKey)}
-                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}
-                                    >
-                                        <Save size={14} /> {saving[providerKey] ? 'Saving...' : 'Save'}
-                                    </button>
-                                    <button
-                                        className="btn btn-outline"
-                                        disabled={saving[providerKey] || (!hasSaved && !value)}
-                                        onClick={() => handleClearAiKey(providerKey)}
-                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#B91C1C', borderColor: '#FECACA', flexShrink: 0 }}
-                                    >
-                                        <Trash2 size={14} /> Clear
-                                    </button>
+                                <div className="ai-key-actions">
+                                    <div className="ai-key-input-row">
+                                        <input
+                                            type={visible[providerKey] ? 'text' : 'password'}
+                                            value={value}
+                                            onChange={(e) => setDraftKeys((prev) => ({ ...prev, [providerKey]: e.target.value }))}
+                                            placeholder={`Paste ${provider.name} API key`}
+                                            style={{ width: '100%', minWidth: 0, padding: '0.6rem 0.75rem', border: '1px solid #D1D5DB', borderRadius: '8px' }}
+                                        />
+                                        <button
+                                            className="btn btn-outline"
+                                            onClick={() => setVisible((prev) => ({ ...prev, [providerKey]: !prev[providerKey] }))}
+                                            style={{ minWidth: '42px', padding: '0.6rem 0.75rem' }}
+                                            title={visible[providerKey] ? 'Hide key' : 'Show key'}
+                                        >
+                                            {visible[providerKey] ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
+                                    <div className="ai-key-button-row">
+                                        <button
+                                            className="btn btn-primary"
+                                            disabled={saving[providerKey]}
+                                            onClick={() => handleSaveAiKey(providerKey)}
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                                        >
+                                            <Save size={14} /> {saving[providerKey] ? 'Saving...' : 'Save'}
+                                        </button>
+                                        <button
+                                            className="btn btn-outline"
+                                            disabled={saving[providerKey] || (!hasSaved && !value)}
+                                            onClick={() => handleClearAiKey(providerKey)}
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#B91C1C', borderColor: '#FECACA' }}
+                                        >
+                                            <Trash2 size={14} /> Clear
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <p style={{ margin: '0.6rem 0 0', fontSize: '0.78rem', color: '#6B7280' }}>
@@ -221,25 +225,30 @@ const Settings = () => {
             </div>
 
             <style>{`
+                .ai-key-actions {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.5rem;
+                }
+                .ai-key-input-row {
+                    display: grid;
+                    grid-template-columns: 1fr auto;
+                    gap: 0.5rem;
+                    align-items: center;
+                    min-width: 0;
+                }
+                .ai-key-button-row {
+                    display: flex;
+                    gap: 0.5rem;
+                    justify-content: flex-end;
+                    flex-wrap: wrap;
+                }
                 @media (max-width: 640px) {
-                    .ai-key-actions {
-                        display: grid !important;
-                        grid-template-columns: 1fr auto !important;
-                        gap: 0.5rem !important;
-                        align-items: center !important;
+                    .ai-key-button-row {
+                        justify-content: stretch;
                     }
-                    .ai-key-actions input {
-                        grid-column: 1 / 2;
-                    }
-                    .ai-key-actions button:nth-of-type(1) {
-                        grid-column: 2 / 3;
-                        justify-self: stretch;
-                    }
-                    .ai-key-actions button:nth-of-type(2),
-                    .ai-key-actions button:nth-of-type(3) {
-                        grid-column: 1 / -1;
+                    .ai-key-button-row button {
                         width: 100%;
-                        justify-content: center;
                     }
                 }
             `}</style>
