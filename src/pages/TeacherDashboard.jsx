@@ -12,6 +12,7 @@ import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { calculateBadges } from '../utils/gamification';
 import BadgeDisplay from '../components/shared/BadgeDisplay';
+import { get, set } from 'idb-keyval';
 import './TeacherDashboard.css';
 
 
@@ -29,6 +30,8 @@ const TeacherDashboard = () => {
     const { profile } = useAuth();
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
+    const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false);
     const [searchTerm, setSearchTerm] = useState('');
 
     const handleExport = async () => {
@@ -75,6 +78,8 @@ const TeacherDashboard = () => {
     const [notesSaving, setNotesSaving] = useState(false);
 
     const [drawerTab, setDrawerTab] = useState('reflections');
+    const [drawerLoading, setDrawerLoading] = useState(false);
+    const [drawerError, setDrawerError] = useState('');
 
     // Manage expanded states for drawer cards
     const [expandedRefs, setExpandedRefs] = useState({});
@@ -84,81 +89,238 @@ const TeacherDashboard = () => {
     const [scores, setScores] = useState({ score_exploration: 0, score_voice: 0, score_description: 0, score_emotions: 0, score_analysis: 0 });
     const [gradeFeedback, setGradeFeedback] = useState('');
 
+    useEffect(() => {
+        const handleOnline = () => setIsOffline(false);
+        const handleOffline = () => setIsOffline(true);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
+
     useEffect(() => { if (profile?.id) fetchClassroomData(); }, [profile]);
 
     const fetchClassroomData = async () => {
         setLoading(true);
-        const { data: mappings } = await supabase.from('teacher_student_mappings')
-            .select('student:profiles!student_id(id, full_name, registration_number, email)')
-            .eq('teacher_id', profile.id)
-            .eq('is_active', true);
+        setLoadError('');
 
-        if (!mappings) {
-            setStudents([]);
+        const sessionKey = `teacher_classroom_session_${profile.id}`;
+        const persistentKey = `teacher_classroom_${profile.id}`;
+        let hasAppliedCache = false;
+
+        const applyClassroomPayload = (payload) => {
+            if (!payload) return false;
+            const nextStudents = Array.isArray(payload.students) ? payload.students : [];
+            const nextStats = payload.stats || {
+                totalStudents: 0,
+                totalReflections: 0,
+                pendingReviews: 0,
+                classAverage: 0
+            };
+            setStudents(nextStudents);
+            setStats(nextStats);
+            return true;
+        };
+
+        try {
+            const cachedSession = sessionStorage.getItem(sessionKey);
+            if (cachedSession) {
+                const parsed = JSON.parse(cachedSession);
+                hasAppliedCache = applyClassroomPayload(parsed);
+                if (hasAppliedCache) setLoading(false);
+            }
+        } catch (cacheError) {
+            console.warn('Teacher dashboard session cache invalid, clearing.', cacheError);
+            sessionStorage.removeItem(sessionKey);
+        }
+
+        if (!hasAppliedCache) {
+            try {
+                const persistent = await get(persistentKey);
+                hasAppliedCache = applyClassroomPayload(persistent);
+                if (hasAppliedCache) setLoading(false);
+            } catch (cacheError) {
+                console.warn('Teacher dashboard persistent cache unavailable.', cacheError);
+            }
+        }
+
+        if (!navigator.onLine && hasAppliedCache) {
+            setLoadError('Offline mode: showing last synced classroom data.');
             setLoading(false);
             return;
         }
 
-        let totalRefs = 0;
-        let pending = 0;
-        let totalScoreSum = 0;
-        let gradedCount = 0;
+        try {
+            const { data: mappings, error: mappingsError } = await supabase.from('teacher_student_mappings')
+                .select('student:profiles!student_id(id, full_name, registration_number, email)')
+                .eq('teacher_id', profile.id)
+                .eq('is_active', true);
 
-        const enhanced = await Promise.all(mappings.map(async (m) => {
-            const student = m.student;
-            const { data: refs } = await supabase.from('reflections').select('status, total_score').eq('student_id', student.id);
-            const { count: famCount } = await supabase.from('families').select('*', { count: 'exact', head: true }).eq('student_id', student.id);
+            if (mappingsError) throw mappingsError;
 
-            const studentRefs = refs || [];
-            const sTotalRefs = studentRefs.length;
-            const sPending = studentRefs.filter(r => r.status === 'Pending').length;
-            const sGraded = studentRefs.filter(r => r.status === 'Graded');
-            const sAvg = sGraded.length > 0
-                ? (sGraded.reduce((a, b) => a + (b.total_score || 0), 0) / sGraded.length).toFixed(1)
-                : 0;
+            const mappingRows = mappings || [];
+            let totalRefs = 0;
+            let pending = 0;
+            let totalScoreSum = 0;
+            let gradedCount = 0;
 
-            totalRefs += sTotalRefs;
-            pending += sPending;
-            sGraded.forEach(r => { totalScoreSum += (r.total_score || 0); gradedCount++; });
+            const enhanced = await Promise.all(mappingRows.map(async (m) => {
+                const student = m.student;
+                const { data: refs, error: refsError } = await supabase.from('reflections').select('status, total_score').eq('student_id', student.id);
+                if (refsError) throw refsError;
+                const { count: famCount, error: famError } = await supabase.from('families').select('*', { count: 'exact', head: true }).eq('student_id', student.id);
+                if (famError) throw famError;
 
-            return {
-                ...student,
-                reflectionCount: sTotalRefs,
-                pendingCount: sPending,
-                familyCount: famCount || 0,
-                avgGrade: sAvg,
-                gradedCount: sGraded.length, // Added for report
-                avgScore: sAvg, // Added for report consistency
-                progress: Math.min(100, Math.round((sTotalRefs / TARGET_REFLECTIONS) * 100))
+                const studentRefs = refs || [];
+                const sTotalRefs = studentRefs.length;
+                const sPending = studentRefs.filter(r => r.status === 'Pending').length;
+                const sGraded = studentRefs.filter(r => r.status === 'Graded');
+                const sAvg = sGraded.length > 0
+                    ? (sGraded.reduce((a, b) => a + (b.total_score || 0), 0) / sGraded.length).toFixed(1)
+                    : 0;
+
+                totalRefs += sTotalRefs;
+                pending += sPending;
+                sGraded.forEach(r => { totalScoreSum += (r.total_score || 0); gradedCount++; });
+
+                return {
+                    ...student,
+                    reflectionCount: sTotalRefs,
+                    pendingCount: sPending,
+                    familyCount: famCount || 0,
+                    avgGrade: sAvg,
+                    gradedCount: sGraded.length,
+                    avgScore: sAvg,
+                    progress: Math.min(100, Math.round((sTotalRefs / TARGET_REFLECTIONS) * 100))
+                };
+            }));
+
+            const nextStats = {
+                totalStudents: enhanced.length,
+                totalReflections: totalRefs,
+                pendingReviews: pending,
+                classAverage: gradedCount > 0 ? (totalScoreSum / gradedCount).toFixed(1) : 0
             };
-        }));
 
-        setStudents(enhanced);
-        setStats({
-            totalStudents: enhanced.length,
-            totalReflections: totalRefs,
-            pendingReviews: pending,
-            classAverage: gradedCount > 0 ? (totalScoreSum / gradedCount).toFixed(1) : 0
-        });
-        setLoading(false);
+            setStudents(enhanced);
+            setStats(nextStats);
+            setLoadError('');
+
+            const payload = { students: enhanced, stats: nextStats, timestamp: Date.now() };
+            sessionStorage.setItem(sessionKey, JSON.stringify(payload));
+            await set(persistentKey, payload);
+        } catch (error) {
+            console.error('Error loading mentor classroom data:', error);
+            if (!hasAppliedCache) {
+                setStudents([]);
+                setStats({
+                    totalStudents: 0,
+                    totalReflections: 0,
+                    pendingReviews: 0,
+                    classAverage: 0
+                });
+            }
+            setLoadError(
+                hasAppliedCache
+                    ? 'Could not refresh latest data. Showing last saved classroom snapshot.'
+                    : 'Could not load classroom data. Check connection and retry.'
+            );
+        } finally {
+            setLoading(false);
+        }
     };
 
     const openStudent = async (student) => {
         setActiveStudent(student);
         setDrawerTab('reflections');
+        setDrawerLoading(true);
+        setDrawerError('');
 
-        const refsPromise = supabase.from('reflections').select('*').eq('student_id', student.id).order('created_at', { ascending: false });
-        const famsPromise = supabase.from('families').select('*').eq('student_id', student.id);
-        const notesPromise = supabase.from('teacher_student_mappings').select('notes').eq('teacher_id', profile.id).eq('student_id', student.id).single();
+        const sessionKey = `teacher_student_drawer_session_${profile.id}_${student.id}`;
+        const persistentKey = `teacher_student_drawer_${profile.id}_${student.id}`;
+        let hasAppliedCache = false;
 
-        const [refs, fams, notesRes] = await Promise.all([refsPromise, famsPromise, notesPromise]);
+        const applyDrawerPayload = (payload) => {
+            if (!payload) return false;
+            setStudentReflections(Array.isArray(payload.reflections) ? payload.reflections : []);
+            setStudentFamilies(Array.isArray(payload.families) ? payload.families : []);
+            setStudentNotes(payload.notes || '');
+            return true;
+        };
 
-        setStudentReflections(refs.data || []);
-        setStudentFamilies(fams.data || []);
-        setStudentNotes(notesRes.data?.notes || '');
+        try {
+            const cachedSession = sessionStorage.getItem(sessionKey);
+            if (cachedSession) {
+                const parsed = JSON.parse(cachedSession);
+                hasAppliedCache = applyDrawerPayload(parsed);
+                if (hasAppliedCache) setDrawerLoading(false);
+            }
+        } catch (cacheError) {
+            console.warn('Drawer session cache invalid, clearing.', cacheError);
+            sessionStorage.removeItem(sessionKey);
+        }
+
+        if (!hasAppliedCache) {
+            try {
+                const persistent = await get(persistentKey);
+                hasAppliedCache = applyDrawerPayload(persistent);
+                if (hasAppliedCache) setDrawerLoading(false);
+            } catch (cacheError) {
+                console.warn('Drawer persistent cache unavailable.', cacheError);
+            }
+        }
+
+        if (!navigator.onLine && hasAppliedCache) {
+            setDrawerError('Offline mode: showing last synced student details.');
+            setDrawerLoading(false);
+            return;
+        }
+
+        try {
+            const refsPromise = supabase.from('reflections').select('*').eq('student_id', student.id).order('created_at', { ascending: false });
+            const famsPromise = supabase.from('families').select('*').eq('student_id', student.id);
+            const notesPromise = supabase.from('teacher_student_mappings').select('notes').eq('teacher_id', profile.id).eq('student_id', student.id).single();
+
+            const [refs, fams, notesRes] = await Promise.all([refsPromise, famsPromise, notesPromise]);
+            if (refs.error) throw refs.error;
+            if (fams.error) throw fams.error;
+            if (notesRes.error && notesRes.error.code !== 'PGRST116') throw notesRes.error;
+
+            const payload = {
+                reflections: refs.data || [],
+                families: fams.data || [],
+                notes: notesRes.data?.notes || '',
+                timestamp: Date.now()
+            };
+
+            applyDrawerPayload(payload);
+            setDrawerError('');
+            sessionStorage.setItem(sessionKey, JSON.stringify(payload));
+            await set(persistentKey, payload);
+        } catch (error) {
+            console.error('Error loading student drawer data:', error);
+            if (!hasAppliedCache) {
+                setStudentReflections([]);
+                setStudentFamilies([]);
+                setStudentNotes('');
+            }
+            setDrawerError(
+                hasAppliedCache
+                    ? 'Could not refresh this student now. Showing last saved details.'
+                    : 'Could not load student details. Check connection and retry.'
+            );
+        } finally {
+            setDrawerLoading(false);
+        }
     };
 
     const saveNotes = async () => {
+        if (!navigator.onLine) {
+            alert('You are offline. Please reconnect to save mentor notes.');
+            return;
+        }
         setNotesSaving(true);
         try {
             const { error } = await supabase.from('teacher_student_mappings')
@@ -187,6 +349,10 @@ const TeacherDashboard = () => {
     };
 
     const saveGrade = async () => {
+        if (!navigator.onLine) {
+            alert('You are offline. Please reconnect to save grades.');
+            return;
+        }
         const total = Object.values(scores).reduce((a, b) => a + b, 0);
         let grade = 'D';
         if (total >= 90) grade = 'A+';
@@ -362,6 +528,19 @@ const TeacherDashboard = () => {
             </div>
 
             <main className="dashboard-main">
+                {isOffline && (
+                    <div style={{ marginBottom: '1rem', background: '#FFF7ED', border: '1px solid #FED7AA', color: '#9A3412', borderRadius: '10px', padding: '0.75rem 1rem', fontSize: '0.9rem', fontWeight: 600 }}>
+                        You are offline. Mentor dashboard is using cached data where available.
+                    </div>
+                )}
+                {loadError && (
+                    <div style={{ marginBottom: '1rem', background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B', borderRadius: '10px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{loadError}</span>
+                        <button onClick={fetchClassroomData} style={{ border: '1px solid #FCA5A5', background: '#fff', color: '#991B1B', borderRadius: '8px', padding: '0.4rem 0.8rem', fontWeight: 700, cursor: 'pointer' }}>
+                            Retry
+                        </button>
+                    </div>
+                )}
                 {loading ? <div style={{ textAlign: 'center', padding: '4rem', color: '#94A3B8' }}>Loading classroom...</div> : (
                     <div className="student-grid">
                         {students.filter(s => s.full_name.toLowerCase().includes(searchTerm.toLowerCase())).map(student => (
@@ -418,6 +597,11 @@ const TeacherDashboard = () => {
                         ))}
                     </div>
                 )}
+                {!loading && students.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: '#64748B' }}>
+                        No assigned students found yet.
+                    </div>
+                )}
             </main>
 
             {/* Student Drawer */}
@@ -460,6 +644,19 @@ const TeacherDashboard = () => {
                             </div>
 
                             <div className="drawer-content">
+                                {drawerLoading && (
+                                    <div style={{ textAlign: 'center', padding: '1rem', color: '#64748B', fontWeight: 600 }}>
+                                        Loading student details...
+                                    </div>
+                                )}
+                                {drawerError && (
+                                    <div style={{ marginBottom: '1rem', background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B', borderRadius: '10px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{drawerError}</span>
+                                        <button onClick={() => openStudent(activeStudent)} style={{ border: '1px solid #FCA5A5', background: '#fff', color: '#991B1B', borderRadius: '8px', padding: '0.3rem 0.7rem', fontWeight: 700, cursor: 'pointer' }}>
+                                            Retry
+                                        </button>
+                                    </div>
+                                )}
                                 {drawerTab === 'reflections' ? (
                                     <>
                                         {studentReflections.length === 0 ? (
