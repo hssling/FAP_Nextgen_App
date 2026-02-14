@@ -147,6 +147,36 @@ const Reflections = () => {
         );
     }, []);
 
+    const mapGibbsExtractionError = useCallback((err) => {
+        const msg = String(err?.message || '').toLowerCase();
+        if (msg.includes('no_provider_keys') || msg.includes('api_key_required')) {
+            return 'No AI key available. Open Settings > AI Integrations and save at least one provider key.';
+        }
+        if (msg.includes('timed out') || msg.includes('timeout')) {
+            return 'AI extraction timed out. Retry now or switch to a faster model/provider.';
+        }
+        if (msg.includes('rate limit') || msg.includes('429')) {
+            return 'Provider rate limit reached. Wait and retry, or switch provider.';
+        }
+        if (msg.includes('service unavailable') || msg.includes('temporarily unavailable') || msg.includes('bad gateway')) {
+            return 'AI provider is temporarily unavailable. Retry or switch provider.';
+        }
+        if (msg.includes('failed to fetch') || msg.includes('network')) {
+            return 'Network issue while contacting AI provider. Check connection and retry.';
+        }
+        return err?.message || 'AI extraction failed. Please retry.';
+    }, []);
+
+    const mapSubmissionError = useCallback((err) => {
+        const msg = String(err?.message || '').toLowerCase();
+        if (msg.includes('upload timed out')) return 'Upload timed out. Use a smaller file or stronger connection, then retry.';
+        if (msg.includes('session expired')) return 'Session expired during upload. Please log in again.';
+        if (msg.includes('upload denied')) return 'Upload denied by storage policy. Check file type/size and try again.';
+        if (msg.includes('database connection timed out')) return 'Save timed out. Retry now; file upload metadata was preserved where possible.';
+        if (msg.includes('requires an active internet connection')) return err?.message;
+        return err?.message || 'Unexpected error while saving reflection.';
+    }, []);
+
     const logAiAudit = useCallback(async ({ action, targetId, metadata }) => {
         if (!profile?.id) return;
         try {
@@ -446,17 +476,14 @@ const Reflections = () => {
             setCurrentStage(0);
         } catch (err) {
             console.error('Gibbs extraction failed:', err);
-            if (err.message === 'API_KEY_REQUIRED' || err.message === 'NO_PROVIDER_KEYS') {
-                alert('No usable AI provider key found. Open Settings -> AI Integrations and save at least one provider key.');
-            } else {
-                alert(`Gibbs extraction failed: ${err.message || 'Unknown error'}`);
-            }
+            const friendlyError = mapGibbsExtractionError(err);
+            alert(`Gibbs extraction failed: ${friendlyError}`);
             setAiExtractionMeta((prev) => ({
                 ...(prev || {}),
                 extracted_text: text,
                 status: 'failed',
                 telemetry: err?.telemetry || null,
-                error: err?.message || 'Gibbs extraction failed.',
+                error: friendlyError,
                 extracted_at: new Date().toISOString()
             }));
             await logAiAudit({
@@ -763,7 +790,7 @@ const Reflections = () => {
 
         } catch (e) {
             console.error("Full Submission Error:", e);
-            setUploadError(e.message || "An unexpected error occurred. Please check your connection.");
+            setUploadError(mapSubmissionError(e));
             setSubmissionStatus('error');
         } finally {
             console.log("📱 [FINALLY] Submitting = false");
@@ -1246,6 +1273,20 @@ const Reflections = () => {
                                                             {aiExtractionMeta.status === 'processing' && 'AI segmentation in progress...'}
                                                             {aiExtractionMeta.status === 'completed' && `AI extraction complete: ${aiExtractionMeta.provider} • ${aiExtractionMeta.model}`}
                                                             {aiExtractionMeta.status === 'failed' && `AI extraction failed: ${aiExtractionMeta.error || 'Unknown error'}`}
+                                                            <div style={{ marginTop: '0.5rem', width: '100%', height: '6px', background: '#E2E8F0', borderRadius: '999px', overflow: 'hidden' }}>
+                                                                <div style={{
+                                                                    width:
+                                                                        aiExtractionMeta.status === 'queued' ? '20%' :
+                                                                        aiExtractionMeta.status === 'processing' ? '65%' :
+                                                                        aiExtractionMeta.status === 'completed' ? '100%' :
+                                                                        aiExtractionMeta.status === 'failed' ? '100%' : '0%',
+                                                                    height: '100%',
+                                                                    transition: 'width 300ms ease',
+                                                                    background:
+                                                                        aiExtractionMeta.status === 'failed' ? '#DC2626' :
+                                                                        aiExtractionMeta.status === 'completed' ? '#059669' : '#0F766E'
+                                                                }} />
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>
@@ -1408,5 +1449,6 @@ const Reflections = () => {
 };
 
 export default Reflections;
+
 
 
