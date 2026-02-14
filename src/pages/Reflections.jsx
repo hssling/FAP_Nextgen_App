@@ -147,6 +147,22 @@ const Reflections = () => {
         );
     }, []);
 
+    const logAiAudit = useCallback(async ({ action, targetId, metadata }) => {
+        if (!profile?.id) return;
+        try {
+            await supabase.from('ai_audit_logs').insert([{
+                actor_id: profile.id,
+                action,
+                target_type: 'reflection_ai_extraction',
+                target_id: targetId || crypto.randomUUID(),
+                metadata: metadata || {}
+            }]);
+        } catch (err) {
+            // Non-blocking: students may not have insert rights on audit table.
+            console.debug('AI audit log insert skipped:', err?.message || err);
+        }
+    }, [profile?.id]);
+
     // Cache Helper
     const getCachedData = (id) => {
         try {
@@ -338,40 +354,49 @@ const Reflections = () => {
             setIsExtractingGibbs(true);
             const preferredProvider = (await get('fap_ai_provider')) || DEFAULT_AI_PROVIDER;
             const preferredModel = (await get('fap_ai_model')) ?? 0;
-            const maxAttempts = 2;
-            let extracted = null;
-            let lastError = null;
+            const extractionRunId = crypto.randomUUID();
+            const extractionStartedAt = Date.now();
 
             setAiExtractionMeta((prev) => ({
                 ...(prev || {}),
                 extracted_text: text,
-                status: 'processing',
+                run_id: extractionRunId,
+                status: 'queued',
                 provider: null,
                 model: null,
                 confidence: null,
                 missing_sections: [],
                 flags: [],
+                telemetry: null,
                 error: null,
                 extracted_at: null
             }));
 
-            for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-                try {
-                    extracted = await extractGibbsFromText({
-                        text,
-                        providerKey: preferredProvider,
-                        selectedModelIndex: preferredModel
-                    });
-                    lastError = null;
-                    break;
-                } catch (err) {
-                    lastError = err;
-                    if (attempt >= maxAttempts || !isRecoverableGibbsError(err)) break;
-                    await new Promise((resolve) => setTimeout(resolve, 1200 * attempt));
+            await logAiAudit({
+                action: 'gibbs_extraction_queued',
+                targetId: extractionRunId,
+                metadata: {
+                    status: 'queued',
+                    providerPreference: preferredProvider,
+                    modelPreference: preferredModel
                 }
-            }
+            });
 
-            if (!extracted) throw lastError || new Error('Gibbs extraction failed');
+            setAiExtractionMeta((prev) => ({
+                ...(prev || {}),
+                status: 'processing'
+            }));
+
+            const extractionPromise = extractGibbsFromText({
+                text,
+                providerKey: preferredProvider,
+                selectedModelIndex: preferredModel
+            });
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Extraction timed out. Please retry.')), 90000)
+            );
+            const extracted = await Promise.race([extractionPromise, timeoutPromise]);
+            const totalDurationMs = Date.now() - extractionStartedAt;
 
             setFormData((prev) => ({
                 ...prev,
@@ -395,9 +420,26 @@ const Reflections = () => {
                 quality_checks: extracted.quality_checks || null,
                 disclaimer: extracted.disclaimer || null,
                 gibbs: extracted.gibbs || null,
+                telemetry: {
+                    ...(extracted.telemetry || {}),
+                    totalDurationMs
+                },
                 error: null,
                 status: 'completed',
                 extracted_at: new Date().toISOString()
+            });
+
+            await logAiAudit({
+                action: 'gibbs_extraction_completed',
+                targetId: extractionRunId,
+                metadata: {
+                    status: 'completed',
+                    provider: extracted.provider,
+                    model: extracted.model,
+                    missingSections: extracted.quality_checks?.missing_sections || extracted.missingSections || [],
+                    telemetry: extracted.telemetry || {},
+                    totalDurationMs
+                }
             });
 
             setActiveTab('write');
@@ -413,9 +455,20 @@ const Reflections = () => {
                 ...(prev || {}),
                 extracted_text: text,
                 status: 'failed',
+                telemetry: err?.telemetry || null,
                 error: err?.message || 'Gibbs extraction failed.',
                 extracted_at: new Date().toISOString()
             }));
+            await logAiAudit({
+                action: 'gibbs_extraction_failed',
+                targetId: aiExtractionMeta?.run_id || crypto.randomUUID(),
+                metadata: {
+                    status: 'failed',
+                    recoverable: isRecoverableGibbsError(err),
+                    error: err?.message || 'Unknown error',
+                    telemetry: err?.telemetry || null
+                }
+            });
         } finally {
             setIsExtractingGibbs(false);
         }
@@ -452,6 +505,12 @@ const Reflections = () => {
     const handleSubmit = async () => {
         setUploadError(null);
         setSubmissionStatus('processing');
+
+        if (activeTab === 'upload' && (isExtractingGibbs || aiExtractionMeta?.status === 'queued' || aiExtractionMeta?.status === 'processing')) {
+            alert('AI segmentation is still running. Please wait for completion before submitting.');
+            setSubmissionStatus(null);
+            return;
+        }
 
         if (!profile) {
             alert("Session expired. Please log in again.");
@@ -1183,6 +1242,7 @@ const Reflections = () => {
                                                             color: aiExtractionMeta.status === 'failed' ? '#B91C1C' : '#0F766E',
                                                             fontWeight: 600
                                                         }}>
+                                                            {aiExtractionMeta.status === 'queued' && 'AI segmentation queued...'}
                                                             {aiExtractionMeta.status === 'processing' && 'AI segmentation in progress...'}
                                                             {aiExtractionMeta.status === 'completed' && `AI extraction complete: ${aiExtractionMeta.provider} • ${aiExtractionMeta.model}`}
                                                             {aiExtractionMeta.status === 'failed' && `AI extraction failed: ${aiExtractionMeta.error || 'Unknown error'}`}
@@ -1348,3 +1408,5 @@ const Reflections = () => {
 };
 
 export default Reflections;
+
+

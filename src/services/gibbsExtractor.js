@@ -216,6 +216,8 @@ export const extractGibbsFromText = async ({
     }
 
     let lastError = null;
+    const startedAt = Date.now();
+    const attemptTrace = [];
 
     for (let providerIndex = 0; providerIndex < providerOrder.length; providerIndex += 1) {
         const providerToUse = providerOrder[providerIndex];
@@ -223,6 +225,7 @@ export const extractGibbsFromText = async ({
 
         for (let attempt = 1; attempt <= MAX_EXTRACTION_ATTEMPTS; attempt += 1) {
             try {
+                const attemptStartedAt = Date.now();
                 const rawResponse = await callProviderChat({
                     providerKey: providerToUse,
                     selectedModelIndex: modelIndexToUse,
@@ -253,6 +256,14 @@ export const extractGibbsFromText = async ({
                 if (hasUnsafeDiagnosisClaim(sections)) {
                     throw new Error('Blocked unsafe output: diagnosis-style claim detected.');
                 }
+
+                attemptTrace.push({
+                    providerKey: providerToUse,
+                    model: model?.id || 'unknown',
+                    attempt,
+                    status: 'success',
+                    durationMs: Date.now() - attemptStartedAt
+                });
 
                 const gibbs = {
                     description: {
@@ -299,7 +310,14 @@ export const extractGibbsFromText = async ({
                     provider: provider?.name || providerToUse,
                     providerKey: providerToUse,
                     model: model?.id || 'unknown',
-                    rawResponse
+                    rawResponse,
+                    telemetry: {
+                        elapsedMs: Date.now() - startedAt,
+                        fallbackUsed: providerToUse !== providerKey,
+                        providersTried: [...new Set(attemptTrace.map((t) => t.providerKey)), providerToUse],
+                        attempts: attemptTrace,
+                        attemptCount: attemptTrace.length
+                    }
                 };
             } catch (err) {
                 lastError = err;
@@ -307,6 +325,14 @@ export const extractGibbsFromText = async ({
                 const isKeyError = msg === 'API_KEY_REQUIRED' || msg === 'API_KEY_INVALID';
                 const canRetrySameProvider = attempt < MAX_EXTRACTION_ATTEMPTS && isRecoverableProviderError(err);
                 const hasNextProvider = providerIndex < providerOrder.length - 1;
+
+                attemptTrace.push({
+                    providerKey: providerToUse,
+                    model: AI_PROVIDERS[providerToUse]?.models?.[modelIndexToUse]?.id || 'unknown',
+                    attempt,
+                    status: 'failed',
+                    error: msg || 'unknown_error'
+                });
 
                 if (isKeyError && hasNextProvider) break;
                 if (canRetrySameProvider) continue;
@@ -316,5 +342,14 @@ export const extractGibbsFromText = async ({
         }
     }
 
+    if (lastError) {
+        lastError.telemetry = {
+            elapsedMs: Date.now() - startedAt,
+            fallbackUsed: attemptTrace.some((t) => t.providerKey !== providerKey && t.status === 'success'),
+            providersTried: [...new Set(attemptTrace.map((t) => t.providerKey))],
+            attempts: attemptTrace,
+            attemptCount: attemptTrace.length
+        };
+    }
     throw lastError || new Error('Gibbs extraction failed');
 };
