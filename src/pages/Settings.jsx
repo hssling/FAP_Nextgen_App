@@ -197,7 +197,7 @@ const Settings = () => {
                                     </div>
                                     <div className="ai-key-button-row">
                                         <button
-                                            className="btn btn-primary"
+                                            className="btn btn-primary ai-key-save-btn"
                                             disabled={saving[providerKey]}
                                             onClick={() => handleSaveAiKey(providerKey)}
                                             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
@@ -205,7 +205,7 @@ const Settings = () => {
                                             <Save size={14} /> {saving[providerKey] ? 'Saving...' : 'Save'}
                                         </button>
                                         <button
-                                            className="btn btn-outline"
+                                            className="btn btn-outline ai-key-clear-btn"
                                             disabled={saving[providerKey] || (!hasSaved && !value)}
                                             onClick={() => handleClearAiKey(providerKey)}
                                             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#B91C1C', borderColor: '#FECACA' }}
@@ -238,18 +238,17 @@ const Settings = () => {
                     min-width: 0;
                 }
                 .ai-key-button-row {
-                    display: flex;
+                    display: grid;
+                    grid-template-columns: repeat(2, minmax(120px, 1fr));
                     gap: 0.5rem;
-                    justify-content: flex-end;
-                    flex-wrap: wrap;
+                    width: 100%;
+                }
+                .ai-key-button-row .btn {
+                    width: 100%;
+                    justify-content: center;
                 }
                 @media (max-width: 640px) {
-                    .ai-key-button-row {
-                        justify-content: stretch;
-                    }
-                    .ai-key-button-row button {
-                        width: 100%;
-                    }
+                    .ai-key-button-row { grid-template-columns: 1fr; }
                 }
             `}</style>
 
