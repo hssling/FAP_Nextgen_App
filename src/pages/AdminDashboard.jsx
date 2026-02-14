@@ -8,11 +8,14 @@ import {
 } from 'lucide-react';
 import { calculateBadges } from '../utils/gamification';
 import BadgeDisplay from '../components/shared/BadgeDisplay';
+import { get, set } from 'idb-keyval';
 
 const AdminDashboard = () => {
     const { profile } = useAuth();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false);
+    const [lastSyncedAt, setLastSyncedAt] = useState(null);
     const [activeTab, setActiveTab] = useState('overview');
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -29,6 +32,17 @@ const AdminDashboard = () => {
     // Oversight Data
     const [allReflections, setAllReflections] = useState([]);
     const [allStudents, setAllStudents] = useState([]);
+
+    useEffect(() => {
+        const handleOnline = () => setIsOffline(false);
+        const handleOffline = () => setIsOffline(true);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
 
     useEffect(() => {
         if (profile?.id) {
@@ -67,6 +81,54 @@ const AdminDashboard = () => {
     const fetchDashboardData = async () => {
         setLoading(true);
         setError(null);
+
+        const sessionKey = `admin_dashboard_session_${profile.id}`;
+        const persistentKey = `admin_dashboard_${profile.id}`;
+        let hasAppliedCache = false;
+
+        const applyDashboardPayload = (payload) => {
+            if (!payload) return false;
+            setStats(payload.stats || {
+                totalStudents: 0,
+                totalTeachers: 0,
+                totalFamilies: 0,
+                totalReflections: 0,
+                pendingReflections: 0,
+                gradedReflections: 0
+            });
+            setAllReflections(Array.isArray(payload.allReflections) ? payload.allReflections : []);
+            setAllStudents(Array.isArray(payload.allStudents) ? payload.allStudents : []);
+            setLastSyncedAt(payload.timestamp || null);
+            return true;
+        };
+
+        try {
+            const cachedSession = sessionStorage.getItem(sessionKey);
+            if (cachedSession) {
+                const parsed = JSON.parse(cachedSession);
+                hasAppliedCache = applyDashboardPayload(parsed);
+                if (hasAppliedCache) setLoading(false);
+            }
+        } catch (cacheErr) {
+            console.warn('[Admin] Session cache invalid, clearing.', cacheErr);
+            sessionStorage.removeItem(sessionKey);
+        }
+
+        if (!hasAppliedCache) {
+            try {
+                const persistent = await get(persistentKey);
+                hasAppliedCache = applyDashboardPayload(persistent);
+                if (hasAppliedCache) setLoading(false);
+            } catch (cacheErr) {
+                console.warn('[Admin] Persistent cache unavailable.', cacheErr);
+            }
+        }
+
+        if (!navigator.onLine && hasAppliedCache) {
+            setError('Offline mode: showing last synced admin dashboard snapshot.');
+            setLoading(false);
+            return;
+        }
 
         try {
             console.log('[Admin] Starting data fetch...');
@@ -122,23 +184,22 @@ const AdminDashboard = () => {
                 gradedReflections: graded
             });
 
+            let enrichedReflections = [];
             if (reflections && reflections.length > 0) {
                 const studentMap = {};
                 (students || []).forEach(s => { studentMap[s.id] = s; });
 
-                const enrichedReflections = reflections.map(r => ({
+                enrichedReflections = reflections.map(r => ({
                     ...r,
                     student: studentMap[r.student_id] || { full_name: 'Unknown', registration_number: '' }
                 }));
-
-                setAllReflections(enrichedReflections);
-            } else {
-                setAllReflections([]);
             }
+            setAllReflections(enrichedReflections);
 
             console.log('[Admin] Reflections fetched:', reflections?.length || 0);
             console.log('[Admin] Students fetched:', students?.length || 0);
 
+            let enrichedStudents = [];
             if (students && students.length > 0) {
                 const studentIds = students.map(s => s.id);
 
@@ -169,7 +230,7 @@ const AdminDashboard = () => {
                     return acc;
                 }, {});
 
-                const enrichedStudents = students.map(s => {
+                enrichedStudents = students.map(s => {
                     const bucket = reflectionBuckets[s.id] || { total: 0, graded: [], gradedCount: 0 };
                     const avgScore = bucket.graded.length > 0
                         ? (bucket.graded.reduce((a, b) => a + (b.total_score || 0), 0) / bucket.graded.length).toFixed(1)
@@ -184,16 +245,35 @@ const AdminDashboard = () => {
                     };
                 });
 
-                setAllStudents(enrichedStudents);
-            } else {
-                setAllStudents([]);
             }
+            setAllStudents(enrichedStudents);
 
             console.log('[Admin] Data fetch complete');
+            const payload = {
+                stats: {
+                    totalStudents: studentCount || 0,
+                    totalTeachers: teacherCount || 0,
+                    totalFamilies: familyCount || 0,
+                    totalReflections: reflections?.length || 0,
+                    pendingReflections: pending,
+                    gradedReflections: graded
+                },
+                allReflections: enrichedReflections,
+                allStudents: enrichedStudents,
+                timestamp: Date.now()
+            };
+            sessionStorage.setItem(sessionKey, JSON.stringify(payload));
+            await set(persistentKey, payload);
+            setLastSyncedAt(payload.timestamp);
+            setError(null);
 
         } catch (err) {
             console.error('[Admin] Critical error:', err);
-            setError(err.message);
+            setError(
+                hasAppliedCache
+                    ? 'Could not refresh latest data. Showing last saved dashboard snapshot.'
+                    : (err.message || 'Could not load admin dashboard data.')
+            );
         } finally {
             setLoading(false);
         }
@@ -435,16 +515,33 @@ const AdminDashboard = () => {
             {error && (
                 <div style={{
                     padding: '1rem',
-                    backgroundColor: '#FEE2E2',
-                    border: '1px solid #FECACA',
+                    backgroundColor: error.toLowerCase().includes('offline') ? '#FFF7ED' : '#FEE2E2',
+                    border: error.toLowerCase().includes('offline') ? '1px solid #FED7AA' : '1px solid #FECACA',
                     borderRadius: '8px',
                     marginBottom: '1rem',
                     display: 'flex',
                     alignItems: 'center',
+                    justifyContent: 'space-between',
                     gap: '0.75rem'
                 }}>
-                    <AlertTriangle size={20} color="#DC2626" />
-                    <span style={{ color: '#991B1B', fontSize: '0.9rem' }}>Error: {error}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <AlertTriangle size={20} color={error.toLowerCase().includes('offline') ? '#C2410C' : '#DC2626'} />
+                        <span style={{ color: error.toLowerCase().includes('offline') ? '#9A3412' : '#991B1B', fontSize: '0.9rem' }}>{error}</span>
+                    </div>
+                    <button
+                        onClick={fetchDashboardData}
+                        style={{
+                            border: '1px solid #FCA5A5',
+                            background: 'white',
+                            color: '#991B1B',
+                            borderRadius: '8px',
+                            padding: '0.35rem 0.7rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Retry
+                    </button>
                 </div>
             )}
 
@@ -633,15 +730,17 @@ const AdminDashboard = () => {
                     <div className="card" style={{
                         padding: '1.5rem',
                         textAlign: 'center',
-                        background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)',
-                        border: '2px solid #86EFAC'
+                        background: isOffline
+                            ? 'linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%)'
+                            : 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)',
+                        border: isOffline ? '2px solid #FDBA74' : '2px solid #86EFAC'
                     }}>
-                        <CheckCircle size={48} color="#16A34A" style={{ margin: '0 auto 0.75rem' }} />
+                        <CheckCircle size={48} color={isOffline ? '#C2410C' : '#16A34A'} style={{ margin: '0 auto 0.75rem' }} />
                         <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#166534', marginBottom: '0.5rem' }}>
-                            System Online
+                            {isOffline ? 'Offline Snapshot Mode' : 'System Online'}
                         </h2>
-                        <p style={{ color: '#15803D', fontSize: '0.85rem' }}>
-                            Last refreshed: {new Date().toLocaleTimeString()}
+                        <p style={{ color: isOffline ? '#9A3412' : '#15803D', fontSize: '0.85rem' }}>
+                            Last refreshed: {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : 'Not available'}
                         </p>
                     </div>
                 </>
