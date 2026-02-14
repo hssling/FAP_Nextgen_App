@@ -475,6 +475,19 @@ const TeacherDashboard = () => {
                                                         </button>
                                                     )}
 
+                                                    {ref.ai_extraction_status === 'completed' && (
+                                                        <div style={{ marginBottom: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                            <span style={{ fontSize: '0.72rem', background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0', padding: '0.2rem 0.5rem', borderRadius: '999px', fontWeight: 700 }}>
+                                                                AI Segmented
+                                                            </span>
+                                                            {(ref.ai_extraction_missing_sections || []).length > 0 && (
+                                                                <span style={{ fontSize: '0.72rem', background: '#FFF7ED', color: '#9A3412', border: '1px solid #FED7AA', padding: '0.2rem 0.5rem', borderRadius: '999px', fontWeight: 700 }}>
+                                                                    Missing: {(ref.ai_extraction_missing_sections || []).join(', ')}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
+
                                                     <button
                                                         onClick={() => startGrading(ref)}
                                                         className="assess-btn"
@@ -559,12 +572,25 @@ const TeacherDashboard = () => {
                                 }}>
 
                                     {gradingTarget.reflection_type === 'file' ? (
-                                        <div style={{ textAlign: 'center', padding: '1rem' }}>
-                                            <p style={{ marginBottom: '0.5rem', fontWeight: 600 }}>{gradingTarget.file_name}</p>
-                                            <a href={gradingTarget.file_url} target="_blank" rel="noopener noreferrer"
-                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'white', padding: '0.5rem 1rem', borderRadius: '99px', border: '1px solid #E2E8F0', color: '#0EA5E9', fontWeight: 600 }}>
-                                                <Download size={16} /> Download to Read
-                                            </a>
+                                        <div style={{ padding: '1rem' }}>
+                                            <div style={{ textAlign: 'center', marginBottom: '0.75rem' }}>
+                                                <p style={{ marginBottom: '0.5rem', fontWeight: 600 }}>{gradingTarget.file_name}</p>
+                                                <a href={gradingTarget.file_url} target="_blank" rel="noopener noreferrer"
+                                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'white', padding: '0.5rem 1rem', borderRadius: '99px', border: '1px solid #E2E8F0', color: '#0EA5E9', fontWeight: 600 }}>
+                                                    <Download size={16} /> Download to Read
+                                                </a>
+                                            </div>
+
+                                            {gradingTarget.ai_extracted_text && (
+                                                <div style={{ marginTop: '1rem' }}>
+                                                    <div style={{ marginBottom: '0.35rem', fontSize: '0.75rem', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' }}>
+                                                        Extracted Text
+                                                    </div>
+                                                    <p style={{ fontSize: '0.9rem', lineHeight: '1.45', color: '#334155', whiteSpace: 'pre-wrap' }}>
+                                                        {gradingTarget.ai_extracted_text}
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
                                         <>
@@ -586,6 +612,22 @@ const TeacherDashboard = () => {
                                         </>
                                     )}
                                 </div>
+
+                                {gradingTarget.ai_extraction_status === 'completed' && (
+                                    <div style={{ marginBottom: '1rem', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '8px', padding: '0.75rem' }}>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#065F46', marginBottom: '0.35rem' }}>
+                                            AI Segmentation Metadata
+                                        </div>
+                                        <div style={{ fontSize: '0.8rem', color: '#065F46' }}>
+                                            Provider: {gradingTarget.ai_extraction_provider || 'N/A'} | Model: {gradingTarget.ai_extraction_model || 'N/A'}
+                                        </div>
+                                        {(gradingTarget.ai_extraction_missing_sections || []).length > 0 && (
+                                            <div style={{ fontSize: '0.8rem', color: '#92400E', marginTop: '0.3rem' }}>
+                                                Missing stages: {(gradingTarget.ai_extraction_missing_sections || []).join(', ')}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     {REFLECT_CRITERIA.map(crit => (
