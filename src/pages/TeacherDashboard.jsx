@@ -539,6 +539,13 @@ const TeacherDashboard = () => {
                                                             )}
                                                         </div>
                                                     )}
+                                                    {ref.ai_extraction_status === 'failed' && (
+                                                        <div style={{ marginBottom: '0.75rem' }}>
+                                                            <span style={{ fontSize: '0.72rem', background: '#FEF2F2', color: '#991B1B', border: '1px solid #FECACA', padding: '0.2rem 0.5rem', borderRadius: '999px', fontWeight: 700 }}>
+                                                                AI Failed: {ref.ai_extraction_error || 'Retry recommended'}
+                                                            </span>
+                                                        </div>
+                                                    )}
 
                                                     <button
                                                         onClick={() => startGrading(ref)}
@@ -678,6 +685,16 @@ const TeacherDashboard = () => {
                                                 Missing stages: {(gradingTarget.ai_extraction_missing_sections || []).join(', ')}
                                             </div>
                                         )}
+                                    </div>
+                                )}
+                                {gradingTarget.ai_extraction_status === 'failed' && (
+                                    <div style={{ marginBottom: '1rem', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '0.75rem' }}>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#991B1B', marginBottom: '0.35rem' }}>
+                                            AI Segmentation Failed
+                                        </div>
+                                        <div style={{ fontSize: '0.8rem', color: '#991B1B' }}>
+                                            {gradingTarget.ai_extraction_error || 'Extraction failed. Ask student to retry segmentation before grading.'}
+                                        </div>
                                     </div>
                                 )}
 

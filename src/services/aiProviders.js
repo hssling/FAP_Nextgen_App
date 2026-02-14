@@ -152,3 +152,16 @@ export const getProviderApiKey = async (providerKey) => {
 
     return null;
 };
+
+export const getConfiguredProviderKeys = async () => {
+    const entries = Object.entries(AI_PROVIDERS);
+    const configured = [];
+
+    for (let i = 0; i < entries.length; i += 1) {
+        const [providerKey] = entries[i];
+        const key = await getProviderApiKey(providerKey);
+        if (key) configured.push(providerKey);
+    }
+
+    return configured;
+};
