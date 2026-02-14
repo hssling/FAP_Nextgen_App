@@ -177,18 +177,18 @@ const Settings = () => {
                                     </a>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <div className="ai-key-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                                     <input
                                         type={visible[providerKey] ? 'text' : 'password'}
                                         value={value}
                                         onChange={(e) => setDraftKeys((prev) => ({ ...prev, [providerKey]: e.target.value }))}
                                         placeholder={`Paste ${provider.name} API key`}
-                                        style={{ flex: 1, minWidth: '260px', padding: '0.6rem 0.75rem', border: '1px solid #D1D5DB', borderRadius: '8px' }}
+                                        style={{ flex: '1 1 260px', minWidth: 0, width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #D1D5DB', borderRadius: '8px' }}
                                     />
                                     <button
                                         className="btn btn-outline"
                                         onClick={() => setVisible((prev) => ({ ...prev, [providerKey]: !prev[providerKey] }))}
-                                        style={{ minWidth: '42px', padding: '0.6rem 0.75rem' }}
+                                        style={{ minWidth: '42px', padding: '0.6rem 0.75rem', flexShrink: 0 }}
                                         title={visible[providerKey] ? 'Hide key' : 'Show key'}
                                     >
                                         {visible[providerKey] ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -197,7 +197,7 @@ const Settings = () => {
                                         className="btn btn-primary"
                                         disabled={saving[providerKey]}
                                         onClick={() => handleSaveAiKey(providerKey)}
-                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}
                                     >
                                         <Save size={14} /> {saving[providerKey] ? 'Saving...' : 'Save'}
                                     </button>
@@ -205,7 +205,7 @@ const Settings = () => {
                                         className="btn btn-outline"
                                         disabled={saving[providerKey] || (!hasSaved && !value)}
                                         onClick={() => handleClearAiKey(providerKey)}
-                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#B91C1C', borderColor: '#FECACA' }}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#B91C1C', borderColor: '#FECACA', flexShrink: 0 }}
                                     >
                                         <Trash2 size={14} /> Clear
                                     </button>
@@ -219,6 +219,30 @@ const Settings = () => {
                     })}
                 </div>
             </div>
+
+            <style>{`
+                @media (max-width: 640px) {
+                    .ai-key-actions {
+                        display: grid !important;
+                        grid-template-columns: 1fr auto !important;
+                        gap: 0.5rem !important;
+                        align-items: center !important;
+                    }
+                    .ai-key-actions input {
+                        grid-column: 1 / 2;
+                    }
+                    .ai-key-actions button:nth-of-type(1) {
+                        grid-column: 2 / 3;
+                        justify-self: stretch;
+                    }
+                    .ai-key-actions button:nth-of-type(2),
+                    .ai-key-actions button:nth-of-type(3) {
+                        grid-column: 1 / -1;
+                        width: 100%;
+                        justify-content: center;
+                    }
+                }
+            `}</style>
 
             <div className="card" style={{ padding: '2rem', marginBottom: '2rem' }}>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -240,7 +264,7 @@ const Settings = () => {
             </div>
 
             <div style={{ textAlign: 'center', marginTop: '3rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                <p style={{ marginBottom: '0.5rem' }}>FAP NextGen v2.1 • NMC-CBME Aligned</p>
+                <p style={{ marginBottom: '0.5rem' }}>FAP NextGen v2.1 â€¢ NMC-CBME Aligned</p>
                 <p style={{ fontSize: '0.75rem', fontStyle: 'italic' }}>
                     Concept & Design: <strong>Dr. Siddalingaiah H.S.</strong><br />
                     Professor, Community Medicine, SIMS & RH, Tumkur
