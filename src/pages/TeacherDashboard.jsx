@@ -233,7 +233,7 @@ const TeacherDashboard = () => {
                         <div style={{ background: '#0F172A', color: 'white', padding: '0.4rem', borderRadius: '8px', display: 'flex' }}><GraduationCap size={20} /></div>
                         <span>Mentor Workspace</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div className="header-actions">
                         <div className="search-bar">
                             <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} size={16} />
                             <input
@@ -260,7 +260,7 @@ const TeacherDashboard = () => {
                             }}
                         >
                             <Download size={16} />
-                            <span>Export Data</span>
+                            <span className="export-btn-text">Export Data</span>
                         </button>
                         <button
                             onClick={() => handleLocalExport('kn')}
@@ -306,7 +306,7 @@ const TeacherDashboard = () => {
 
             {/* CLASSROOM ANALYTICS BAR */}
             <div style={{ background: 'white', borderBottom: '1px solid #E2E8F0', padding: '1rem 0' }}>
-                <div className="header-content" style={{ display: 'flex', gap: '2rem', height: 'auto' }}>
+                <div className="header-content stats-content" style={{ display: 'flex', gap: '2rem', height: 'auto' }}>
                     <div className="stat-pill">
                         <span className="stat-label">Total Students</span>
                         <span className="stat-value">{stats.totalStudents}</span>
@@ -325,7 +325,7 @@ const TeacherDashboard = () => {
                     </div>
 
                     {/* Class Health Overview (Safe CSS Charts) */}
-                    <div style={{ padding: '1rem', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+                    <div className="stats-health-panel" style={{ padding: '1rem', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
                         <div style={{ flex: 1, minWidth: '300px' }}>
                             <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748B', marginBottom: '0.75rem', textTransform: 'uppercase' }}>Socio-Economic Profile</h4>
                             <div style={{ display: 'flex', height: '12px', borderRadius: '6px', overflow: 'hidden' }}>

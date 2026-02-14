@@ -25,6 +25,10 @@
     justify-content: space-between;
 }
 
+.header-content > * {
+    min-width: 0;
+}
+
 .brand {
     display: flex;
     align-items: center;
@@ -35,7 +39,17 @@
 
 .search-bar {
     position: relative;
-    width: 300px;
+    width: min(100%, 300px);
+    min-width: 170px;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    min-width: 0;
 }
 
 .search-input {
@@ -81,6 +95,15 @@
     max-width: 1200px;
     margin: 0 auto;
     padding: 2rem 1.5rem;
+}
+
+.stats-content {
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.stats-health-panel {
+    flex: 1 1 100%;
 }
 
 .student-grid {
@@ -419,16 +442,38 @@
     }
 
     .header-content {
-        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: stretch;
         height: auto;
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-        gap: 1rem;
+        padding: 0.85rem 1rem;
+        gap: 0.75rem;
     }
 
-    .search-bar {
+    .brand {
         width: 100%;
-        order: 3;
+    }
+
+    .header-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+
+    .header-actions .search-bar {
+        width: 100%;
+        min-width: 0;
+        grid-column: 1 / -1;
+    }
+
+    .header-actions button {
+        width: 100%;
+        min-width: 0;
+        justify-content: center;
+    }
+
+    .export-btn-text {
+        font-size: 0.8rem;
     }
 
     .stat-pill {
@@ -439,6 +484,10 @@
 
     .student-grid {
         grid-template-columns: 1fr;
+    }
+
+    .dashboard-main {
+        padding: 1rem;
     }
 
     .grading-box {
