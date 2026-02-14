@@ -123,6 +123,30 @@ const Reflections = () => {
         setCurrentStage(0);
     }, []);
 
+    const mapDocumentParseError = useCallback((err) => {
+        const code = err?.code;
+        if (code === 'OCR_TIMEOUT') return 'OCR timed out. Use a clearer/smaller image or re-try parsing.';
+        if (code === 'PDF_TIMEOUT') return 'PDF parsing timed out. Try a smaller PDF or split pages.';
+        if (code === 'DOCX_TIMEOUT') return 'DOCX parsing timed out. Try a smaller file or convert to PDF.';
+        if (code === 'UNSUPPORTED_DOC') return err.message;
+        if (code === 'PARSE_FAILED') return `Document parse failed: ${err.message}`;
+        return err?.message || 'Failed to parse attached document.';
+    }, []);
+
+    const isRecoverableGibbsError = useCallback((err) => {
+        const msg = String(err?.message || '').toLowerCase();
+        return (
+            msg.includes('timeout') ||
+            msg.includes('429') ||
+            msg.includes('rate limit') ||
+            msg.includes('temporarily unavailable') ||
+            msg.includes('service unavailable') ||
+            msg.includes('provider returned error') ||
+            msg.includes('network') ||
+            msg.includes('failed to fetch')
+        );
+    }, []);
+
     // Cache Helper
     const getCachedData = (id) => {
         try {
@@ -208,11 +232,11 @@ const Reflections = () => {
             setUploadText(extracted);
         } catch (err) {
             if (!preserveExistingText) setUploadText('');
-            setDocumentParseError(err.message || 'Failed to parse attached document.');
+            setDocumentParseError(mapDocumentParseError(err));
         } finally {
             setIsParsingDocumentText(false);
         }
-    }, []);
+    }, [mapDocumentParseError]);
 
     useEffect(() => {
         if (!selectedFile) return;
@@ -314,12 +338,40 @@ const Reflections = () => {
             setIsExtractingGibbs(true);
             const preferredProvider = (await get('fap_ai_provider')) || DEFAULT_AI_PROVIDER;
             const preferredModel = (await get('fap_ai_model')) ?? 0;
+            const maxAttempts = 2;
+            let extracted = null;
+            let lastError = null;
 
-            const extracted = await extractGibbsFromText({
-                text,
-                providerKey: preferredProvider,
-                selectedModelIndex: preferredModel
-            });
+            setAiExtractionMeta((prev) => ({
+                ...(prev || {}),
+                extracted_text: text,
+                status: 'processing',
+                provider: null,
+                model: null,
+                confidence: null,
+                missing_sections: [],
+                flags: [],
+                error: null,
+                extracted_at: null
+            }));
+
+            for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+                try {
+                    extracted = await extractGibbsFromText({
+                        text,
+                        providerKey: preferredProvider,
+                        selectedModelIndex: preferredModel
+                    });
+                    lastError = null;
+                    break;
+                } catch (err) {
+                    lastError = err;
+                    if (attempt >= maxAttempts || !isRecoverableGibbsError(err)) break;
+                    await new Promise((resolve) => setTimeout(resolve, 1200 * attempt));
+                }
+            }
+
+            if (!extracted) throw lastError || new Error('Gibbs extraction failed');
 
             setFormData((prev) => ({
                 ...prev,
@@ -340,6 +392,7 @@ const Reflections = () => {
                 confidence: extracted.confidence,
                 missing_sections: extracted.missingSections,
                 flags: extracted.flags,
+                error: null,
                 status: 'completed',
                 extracted_at: new Date().toISOString()
             });
@@ -348,12 +401,18 @@ const Reflections = () => {
             setCurrentStage(0);
         } catch (err) {
             console.error('Gibbs extraction failed:', err);
-            if (err.message === 'API_KEY_REQUIRED') {
-                const provider = AI_PROVIDERS[(await get('fap_ai_provider')) || DEFAULT_AI_PROVIDER];
-                alert(`API key required for ${provider.name}. Open Settings -> AI Integrations and save your key.`);
+            if (err.message === 'API_KEY_REQUIRED' || err.message === 'NO_PROVIDER_KEYS') {
+                alert('No usable AI provider key found. Open Settings -> AI Integrations and save at least one provider key.');
             } else {
-                alert(`Gibbs extraction failed: ${err.message}`);
+                alert(`Gibbs extraction failed: ${err.message || 'Unknown error'}`);
             }
+            setAiExtractionMeta((prev) => ({
+                ...(prev || {}),
+                extracted_text: text,
+                status: 'failed',
+                error: err?.message || 'Gibbs extraction failed.',
+                extracted_at: new Date().toISOString()
+            }));
         } finally {
             setIsExtractingGibbs(false);
         }
@@ -539,6 +598,7 @@ const Reflections = () => {
                 ai_extraction_missing_sections: aiExtractionMeta?.missing_sections || [],
                 ai_extraction_flags: aiExtractionMeta?.flags || [],
                 ai_extracted_text: aiExtractionMeta?.extracted_text || null,
+                ai_extraction_error: aiExtractionMeta?.error || null,
                 ai_extracted_at: aiExtractionMeta?.extracted_at || null,
 
                 status: 'Pending'
@@ -1099,12 +1159,23 @@ const Reflections = () => {
                                                             style={{ minWidth: '170px', justifyContent: 'center' }}
                                                         >
                                                             <Sparkles size={16} className={isExtractingGibbs ? 'animate-spin' : ''} />
-                                                            {isExtractingGibbs ? 'Extracting...' : 'AI Segment to Gibbs'}
+                                                            {isExtractingGibbs
+                                                                ? 'Extracting...'
+                                                                : aiExtractionMeta?.status === 'failed'
+                                                                    ? 'Retry AI Segmentation'
+                                                                    : 'AI Segment to Gibbs'}
                                                         </button>
                                                     </div>
                                                     {aiExtractionMeta && (
-                                                        <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: '#0F766E', fontWeight: 600 }}>
-                                                            AI extraction complete: {aiExtractionMeta.provider} • {aiExtractionMeta.model}
+                                                        <div style={{
+                                                            marginTop: '0.75rem',
+                                                            fontSize: '0.75rem',
+                                                            color: aiExtractionMeta.status === 'failed' ? '#B91C1C' : '#0F766E',
+                                                            fontWeight: 600
+                                                        }}>
+                                                            {aiExtractionMeta.status === 'processing' && 'AI segmentation in progress...'}
+                                                            {aiExtractionMeta.status === 'completed' && `AI extraction complete: ${aiExtractionMeta.provider} • ${aiExtractionMeta.model}`}
+                                                            {aiExtractionMeta.status === 'failed' && `AI extraction failed: ${aiExtractionMeta.error || 'Unknown error'}`}
                                                         </div>
                                                     )}
                                                 </div>
@@ -1206,6 +1277,16 @@ const Reflections = () => {
                                                 Missing stages: {viewingEntry.ai_extraction_missing_sections.join(', ')}
                                             </div>
                                         )}
+                                    </div>
+                                )}
+                                {viewingEntry.ai_extraction_status === 'failed' && (
+                                    <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2' }}>
+                                        <div style={{ fontSize: '0.8rem', color: '#991B1B', fontWeight: 700, marginBottom: '0.35rem' }}>
+                                            AI Segmentation Failed
+                                        </div>
+                                        <div style={{ fontSize: '0.82rem', color: '#991B1B' }}>
+                                            {viewingEntry.ai_extraction_error || 'Segmentation failed. Please retry from the upload workflow.'}
+                                        </div>
                                     </div>
                                 )}
 

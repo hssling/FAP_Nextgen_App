@@ -1,5 +1,5 @@
 import { callProviderChat } from './aiClient';
-import { AI_PROVIDERS } from './aiProviders';
+import { AI_PROVIDERS, DEFAULT_AI_PROVIDER, getConfiguredProviderKeys } from './aiProviders';
 
 const SECTION_KEYS = [
     'description',
@@ -12,6 +12,7 @@ const SECTION_KEYS = [
 
 const MIN_SECTION_WORDS = 12;
 const MIN_TOTAL_WORDS = 80;
+const MAX_EXTRACTION_ATTEMPTS = 2;
 
 const normalizeStageValue = (value) => {
     if (typeof value !== 'string') return '';
@@ -38,6 +39,59 @@ const parseStructuredResponse = (rawText) => {
     }
 
     return JSON.parse(candidate.slice(jsonStart, jsonEnd + 1));
+};
+
+const clamp01 = (value) => Math.min(1, Math.max(0, Number(value) || 0));
+
+const isRecoverableProviderError = (error) => {
+    const msg = String(error?.message || '').toLowerCase();
+    return (
+        msg.includes('provider returned error') ||
+        msg.includes('temporarily unavailable') ||
+        msg.includes('service unavailable') ||
+        msg.includes('upstream error') ||
+        msg.includes('bad gateway') ||
+        msg.includes('timeout') ||
+        msg.includes('429') ||
+        msg.includes('rate limit')
+    );
+};
+
+const normalizeSectionsFromParsed = (parsed) => {
+    const sectionSource = parsed?.sections && typeof parsed.sections === 'object' ? parsed.sections : parsed;
+    return {
+        description: normalizeStageValue(sectionSource?.description),
+        feelings: normalizeStageValue(sectionSource?.feelings),
+        evaluation: normalizeStageValue(sectionSource?.evaluation),
+        analysis: normalizeStageValue(sectionSource?.analysis),
+        conclusion: normalizeStageValue(sectionSource?.conclusion),
+        action_plan: normalizeStageValue(sectionSource?.action_plan || sectionSource?.actionPlan)
+    };
+};
+
+const normalizeConfidenceFromParsed = (parsed) => ({
+    description: clamp01(parsed?.confidence?.description),
+    feelings: clamp01(parsed?.confidence?.feelings),
+    evaluation: clamp01(parsed?.confidence?.evaluation),
+    analysis: clamp01(parsed?.confidence?.analysis),
+    conclusion: clamp01(parsed?.confidence?.conclusion),
+    action_plan: clamp01(parsed?.confidence?.action_plan || parsed?.confidence?.actionPlan)
+});
+
+const buildProviderFallbackOrder = async (preferredProviderKey) => {
+    const configured = await getConfiguredProviderKeys();
+    if (!configured.length) return [];
+
+    const order = [];
+    const add = (key) => {
+        if (configured.includes(key) && !order.includes(key)) order.push(key);
+    };
+
+    add(preferredProviderKey);
+    add(DEFAULT_AI_PROVIDER);
+    configured.forEach(add);
+
+    return order;
 };
 
 const buildMissingSections = (sections) => {
@@ -112,50 +166,66 @@ export const extractGibbsFromText = async ({
     const cleanText = (text || '').trim();
     if (!cleanText) throw new Error('No text provided for Gibbs extraction');
 
-    const rawResponse = await callProviderChat({
-        providerKey,
-        selectedModelIndex,
-        controller,
-        messages: [
-            { role: 'system', content: systemPrompt },
-            {
-                role: 'user',
-                content: `Student reflection text:\n\n${cleanText}`
+    const providerOrder = await buildProviderFallbackOrder(providerKey);
+    if (!providerOrder.length) {
+        const noProviderError = new Error('NO_PROVIDER_KEYS');
+        noProviderError.code = 'NO_PROVIDER_KEYS';
+        throw noProviderError;
+    }
+
+    let lastError = null;
+
+    for (let providerIndex = 0; providerIndex < providerOrder.length; providerIndex += 1) {
+        const providerToUse = providerOrder[providerIndex];
+        const modelIndexToUse = providerToUse === providerKey ? selectedModelIndex : 0;
+
+        for (let attempt = 1; attempt <= MAX_EXTRACTION_ATTEMPTS; attempt += 1) {
+            try {
+                const rawResponse = await callProviderChat({
+                    providerKey: providerToUse,
+                    selectedModelIndex: modelIndexToUse,
+                    controller,
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        {
+                            role: 'user',
+                            content: `Student reflection text:\n\n${cleanText}`
+                        }
+                    ]
+                });
+
+                const parsed = parseStructuredResponse(rawResponse);
+                const sections = normalizeSectionsFromParsed(parsed);
+                const confidence = normalizeConfidenceFromParsed(parsed);
+                const missingSections = buildMissingSections(sections);
+                const flags = buildFlags(sections, missingSections);
+                const provider = AI_PROVIDERS[providerToUse];
+                const model = provider?.models?.[modelIndexToUse] || provider?.models?.[0];
+
+                return {
+                    sections,
+                    confidence,
+                    missingSections,
+                    flags,
+                    provider: provider?.name || providerToUse,
+                    providerKey: providerToUse,
+                    model: model?.id || 'unknown',
+                    rawResponse
+                };
+            } catch (err) {
+                lastError = err;
+                const msg = String(err?.message || '');
+                const isKeyError = msg === 'API_KEY_REQUIRED' || msg === 'API_KEY_INVALID';
+                const canRetrySameProvider = attempt < MAX_EXTRACTION_ATTEMPTS && isRecoverableProviderError(err);
+                const hasNextProvider = providerIndex < providerOrder.length - 1;
+
+                if (isKeyError && hasNextProvider) break;
+                if (canRetrySameProvider) continue;
+                if (isRecoverableProviderError(err) && hasNextProvider) break;
+                throw err;
             }
-        ]
-    });
+        }
+    }
 
-    const parsed = parseStructuredResponse(rawResponse);
-    const sections = {
-        description: normalizeStageValue(parsed.description),
-        feelings: normalizeStageValue(parsed.feelings),
-        evaluation: normalizeStageValue(parsed.evaluation),
-        analysis: normalizeStageValue(parsed.analysis),
-        conclusion: normalizeStageValue(parsed.conclusion),
-        action_plan: normalizeStageValue(parsed.action_plan)
-    };
-
-    const confidence = {
-        description: Number(parsed?.confidence?.description) || 0,
-        feelings: Number(parsed?.confidence?.feelings) || 0,
-        evaluation: Number(parsed?.confidence?.evaluation) || 0,
-        analysis: Number(parsed?.confidence?.analysis) || 0,
-        conclusion: Number(parsed?.confidence?.conclusion) || 0,
-        action_plan: Number(parsed?.confidence?.action_plan) || 0
-    };
-
-    const missingSections = buildMissingSections(sections);
-    const flags = buildFlags(sections, missingSections);
-    const provider = AI_PROVIDERS[providerKey];
-    const model = provider?.models?.[selectedModelIndex] || provider?.models?.[0];
-
-    return {
-        sections,
-        confidence,
-        missingSections,
-        flags,
-        provider: provider?.name || providerKey,
-        model: model?.id || 'unknown',
-        rawResponse
-    };
+    throw lastError || new Error('Gibbs extraction failed');
 };

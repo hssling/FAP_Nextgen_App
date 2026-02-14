@@ -2,6 +2,32 @@ import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 const MAX_TEXT_LENGTH = 12000;
 const OCR_LANGUAGES = 'eng+hin+kan';
+const PDF_TIMEOUT_MS = 45000;
+const DOCX_TIMEOUT_MS = 30000;
+const OCR_TIMEOUT_MS = 90000;
+
+const createExtractorError = (code, message, cause) => {
+    const error = new Error(message);
+    error.code = code;
+    if (cause) error.cause = cause;
+    return error;
+};
+
+const withTimeout = async (promise, timeoutMs, timeoutMessage, timeoutCode) => {
+    let timeoutId;
+    try {
+        return await Promise.race([
+            promise,
+            new Promise((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    reject(createExtractorError(timeoutCode, timeoutMessage));
+                }, timeoutMs);
+            })
+        ]);
+    } finally {
+        clearTimeout(timeoutId);
+    }
+};
 
 const normalizeText = (value) => {
     const text = (value || '')
@@ -25,8 +51,18 @@ const extractFromTextLikeFile = async (file) => {
 
 const extractFromDocx = async (file) => {
     const mammoth = await import('mammoth/mammoth.browser.js');
-    const arrayBuffer = await file.arrayBuffer();
-    const result = await mammoth.extractRawText({ arrayBuffer });
+    const arrayBuffer = await withTimeout(
+        file.arrayBuffer(),
+        DOCX_TIMEOUT_MS,
+        'DOCX parsing timed out. Try a smaller document or convert to PDF.',
+        'DOCX_TIMEOUT'
+    );
+    const result = await withTimeout(
+        mammoth.extractRawText({ arrayBuffer }),
+        DOCX_TIMEOUT_MS,
+        'DOCX text extraction timed out.',
+        'DOCX_TIMEOUT'
+    );
     return normalizeText(result?.value || '');
 };
 
@@ -34,14 +70,34 @@ const extractFromPdf = async (file) => {
     const pdfjs = await import('pdfjs-dist/build/pdf.mjs');
     pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
-    const buffer = await file.arrayBuffer();
+    const buffer = await withTimeout(
+        file.arrayBuffer(),
+        PDF_TIMEOUT_MS,
+        'PDF read timed out. Try a smaller PDF or stable network/device state.',
+        'PDF_TIMEOUT'
+    );
     const loadingTask = pdfjs.getDocument({ data: buffer });
-    const pdf = await loadingTask.promise;
+    const pdf = await withTimeout(
+        loadingTask.promise,
+        PDF_TIMEOUT_MS,
+        'PDF loading timed out.',
+        'PDF_TIMEOUT'
+    );
     let fullText = '';
 
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
-        const page = await pdf.getPage(pageNum);
-        const content = await page.getTextContent();
+        const page = await withTimeout(
+            pdf.getPage(pageNum),
+            PDF_TIMEOUT_MS,
+            `PDF page ${pageNum} loading timed out.`,
+            'PDF_TIMEOUT'
+        );
+        const content = await withTimeout(
+            page.getTextContent(),
+            PDF_TIMEOUT_MS,
+            `PDF page ${pageNum} text extraction timed out.`,
+            'PDF_TIMEOUT'
+        );
         const pageText = content.items
             .map((item) => item?.str || '')
             .join(' ')
@@ -56,9 +112,19 @@ const extractFromPdf = async (file) => {
 
 const extractFromImageWithOcr = async (file) => {
     const { createWorker } = await import('tesseract.js');
-    const worker = await createWorker(OCR_LANGUAGES);
+    const worker = await withTimeout(
+        createWorker(OCR_LANGUAGES),
+        OCR_TIMEOUT_MS,
+        'OCR initialization timed out.',
+        'OCR_TIMEOUT'
+    );
     try {
-        const result = await worker.recognize(file);
+        const result = await withTimeout(
+            worker.recognize(file),
+            OCR_TIMEOUT_MS,
+            'OCR processing timed out. Try a clearer image or smaller file.',
+            'OCR_TIMEOUT'
+        );
         const parsed = normalizeText(result?.data?.text || '');
         if (parsed) return parsed;
     } finally {
@@ -66,9 +132,19 @@ const extractFromImageWithOcr = async (file) => {
     }
 
     // Fallback to English-only if multilingual model yields no usable text.
-    const fallbackWorker = await createWorker('eng');
+    const fallbackWorker = await withTimeout(
+        createWorker('eng'),
+        OCR_TIMEOUT_MS,
+        'Fallback OCR initialization timed out.',
+        'OCR_TIMEOUT'
+    );
     try {
-        const fallback = await fallbackWorker.recognize(file);
+        const fallback = await withTimeout(
+            fallbackWorker.recognize(file),
+            OCR_TIMEOUT_MS,
+            'Fallback OCR processing timed out.',
+            'OCR_TIMEOUT'
+        );
         return normalizeText(fallback?.data?.text || '');
     } finally {
         await fallbackWorker.terminate();
@@ -81,28 +157,33 @@ export const extractDocumentText = async (file) => {
     const ext = extensionOf(file.name);
     const mime = (file.type || '').toLowerCase();
 
-    if (mime.startsWith('text/') || ['txt', 'md', 'csv', 'json'].includes(ext)) {
+    try {
+        if (mime.startsWith('text/') || ['txt', 'md', 'csv', 'json'].includes(ext)) {
+            return extractFromTextLikeFile(file);
+        }
+
+        if (mime === 'application/pdf' || ext === 'pdf') {
+            return extractFromPdf(file);
+        }
+
+        if (
+            mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+            ext === 'docx'
+        ) {
+            return extractFromDocx(file);
+        }
+
+        if (mime.startsWith('image/') || ['png', 'jpg', 'jpeg', 'webp'].includes(ext)) {
+            return extractFromImageWithOcr(file);
+        }
+
+        if (ext === 'doc') {
+            throw createExtractorError('UNSUPPORTED_DOC', 'Legacy .doc parsing is not supported in-browser. Please convert to DOCX or PDF.');
+        }
+
         return extractFromTextLikeFile(file);
+    } catch (error) {
+        if (error?.code) throw error;
+        throw createExtractorError('PARSE_FAILED', error?.message || 'Document parsing failed.', error);
     }
-
-    if (mime === 'application/pdf' || ext === 'pdf') {
-        return extractFromPdf(file);
-    }
-
-    if (
-        mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-        ext === 'docx'
-    ) {
-        return extractFromDocx(file);
-    }
-
-    if (mime.startsWith('image/') || ['png', 'jpg', 'jpeg', 'webp'].includes(ext)) {
-        return extractFromImageWithOcr(file);
-    }
-
-    if (ext === 'doc') {
-        throw new Error('Legacy .doc parsing is not supported in-browser. Please convert to DOCX or PDF.');
-    }
-
-    return extractFromTextLikeFile(file);
 };
