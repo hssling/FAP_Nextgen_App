@@ -41,3 +41,8 @@ lerna-debug.log*
 
 # Local development
 .gemini/
+
+# Python artifacts (micro_ai_service)
+__pycache__/
+*.pyc
+.pytest_cache/
