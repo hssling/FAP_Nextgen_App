@@ -13,6 +13,17 @@ const SECTION_KEYS = [
 const MIN_SECTION_WORDS = 12;
 const MIN_TOTAL_WORDS = 80;
 const MAX_EXTRACTION_ATTEMPTS = 2;
+const SAFETY_DISCLAIMER =
+    'Decision-support only. Confirm with a qualified clinician. This output is not a diagnosis.';
+
+const GENERIC_PHRASES = ['good', 'bad', 'ok', 'fine', 'normal'];
+const CONFIDENTIALITY_PATTERNS = [/\b\d{10}\b/g, /\b\d{12}\b/g, /\baadhaar\b/gi, /\bmrn\b/gi];
+const DIAGNOSIS_CLAIM_PATTERNS = [
+    /\bdefinitive diagnosis\b/i,
+    /\bconfirmed diagnosis\b/i,
+    /\byou have\b/i,
+    /\bthis is definitely\b/i
+];
 
 const normalizeStageValue = (value) => {
     if (typeof value !== 'string') return '';
@@ -132,6 +143,37 @@ const buildFlags = (sections, missingSections) => {
     return flags;
 };
 
+const hasUnsafeDiagnosisClaim = (sections) => {
+    const joined = SECTION_KEYS.map((key) => sections[key] || '').join('\n');
+    return DIAGNOSIS_CLAIM_PATTERNS.some((re) => re.test(joined));
+};
+
+const buildGenericLanguageFlags = (sections) => {
+    return SECTION_KEYS.filter((key) => {
+        const value = (sections[key] || '').toLowerCase();
+        if (!value) return false;
+        return value.split(/\s+/).length < 20 && GENERIC_PHRASES.some((token) => value.includes(token));
+    });
+};
+
+const buildConfidentialityFlags = (rawText) => {
+    const text = rawText || '';
+    const matches = [];
+    CONFIDENTIALITY_PATTERNS.forEach((re) => {
+        if (re.test(text)) {
+            matches.push(`Potential identifier pattern: ${re.toString()}`);
+        }
+    });
+    return matches;
+};
+
+const buildEvidenceSpans = (rawText, snippet) => {
+    if (!rawText || !snippet) return [];
+    const start = rawText.indexOf(snippet);
+    if (start < 0) return [];
+    return [{ start, end: start + snippet.length }];
+};
+
 const systemPrompt = `You are an expert medical education mentor. Extract only what is explicitly present in the learner text and map it to Gibbs Reflective Cycle.
 Return strict JSON only with this schema:
 {
@@ -199,14 +241,61 @@ export const extractGibbsFromText = async ({
                 const confidence = normalizeConfidenceFromParsed(parsed);
                 const missingSections = buildMissingSections(sections);
                 const flags = buildFlags(sections, missingSections);
+                const tooShortSections = SECTION_KEYS.filter((key) => {
+                    const value = sections[key];
+                    return value && countWords(value) < MIN_SECTION_WORDS;
+                });
+                const genericLanguageFlags = buildGenericLanguageFlags(sections);
+                const confidentialityFlags = buildConfidentialityFlags(cleanText);
                 const provider = AI_PROVIDERS[providerToUse];
                 const model = provider?.models?.[modelIndexToUse] || provider?.models?.[0];
 
+                if (hasUnsafeDiagnosisClaim(sections)) {
+                    throw new Error('Blocked unsafe output: diagnosis-style claim detected.');
+                }
+
+                const gibbs = {
+                    description: {
+                        text: sections.description,
+                        evidence_spans: buildEvidenceSpans(cleanText, sections.description)
+                    },
+                    feelings: {
+                        text: sections.feelings,
+                        evidence_spans: buildEvidenceSpans(cleanText, sections.feelings)
+                    },
+                    evaluation: {
+                        text: sections.evaluation,
+                        evidence_spans: buildEvidenceSpans(cleanText, sections.evaluation)
+                    },
+                    analysis: {
+                        text: sections.analysis,
+                        evidence_spans: buildEvidenceSpans(cleanText, sections.analysis)
+                    },
+                    conclusion: {
+                        text: sections.conclusion,
+                        evidence_spans: buildEvidenceSpans(cleanText, sections.conclusion)
+                    },
+                    action_plan: {
+                        text: sections.action_plan,
+                        evidence_spans: buildEvidenceSpans(cleanText, sections.action_plan)
+                    }
+                };
+
+                const quality_checks = {
+                    missing_sections: missingSections,
+                    too_short_sections: tooShortSections,
+                    generic_language_flags: genericLanguageFlags,
+                    confidentiality_flags: confidentialityFlags
+                };
+
                 return {
                     sections,
+                    gibbs,
                     confidence,
                     missingSections,
                     flags,
+                    quality_checks,
+                    disclaimer: SAFETY_DISCLAIMER,
                     provider: provider?.name || providerToUse,
                     providerKey: providerToUse,
                     model: model?.id || 'unknown',

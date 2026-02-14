@@ -1,0 +1,51 @@
+services:
+  micro-ai-service:
+    build:
+      context: ./micro_ai_service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - MICRO_AI_MEDIA_ROOT=/data/media
+      - MICRO_AI_RESULTS_ROOT=/data/results
+      - MICRO_AI_REDIS_URL=redis://redis:6379/0
+      - MICRO_AI_MAX_UPLOAD_MB=25
+    volumes:
+      - micro_ai_data:/data
+    depends_on:
+      - redis
+      - postgres
+      - minio
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=fap_micro_ai
+      - POSTGRES_USER=fap
+      - POSTGRES_PASSWORD=fap
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+volumes:
+  micro_ai_data:
+  postgres_data:
+  minio_data:

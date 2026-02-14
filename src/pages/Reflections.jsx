@@ -390,8 +390,11 @@ const Reflections = () => {
                 provider: extracted.provider,
                 model: extracted.model,
                 confidence: extracted.confidence,
-                missing_sections: extracted.missingSections,
+                missing_sections: extracted.quality_checks?.missing_sections || extracted.missingSections,
                 flags: extracted.flags,
+                quality_checks: extracted.quality_checks || null,
+                disclaimer: extracted.disclaimer || null,
+                gibbs: extracted.gibbs || null,
                 error: null,
                 status: 'completed',
                 extracted_at: new Date().toISOString()
@@ -1061,6 +1064,13 @@ const Reflections = () => {
                                                                     - {flag.message}
                                                                 </div>
                                                             ))}
+                                                        </div>
+                                                    )}
+                                                    {aiExtractionMeta?.disclaimer && (
+                                                        <div style={{ marginBottom: '0.75rem', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '0.5rem', padding: '0.6rem' }}>
+                                                            <div style={{ fontSize: '0.78rem', color: '#1E3A8A' }}>
+                                                                {aiExtractionMeta.disclaimer}
+                                                            </div>
                                                         </div>
                                                     )}
 
