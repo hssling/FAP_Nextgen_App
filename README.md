@@ -1,172 +1,257 @@
-# FAP NextGen 🏥
+# FAP Next Generation
 
-**Advanced Family Adoption Programme Management Systems for Medical Education (CBME)**
+**AI-enabled digital platform for the Family Adoption Programme (FAP) under NMC-CBME**
 
-A production-grade, offline-first progressive web application (PWA) designed for MBBS students to manage their community medicine fieldwork. Built on valid clinical guidelines and powered by modern cloud infrastructure.
+[![Live App](https://img.shields.io/badge/Live%20App-fap--nextgen--app.vercel.app-00A870?style=for-the-badge&logo=vercel)](https://fap-nextgen-app.vercel.app)
+[![Frontend](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react)](https://react.dev)
+[![Backend](https://img.shields.io/badge/Backend-Supabase-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com)
+[![PWA](https://img.shields.io/badge/Mode-Offline--First%20PWA-2563EB?style=for-the-badge)](#architecture)
+[![AI](https://img.shields.io/badge/AI-Gibbs%20Reflection%20Pipeline-7C3AED?style=for-the-badge)](#ai-core-gibbs-reflective-learning-engine)
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed-Live-success?style=for-the-badge&logo=vercel)](https://fap-nextgen-app.vercel.app)
-[![Supabase](https://img.shields.io/badge/Backend-Supabase-green?style=for-the-badge&logo=supabase)](https://supabase.com)
-[![React](https://img.shields.io/badge/Frontend-React%2018-blue?style=for-the-badge&logo=react)](https://react.dev)
+![FAP Next Generation Visual](./AI4Health_Graphical_Abstract.png)
 
----
+## Live Demo Links
 
-## 🌟 Key Features
+- Live application: https://fap-nextgen-app.vercel.app
+- Summit demo video: https://drive.google.com/file/d/1bUuuoM_xp_lIhGCuo_-dW5zvyExifNL2/view
 
-### 🔐 Enterprise-Grade Security
-- **Supabase Authentication**: Secure email/password login with session persistence.
-- **Row Level Security (RLS)**: Strict database policies ensuring students access only their own data.
-- **Role-Based Access**: Distinctions between Student, Teacher, and Admin roles.
+## Why This Project Exists
 
-### 📱 Mobile-First & Offline-Ready
-- **Smart Upload System**: 
-  - **Desktop**: Direct high-speed uploads to Supabase Storage using signed URLs.
-  - **Mobile**: Innovative **"Base64 Bypass"** technology that tunnels files through the database connection to overcome mobile network/carrier restrictions.
-- **Responsive Design**: Fully optimized UI for field usage on tablets and smartphones.
+Family Adoption Programme implementation in many institutions is still paper-heavy, fragmented, and difficult to audit at scale.  
+FAP Next Generation was built to convert mandatory fieldwork into:
 
-### 🤖 AI Medical Coach
-- **Real-time Feedback**: Integrated Gemini AI (via OpenRouter) analyzes student reflections.
-- **Gibbs Reflective Cycle**: Structured guidance through Description, Feelings, Evaluation, Analysis, Conclusion, and Action Plan.
-- **Contextual Tips**: Provides medical advice based on reflection content (e.g., vaccination schedules, hygiene practices).
+- better student learning quality
+- stronger mentor oversight
+- cleaner institution-level evidence
+- actionable community health intelligence
 
-### 👨‍👩‍👧‍👦 Comprehensive Family Health
-- **Family Folder**: Digital version of the standard Family Adoption folder.
-- **Socio-Economic Scales**: Auto-calculation of **BG Prasad (2024)** and **Udai Pareek** scales.
-- **Health Tracking**: Longitudinal tracking of family members' health status, immunizations, and chronic conditions.
+## Vision Statement
 
-### 🏥 Community Diagnosis
-- **Village Profiling**: 43-point comprehensive mapping of demographics, infrastructure, and health resources.
-- **Interactive Dashboard**: Visualizing community health indicators and disease burden.
+Move from paper logbooks to a longitudinal, AI-assisted learning and public-health intelligence system for community medicine training in India.
 
-### 📚 Clinical Knowledge Base
-- **8+ Clinical Guidelines**: Built-in reference for ANC, PNC, IMNCI, TB-DOTS, NCDs, and more.
-- **Offline Access**: Critical guidelines available even without internet.
+## Journey: From Start to Current State
 
----
+| Stage | Focus | Outcome |
+|---|---|---|
+| Phase 1 | Digital family records and field logbook workflows | End-to-end student capture of family, visit, and assessment data |
+| Phase 2 | Role-based governance and mentor workflows | Student, Teacher, Admin pathways with review and grading loops |
+| Phase 3 | AI integration for reflection quality | Gibbs-cycle extraction, quality flags, safety controls, confidence metadata |
+| Phase 4 | Programmatic scale readiness | Multi-provider AI keys, fallback controls, offline-first sync, exportable reports |
 
-## 🛠️ Technology Stack
+## Platform At a Glance
 
-| Component | Technology | Description |
-|-----------|------------|-------------|
-| **Frontend** | React 18 + Vite | High-performance SPA architecture |
-| **Styling** | Vanilla CSS + Framer Motion | Lightweight, smooth animations |
-| **Backend** | Supabase (PostgreSQL) | Relational database with real-time capabilities |
-| **Auth** | Supabase Auth | JWT-based secure authentication |
-| **Storage** | Supabase Storage + Hybrid DB | Dual-strategy file management |
-| **AI** | Google Gemini (via OpenRouter) | Natural language processing for education |
-| **Hosting** | Vercel | Global edge network deployment |
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js 18+
-- Supabase Project (Free tier works)
-- OpenRouter API Key
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/hssling/FAP_Nextgen_App.git
-   cd FAP_Nextgen_App
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Configure Environment**
-   Create a `.env` file in the root directory:
-   ```env
-   VITE_SUPABASE_URL=your_supabase_project_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   VITE_OPENROUTER_API_KEY=your_openrouter_key
-   ```
-
-4. **Run Locally**
-   ```bash
-   npm run dev
-   ```
-
----
-
-## 📂 Project Structure
-
-```bash
-src/
-├── components/     # Reusable UI (Cards, Forms, Layouts)
-├── contexts/       # Global State (Auth, Theme)
-├── data/           # Static Clinical Guidelines & Schemas
-├── pages/          # Main Application Routes
-│   ├── Dashboard.jsx      # Analytics & Overview
-│   ├── Families.jsx       # Family Listing & Management
-│   ├── FamilyDetails.jsx  # In-depth Family Record
-│   ├── Reflections.jsx    # AI-Integrated Journaling
-│   └── Community.jsx      # Village Profile Mapping
-├── services/       # API Connectors (Supabase, AI)
-└── utils/          # Helpers (Calculators, Formatters)
+```mermaid
+flowchart LR
+    A[Student Field Visit] --> B[Family + Member + Assessment Capture]
+    B --> C[Reflection Upload or Structured Entry]
+    C --> D[AI Extraction + Gibbs Segmentation]
+    D --> E[Mentor Review + Rubric Grading]
+    E --> F[Reports + Logbook Exports]
+    B --> G[Community Analytics]
+    G --> H[Institution Planning Insights]
 ```
 
----
+## Architecture
 
-## 🩺 Clinical Resources Included
+```mermaid
+flowchart TB
+    UI[React + Vite PWA] --> AUTH[Supabase Auth]
+    UI --> DB[(Supabase Postgres + RLS)]
+    UI --> STORAGE[Supabase Storage]
+    UI --> CACHE[IndexedDB + React Query Persist]
+    UI --> AI[Multi-Provider AI Layer]
+    AI --> OR[OpenRouter]
+    AI --> GOOG[Google AI Studio]
+    AI --> OA[OpenAI]
+    AI --> MISC[Other configured providers]
+    UI -. optional .-> MICRO[Micro AI Service /v1 ingest job result]
+```
 
-1.  **Antenatal Care (ANC)**: Guidelines for pregnancy visits and risk assessment.
-2.  **Universal Immunization**: Interactive vaccination schedules.
-3.  **NCD Screening**: Protocols for Hypertension, Diabetes, and Cancer screening.
-4.  **IMNCI**: Integrated Management of Neonatal and Childhood Illnesses.
-5.  **TB-DOTS**: Tuberculosis screening and treatment algorithms.
-6.  **Family Planning**: Contraceptive method counseling guide.
-7.  **Nutrition**: Dietary assessment and counseling.
-8.  **Mental Health**: Screening for depression and anxiety.
+## Core Modules
 
----
+- Student Dashboard
+  - adopted families, population, issues, activity summary
+- Family Folder
+  - family + member records, longitudinal continuity, visit logs
+- Structured Assessments
+  - NCD, socio-economic, nutrition, mental health, maternal-child focused forms
+- Reflections
+  - structured entry or upload, AI segmentation into Gibbs stages
+- Learning Objectives
+  - competency-linked objectives and expected activities
+- AI Medical Coach
+  - context-aware guidance for community medicine scenarios
+- Community Health Profile
+  - overview, demography, resources, annual planning, health status
+- Mentor Workspace
+  - pending reviews, AI-segmented entries, rubric-based assessment
+- Admin Portal
+  - user management, role governance, provider/system settings
+- Reports & Logbook
+  - print/export workflows and summary analytics
 
-## 👥 Authors & Contributors
+## AI Core: Gibbs Reflective Learning Engine
 
-**Dr. Siddalingaiah H S**
-*Professor, Dept. of Community Medicine*
-*Shridevi Institute of Medical Sciences & Research Hospital (SIMS & RH)*
+The reflection engine is designed for **formative learning quality**, not just text generation.
 
-Developed as a digital innovation for the Competency-Based Medical Education (CBME) curriculum in India.
+- input modes:
+  - structured typing
+  - uploaded file extraction (doc/pdf/image pipeline)
+- stage mapping:
+  - Description
+  - Feelings
+  - Evaluation
+  - Analysis
+  - Conclusion
+  - Action Plan
+- quality intelligence:
+  - missing-stage flags
+  - section-length checks
+  - confidence scores
+  - evidence spans
+  - safety disclaimers and diagnosis-claim guardrails
+- reliability controls:
+  - provider fallback policies
+  - micro-AI pipeline preference toggle
+  - AI audit/version tables for traceability
 
----
+## Feature Matrix
 
-## 🔄 Student Workflow
+| Area | Capability | Benefit |
+|---|---|---|
+| Data Capture | Family, member, visit, assessment logging | Continuity of care and complete field documentation |
+| AI Reflection | Gibbs segmentation + quality checks | Better reflective depth and clinical reasoning |
+| Mentor Tools | Pending triage + rubric scoring | Higher feedback quality with less administrative load |
+| Community View | Population and health indicator summaries | Program-level planning and public health insight |
+| Reports | Exportable logbook and summaries | Compliance-ready outputs for reviews and assessment |
+| Operations | Role-based access + RLS | Privacy, governance, and secure scale |
+| Connectivity | Offline-first patterns + sync | Reliable use in low-connectivity environments |
 
-1.  **Adoption**: Assign a family unique ID and create their digital folder.
-2.  **Profiling**: Map the village infrastructure and family demographics (BG Prasad Scale auto-calculated).
-3.  **Visiting**: Log regular home visits, update health vitals, and screen for NCDs.
-4.  **Reflecting**: Write structured journals using the Gibbs cycle, receiving instant AI feedback on clinical correlation.
-5.  **Reporting**: Auto-generate NMC-compliant logbooks for submission.
+## National Alignment
 
----
+| National Priority / Framework | Alignment in FAP Next Generation |
+|---|---|
+| NMC CBME (UGME 2023 context) | Structured competency-linked workflows and longitudinal field documentation |
+| Family Adoption Programme (FAP) | Purpose-built digital execution of family-level community immersion |
+| Public health priority programs | NCD, maternal-child, nutrition, TB-oriented community workflows and resources |
+| Ayushman Bharat direction | Strengthens primary-care community data practices at grassroots level |
+| ABDM-ready ecosystem thinking | ABHA-linked fields and interoperability-oriented architecture path |
+| Digital health governance | Role-based controls, auditability, institution-level manageability |
 
-## 🏆 Why FAP NextGen?
+## Benefits by Stakeholder
 
-| Feature | Traditional Logbook | FAP NextGen App |
-| :--- | :--- | :--- |
-| **Data Access** | Physical only | Anywhere (Cloud + Offline) |
-| **Analysis** | Manual calculation | Auto-scoring (Socio-economic) |
-| **Feedback** | Delayed (Teacher only) | **Instant AI Medical Coach** |
-| **Guidelines** | External books needed | **Built-in Clinical Resources** |
-| **Multimedia** | Text only | **Photo/Doc Uploads** |
-| **Compliance** | Hard to track | Real-time NMC adherence |
+### Students
+- stepwise reflective learning support
+- easier field documentation and continuity
+- better preparation for competency-based evaluations
 
----
+### Mentors / Faculty
+- targeted review on high-priority submissions
+- rubric consistency across cohorts
+- reduced manual burden
 
-## 🗺️ Roadmap & Future Vision
+### Institutions
+- auditable, exportable records
+- stronger quality monitoring
+- better evidence for academic and administrative review
 
-- [ ] **GIS Mapping**: Visualizing disease clusters on village maps.
-- [ ] **Longitudinal Analytics**: graphs showing family health trends over 4 years.
-- [ ] **Multilingual Support**: Kannada/Hindi interface for rural usage.
-- [ ] **Tele-consultation**: Link families directly to specialists via the app.
+### Public Health Systems
+- structured community-level signals from routine educational fieldwork
+- potential for improved local planning and early trend visibility
 
----
+## Technology Stack
 
-## 📄 License
+| Layer | Stack |
+|---|---|
+| Frontend | React, Vite, React Router |
+| Offline & Cache | IndexedDB, React Query persistence, PWA |
+| Backend | Supabase (PostgreSQL, Auth, Storage, RLS) |
+| AI Layer | Multi-provider key architecture (OpenRouter, Google, OpenAI, and others) |
+| Optional AI Microservice | FastAPI + async job endpoints (`/v1/ingest`, `/v1/job/{id}`, `/v1/result/{id}`) |
+| Deployment | Vercel |
 
-This project is open-source under the MIT License.
-Designed for educational use in medical colleges.
+## Quick Start
+
+### 1) Prerequisites
+
+- Node.js 18+
+- npm
+- Supabase project
+- at least one AI provider API key
+
+### 2) Clone and install
+
+```bash
+git clone https://github.com/hssling/FAP_Nextgen_App.git
+cd FAP_Nextgen_App
+npm install
+```
+
+### 3) Configure environment
+
+Create `.env` from `.env.example` and set the values:
+
+```env
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+VITE_OPENROUTER_API_KEY=...
+VITE_GOOGLE_AI_KEY=...
+VITE_OPENAI_API_KEY=...
+VITE_MISTRAL_API_KEY=...
+VITE_XAI_API_KEY=...   # or VITE_xAI_API_KEY
+VITE_CEREBRAS_API_KEY=...
+VITE_HUGGINGFACE_API_KEY=...
+VITE_MICRO_AI_BASE_URL=http://localhost:8000
+```
+
+### 4) Run
+
+```bash
+npm run dev
+```
+
+### 5) Build
+
+```bash
+npm run build
+npm run preview
+```
+
+## Security, Privacy, and Ethics
+
+- Supabase Auth + role-based route protection
+- Row Level Security policies for data isolation
+- local key management options for AI providers
+- safety boundary in AI outputs:
+  - decision-support framing
+  - anti-definitive-diagnosis guardrails
+
+## Repository Structure
+
+```text
+src/
+  components/
+  contexts/
+  data/
+  pages/
+  services/
+  utils/
+supabase/
+micro_ai_service/
+```
+
+## Roadmap Potential
+
+- multilingual UI and reflection support (regional language-first workflows)
+- deeper longitudinal analytics and cohort benchmarking
+- stronger PHC/CHC decision dashboards
+- interoperability expansion for broader digital health ecosystems
+- institution-scale onboarding automation
+
+## Documentation Archive
+
+- Previous README archived as: `README_ARCHIVE_2026-02-15.md`
+
+## Acknowledgement
+
+Developed as a community medicine and medical education innovation aligned to the goals of competency-based training and digitally enabled public health practice.
