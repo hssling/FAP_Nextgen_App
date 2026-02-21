@@ -82,6 +82,10 @@ const Dashboard = () => {
                 if (joinedError) {
                     console.error('Error loading mentor assignment (join path):', joinedError);
                 } else {
+                    if ((joinedRows || []).length > 0) {
+                        // Keep assignment state even if teacher profile is hidden by RLS.
+                        resolvedMentor = joinedRows[0];
+                    }
                     const firstWithTeacher = (joinedRows || []).find(row => row?.teacher?.full_name);
                     if (firstWithTeacher) {
                         resolvedMentor = firstWithTeacher;
@@ -222,6 +226,10 @@ const Dashboard = () => {
                             {mentorAssignment.teacher.department || 'Faculty Mentor'}
                         </p>
                     </div>
+                ) : mentorAssignment?.teacher_id ? (
+                    <p style={{ color: 'var(--color-text-muted)' }}>
+                        Mentor is assigned. Name is temporarily unavailable due to profile access settings.
+                    </p>
                 ) : (
                     <p style={{ color: 'var(--color-text-muted)' }}>
                         Mentor not assigned yet. Please contact admin.
