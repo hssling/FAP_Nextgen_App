@@ -63,24 +63,51 @@ const Dashboard = () => {
             }
 
             setMentorLoading(true);
-            const { data, error } = await supabase
+
+            const { data: joinedRows, error: joinedError } = await supabase
                 .from('teacher_student_mappings')
                 .select(`
+                    teacher_id,
+                    assigned_at,
                     teacher:profiles!teacher_id(full_name, department)
                 `)
                 .eq('student_id', profile.id)
                 .eq('is_active', true)
                 .order('assigned_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
+                .limit(5);
 
             if (mounted) {
-                if (error) {
-                    console.error('Error loading mentor assignment:', error);
-                    setMentorAssignment(null);
+                let resolvedMentor = null;
+
+                if (joinedError) {
+                    console.error('Error loading mentor assignment (join path):', joinedError);
                 } else {
-                    setMentorAssignment(data || null);
+                    const firstWithTeacher = (joinedRows || []).find(row => row?.teacher?.full_name);
+                    if (firstWithTeacher) {
+                        resolvedMentor = firstWithTeacher;
+                    }
                 }
+
+                if (!resolvedMentor) {
+                    const { data: rpcData, error: rpcError } = await supabase.rpc('get_student_mentor', {
+                        student_uuid: profile.id
+                    });
+
+                    if (rpcError) {
+                        // Keep this as warning to avoid noisy error logs when RPC is unavailable in some deployments.
+                        console.warn('Mentor RPC fallback unavailable or failed:', rpcError.message);
+                    } else if (Array.isArray(rpcData) && rpcData.length > 0 && rpcData[0]?.teacher_name) {
+                        const row = rpcData[0];
+                        resolvedMentor = {
+                            teacher: {
+                                full_name: row.teacher_name,
+                                department: row.teacher_department || null
+                            }
+                        };
+                    }
+                }
+
+                setMentorAssignment(resolvedMentor);
                 setMentorLoading(false);
             }
         };
