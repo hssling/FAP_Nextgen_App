@@ -30,6 +30,13 @@ const Settings = () => {
     const [cacheClearing, setCacheClearing] = useState(false);
     const [fallbackMode, setFallbackModeState] = useState(AI_FALLBACK_MODES.allConfigured);
     const [microPipelineEnabled, setMicroPipelineEnabledState] = useState(true);
+    const [profileForm, setProfileForm] = useState({
+        fullName: '',
+        registrationNumber: '',
+        yearOfJoining: ''
+    });
+    const [profileSaving, setProfileSaving] = useState(false);
+    const [profileMessage, setProfileMessage] = useState({ type: '', text: '' });
 
     const providerEntries = useMemo(() => Object.entries(AI_PROVIDERS), []);
 
@@ -53,6 +60,15 @@ const Settings = () => {
         };
         loadAiPreferences();
     }, []);
+
+    useEffect(() => {
+        if (!profile) return;
+        setProfileForm({
+            fullName: profile.full_name || '',
+            registrationNumber: profile.registration_number || '',
+            yearOfJoining: profile.year_of_joining ? String(profile.year_of_joining) : ''
+        });
+    }, [profile]);
 
     const handleLogout = async () => {
         try {
@@ -143,6 +159,58 @@ const Settings = () => {
         }
     };
 
+    const handleSaveProfile = async () => {
+        if (!profile?.id) return;
+        setProfileSaving(true);
+        setProfileMessage({ type: '', text: '' });
+
+        try {
+            const fullName = profileForm.fullName.trim();
+            if (!fullName) {
+                throw new Error('Full name is required.');
+            }
+
+            const updatePayload = { full_name: fullName };
+
+            if (profile.role === 'student') {
+                const registrationNumber = profileForm.registrationNumber.trim();
+                const yearOfJoining = parseInt(profileForm.yearOfJoining, 10);
+                const currentYear = new Date().getFullYear();
+
+                if (!registrationNumber) {
+                    throw new Error('Roll number is required for students.');
+                }
+                if (Number.isNaN(yearOfJoining) || yearOfJoining < 2000 || yearOfJoining > currentYear + 1) {
+                    throw new Error(`Year of joining must be between 2000 and ${currentYear + 1}.`);
+                }
+
+                updatePayload.registration_number = registrationNumber;
+                updatePayload.year_of_joining = yearOfJoining;
+                updatePayload.year = Math.min(3, Math.max(1, currentYear - yearOfJoining + 1));
+            }
+
+            const { error } = await supabase
+                .from('profiles')
+                .update(updatePayload)
+                .eq('id', profile.id);
+
+            if (error) {
+                if (error.code === '23505') {
+                    throw new Error('That roll number is already in use.');
+                }
+                throw error;
+            }
+
+            setProfileMessage({ type: 'success', text: 'Profile details updated successfully. Refreshing...' });
+            setTimeout(() => window.location.reload(), 800);
+        } catch (error) {
+            console.error('Failed to save profile details:', error);
+            setProfileMessage({ type: 'error', text: error.message || 'Could not update profile details.' });
+        } finally {
+            setProfileSaving(false);
+        }
+    };
+
     return (
         <div style={{ maxWidth: '900px', margin: '0 auto', padding: '1rem' }}>
             <h1 className="page-title" style={{ marginBottom: '2rem' }}>Settings</h1>
@@ -159,7 +227,9 @@ const Settings = () => {
                         </div>
                         <div>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Username / Roll No</label>
-                            <div className="input" style={{ background: '#F3F4F6', color: '#6B7280' }}>{profile?.username || 'N/A'}</div>
+                            <div className="input" style={{ background: '#F3F4F6', color: '#6B7280' }}>
+                                {profile?.registration_number || profile?.username || 'N/A'}
+                            </div>
                         </div>
                     </div>
                     <div>
@@ -177,6 +247,72 @@ const Settings = () => {
                             {profile?.role || 'User'}
                         </div>
                     </div>
+
+                    {profile?.role === 'student' && (
+                        <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '1rem', marginTop: '0.5rem' }}>
+                            <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '0.75rem' }}>Update Basic Student Details</h3>
+                            <p style={{ color: '#6B7280', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                                Keep your roll number and joining year updated for mentor allocation and competency tracking.
+                            </p>
+
+                            {profileMessage.text && (
+                                <div style={{
+                                    padding: '0.75rem',
+                                    borderRadius: '8px',
+                                    marginBottom: '1rem',
+                                    backgroundColor: profileMessage.type === 'error' ? '#FEE2E2' : '#D1FAE5',
+                                    color: profileMessage.type === 'error' ? '#991B1B' : '#065F46',
+                                    border: `1px solid ${profileMessage.type === 'error' ? '#FCA5A5' : '#6EE7B7'}`
+                                }}>
+                                    {profileMessage.text}
+                                </div>
+                            )}
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Roll Number</label>
+                                    <input
+                                        className="input"
+                                        type="text"
+                                        value={profileForm.registrationNumber}
+                                        onChange={(e) => setProfileForm((prev) => ({ ...prev, registrationNumber: e.target.value }))}
+                                        placeholder="e.g., 2025MBBS001"
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Year of Joining</label>
+                                    <input
+                                        className="input"
+                                        type="number"
+                                        min="2000"
+                                        max={new Date().getFullYear() + 1}
+                                        value={profileForm.yearOfJoining}
+                                        onChange={(e) => setProfileForm((prev) => ({ ...prev, yearOfJoining: e.target.value }))}
+                                        placeholder="e.g., 2025"
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ marginTop: '0.75rem' }}>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Full Name</label>
+                                <input
+                                    className="input"
+                                    type="text"
+                                    value={profileForm.fullName}
+                                    onChange={(e) => setProfileForm((prev) => ({ ...prev, fullName: e.target.value }))}
+                                />
+                            </div>
+
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleSaveProfile}
+                                disabled={profileSaving}
+                                style={{ marginTop: '1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                            >
+                                <Save size={16} /> {profileSaving ? 'Saving...' : 'Save Student Details'}
+                            </button>
+                        </div>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '1rem' }}>
                         <button className="btn btn-outline" onClick={handleLogout} style={{ color: '#DC2626', borderColor: '#FECACA' }}>
                             Sign Out
