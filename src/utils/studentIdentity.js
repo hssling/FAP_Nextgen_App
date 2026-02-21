@@ -25,7 +25,9 @@ export const getCurrentStudyYear = (student, now = new Date()) => {
 };
 
 export const formatStudentIdentifiers = (student) => {
-    const rollNumber = student?.registration_number || 'No Roll No.';
+    const rollNumber = (student?.registration_number || '').toString().trim()
+        || (student?.username || '').toString().trim()
+        || 'No Roll No.';
     const joiningYear = getYearOfJoining(student);
     const currentYear = getCurrentStudyYear(student);
 

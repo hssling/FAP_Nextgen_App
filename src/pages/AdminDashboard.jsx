@@ -157,7 +157,7 @@ const AdminDashboard = () => {
                         .limit(200),
                     supabase
                         .from('profiles')
-                        .select('id, full_name, registration_number, email, year, year_of_joining')
+                        .select('id, username, full_name, registration_number, email, year, year_of_joining')
                         .eq('role', 'student')
                         .eq('is_active', true)
                         .order('full_name')
@@ -190,7 +190,7 @@ const AdminDashboard = () => {
 
                 enrichedReflections = reflections.map(r => ({
                     ...r,
-                    student: studentMap[r.student_id] || { full_name: 'Unknown', registration_number: '' }
+                    student: studentMap[r.student_id] || { full_name: 'Unknown', registration_number: '', username: '' }
                 }));
             }
             setAllReflections(enrichedReflections);
