@@ -159,16 +159,28 @@ const Reports = () => {
         // Load feedback for students
         if (profile?.id && profile?.role === 'student') {
             const loadFeedback = async () => {
-                const { data } = await supabase
+                const { data, error } = await supabase
                     .from('teacher_student_mappings')
                     .select(`
+                        teacher_id,
+                        assigned_at,
                         notes, 
                         teacher:profiles!teacher_id(full_name, department)
                     `)
                     .eq('student_id', profile.id)
                     .eq('is_active', true)
-                    .maybeSingle();
-                setFeedback(data);
+                    .order('assigned_at', { ascending: false })
+                    .limit(5);
+
+                if (error) {
+                    console.warn('[Reports] Could not load mentor feedback mapping:', error);
+                    setFeedback(null);
+                    return;
+                }
+
+                const rows = data || [];
+                const resolved = rows.find((row) => row?.teacher?.full_name) || rows[0] || null;
+                setFeedback(resolved);
             };
             loadFeedback();
         }
@@ -469,7 +481,11 @@ const Reports = () => {
                         <div>
                             <div style={{ marginBottom: '1rem' }}>
                                 <span style={{ fontWeight: 'bold', color: '#5B21B6' }}>Mentor: </span>
-                                <span>{feedback.teacher?.full_name} ({feedback.teacher?.department})</span>
+                                <span>
+                                    {feedback.teacher?.full_name
+                                        ? `${feedback.teacher.full_name} (${feedback.teacher?.department || 'Faculty Mentor'})`
+                                        : 'Assigned mentor (name unavailable due to profile access settings)'}
+                                </span>
                             </div>
                             <div style={{ backgroundColor: '#F5F3FF', padding: '1.5rem', borderRadius: '8px', color: '#4C1D95' }}>
                                 "{feedback.notes || 'No specific feedback notes added yet.'}"

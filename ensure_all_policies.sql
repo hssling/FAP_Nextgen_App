@@ -45,6 +45,16 @@ CREATE POLICY "Teachers can view assigned students profiles" ON profiles FOR SEL
   )
 );
 
+-- 1.3b Students can view assigned mentor profiles
+DROP POLICY IF EXISTS "Students can view assigned mentor profiles" ON profiles;
+CREATE POLICY "Students can view assigned mentor profiles" ON profiles FOR SELECT USING (
+  role = 'teacher' AND
+  id IN (
+    SELECT teacher_id FROM teacher_student_mappings
+    WHERE student_id = auth.uid() AND is_active = true
+  )
+);
+
 -- 1.4 Admins can view all profiles (Non-Recursive)
 DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
 DROP POLICY IF EXISTS "allow_admins_read_all_profiles" ON profiles;

@@ -19,6 +19,8 @@ USING (
 );
 
 -- Optional hardening helper for apps that prefer RPC over joins.
+DROP FUNCTION IF EXISTS public.get_student_mentor(uuid);
+
 CREATE OR REPLACE FUNCTION public.get_student_mentor(student_uuid uuid DEFAULT auth.uid())
 RETURNS TABLE (
   teacher_id uuid,
