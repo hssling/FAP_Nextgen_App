@@ -14,6 +14,7 @@ import { calculateBadges } from '../utils/gamification';
 import BadgeDisplay from '../components/shared/BadgeDisplay';
 import { get, set } from 'idb-keyval';
 import { withRetry } from '../utils/retryUtils';
+import { formatStudentIdentifiers } from '../utils/studentIdentity';
 import './TeacherDashboard.css';
 
 
@@ -155,7 +156,7 @@ const TeacherDashboard = () => {
         try {
             const { data: mappings, error: mappingsError } = await withRetry(
                 () => supabase.from('teacher_student_mappings')
-                    .select('student:profiles!student_id(id, full_name, registration_number, email)')
+                    .select('student:profiles!student_id(id, full_name, registration_number, year, year_of_joining, email)')
                     .eq('teacher_id', profile.id)
                     .eq('is_active', true),
                 { retries: 2 }
@@ -548,7 +549,12 @@ const TeacherDashboard = () => {
                 )}
                 {loading ? <div style={{ textAlign: 'center', padding: '4rem', color: '#94A3B8' }}>Loading classroom...</div> : (
                     <div className="student-grid">
-                        {students.filter(s => s.full_name.toLowerCase().includes(searchTerm.toLowerCase())).map(student => (
+                        {students.filter((s) => {
+                            const term = searchTerm.toLowerCase();
+                            return s.full_name?.toLowerCase().includes(term) ||
+                                s.registration_number?.toLowerCase().includes(term) ||
+                                String(s.year_of_joining || '').includes(searchTerm.trim());
+                        }).map(student => (
                             <motion.div
                                 key={student.id}
                                 layoutId={`card-${student.id}`}
@@ -566,7 +572,7 @@ const TeacherDashboard = () => {
                                     </div>
                                 </div>
                                 <h3 className="student-name">{student.full_name}</h3>
-                                <p className="student-id">{student.registration_number}</p>
+                                <p className="student-id">{formatStudentIdentifiers(student)}</p>
 
                                 <div style={{ marginTop: '0.5rem' }}>
                                     <BadgeDisplay badges={calculateBadges({
@@ -627,7 +633,7 @@ const TeacherDashboard = () => {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                                     <div>
                                         <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0F172A' }}>{activeStudent.full_name}</h2>
-                                        <p style={{ color: '#64748B', fontSize: '0.875rem' }}>{activeStudent.registration_number}</p>
+                                        <p style={{ color: '#64748B', fontSize: '0.875rem' }}>{formatStudentIdentifiers(activeStudent)}</p>
                                     </div>
                                     <button onClick={() => setActiveStudent(null)} style={{ padding: '0.5rem', borderRadius: '50%', border: '1px solid #E2E8F0' }}><X size={20} /></button>
                                 </div>

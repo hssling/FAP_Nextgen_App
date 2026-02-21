@@ -11,6 +11,7 @@ import { supabase } from '../services/supabaseClient';
 import { get, set } from 'idb-keyval';
 import { AI_PROVIDERS, DEFAULT_AI_PROVIDER } from '../services/aiProviders';
 import { callProviderChat, hasProviderKey } from '../services/aiClient';
+import { getCurrentStudyYear, getYearOfJoining } from '../utils/studentIdentity';
 
 
 const AICoach = () => {
@@ -152,11 +153,13 @@ const scrollToBottom = () => {
     };
 
     const getSystemPrompt = () => {
+        const currentStudyYear = getCurrentStudyYear(profile);
+        const joiningYear = getYearOfJoining(profile);
         return `You are an expert medical educator specializing in Community Medicine and Family Medicine for Indian medical students following the NMC-CBME curriculum. 
 
 Context: The student is in the Family Adoption Programme (FAP) where they adopt a family for 3 years and learn community medicine competencies.
 
-Student Profile: ${profile?.full_name || 'Medical Student'}, Year ${profile?.year || 'N/A'}
+Student Profile: ${profile?.full_name || 'Medical Student'}, Batch ${joiningYear || 'N/A'}, Current MBBS Year ${currentStudyYear || profile?.year || 'N/A'}
 
 Guidelines:
 - Provide helpful, accurate, and educational responses

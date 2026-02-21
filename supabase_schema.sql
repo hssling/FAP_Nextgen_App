@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   full_name text NOT NULL,
   role text NOT NULL CHECK (role IN ('student', 'teacher', 'admin')),
   year integer CHECK (year IN (1, 2, 3)),
+  year_of_joining integer CHECK (year_of_joining BETWEEN 2000 AND 2100),
   department text,
   phone text,
   registration_number text UNIQUE,
@@ -269,6 +270,7 @@ RETURNS TABLE (
   student_name text,
   student_email text,
   year integer,
+  year_of_joining integer,
   registration_number text,
   assigned_at timestamp with time zone
 ) 
@@ -282,6 +284,7 @@ BEGIN
     p.full_name,
     u.email,
     p.year,
+    p.year_of_joining,
     p.registration_number,
     m.assigned_at
   FROM teacher_student_mappings m
@@ -289,7 +292,7 @@ BEGIN
   JOIN auth.users u ON p.id = u.id
   WHERE m.teacher_id = teacher_uuid
     AND m.is_active = true
-  ORDER BY p.year, p.full_name;
+  ORDER BY p.year_of_joining NULLS LAST, p.year, p.full_name;
 END;
 $$;
 

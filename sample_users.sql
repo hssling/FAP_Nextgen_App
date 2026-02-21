@@ -17,13 +17,14 @@
 -- Password: Student@123
 -- Then run:
 /*
-INSERT INTO profiles (id, username, full_name, role, year, registration_number, is_active)
+INSERT INTO profiles (id, username, full_name, role, year, year_of_joining, registration_number, is_active)
 VALUES (
   'REPLACE_WITH_STUDENT1_UUID',
   'student1',
   'Rahul Kumar',
   'student',
   1,
+  2024,
   '2024MBBS001',
   true
 );
@@ -37,13 +38,14 @@ VALUES (
 -- Password: Student@123
 -- Then run:
 /*
-INSERT INTO profiles (id, username, full_name, role, year, registration_number, is_active)
+INSERT INTO profiles (id, username, full_name, role, year, year_of_joining, registration_number, is_active)
 VALUES (
   'REPLACE_WITH_STUDENT2_UUID',
   'student2',
   'Priya Sharma',
   'student',
   2,
+  2023,
   '2023MBBS045',
   true
 );
@@ -57,13 +59,14 @@ VALUES (
 -- Password: Student@123
 -- Then run:
 /*
-INSERT INTO profiles (id, username, full_name, role, year, registration_number, is_active)
+INSERT INTO profiles (id, username, full_name, role, year, year_of_joining, registration_number, is_active)
 VALUES (
   'REPLACE_WITH_STUDENT3_UUID',
   'student3',
   'Amit Patel',
   'student',
   1,
+  2024,
   '2024MBBS002',
   true
 );
@@ -153,6 +156,7 @@ SELECT
   username,
   full_name,
   role,
+  year_of_joining,
   year,
   department,
   is_active
@@ -163,6 +167,7 @@ ORDER BY role, year, full_name;
 SELECT 
   t.full_name as teacher,
   s.full_name as student,
+  s.year_of_joining,
   s.year,
   m.assigned_at,
   m.is_active
@@ -198,11 +203,11 @@ DECLARE
   teacher2_id uuid := 'YOUR_TEACHER2_UUID';
 BEGIN
   -- Insert students
-  INSERT INTO profiles (id, username, full_name, role, year, registration_number, is_active)
+  INSERT INTO profiles (id, username, full_name, role, year, year_of_joining, registration_number, is_active)
   VALUES 
-    (student1_id, 'student1', 'Rahul Kumar', 'student', 1, '2024MBBS001', true),
-    (student2_id, 'student2', 'Priya Sharma', 'student', 2, '2023MBBS045', true),
-    (student3_id, 'student3', 'Amit Patel', 'student', 1, '2024MBBS002', true);
+    (student1_id, 'student1', 'Rahul Kumar', 'student', 1, 2024, '2024MBBS001', true),
+    (student2_id, 'student2', 'Priya Sharma', 'student', 2, 2023, '2023MBBS045', true),
+    (student3_id, 'student3', 'Amit Patel', 'student', 1, 2024, '2024MBBS002', true);
 
   -- Insert teachers
   INSERT INTO profiles (id, username, full_name, role, department, employee_id, is_active)

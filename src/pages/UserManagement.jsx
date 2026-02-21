@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Search, UserCheck, UserX, Key, Shield, RefreshCw, Filter } from 'lucide-react';
+import { formatStudentIdentifiers } from '../utils/studentIdentity';
 
 const UserManagement = () => {
     const [users, setUsers] = useState([]);
@@ -78,7 +79,9 @@ const UserManagement = () => {
     const filteredUsers = users.filter(user => {
         const matchesSearch = (user.full_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
             (user.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-            (user.username?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+            (user.username?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+            (user.registration_number?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+            String(user.year_of_joining || '').includes(searchTerm.trim());
         const matchesRole = roleFilter === 'all' || user.role === roleFilter;
         const matchesStatus = statusFilter === 'all' ||
             (statusFilter === 'active' ? user.is_active : !user.is_active);
@@ -197,8 +200,7 @@ const UserManagement = () => {
                                         </td>
                                         <td style={{ padding: '1rem', fontSize: '0.875rem' }}>
                                             {user.department && <div>Dept: {user.department}</div>}
-                                            {user.year && <div>Year: {user.year}</div>}
-                                            {user.registration_number && <div>Reg: {user.registration_number}</div>}
+                                            {user.role === 'student' && <div>{formatStudentIdentifiers(user)}</div>}
                                             {user.employee_id && <div>ID: {user.employee_id}</div>}
                                         </td>
                                         <td style={{ padding: '1rem' }}>

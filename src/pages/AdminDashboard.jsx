@@ -10,6 +10,7 @@ import { calculateBadges } from '../utils/gamification';
 import BadgeDisplay from '../components/shared/BadgeDisplay';
 import { get, set } from 'idb-keyval';
 import { withRetry } from '../utils/retryUtils';
+import { formatStudentIdentifiers } from '../utils/studentIdentity';
 
 const AdminDashboard = () => {
     const { profile } = useAuth();
@@ -156,7 +157,7 @@ const AdminDashboard = () => {
                         .limit(200),
                     supabase
                         .from('profiles')
-                        .select('id, full_name, registration_number, email, year')
+                        .select('id, full_name, registration_number, email, year, year_of_joining')
                         .eq('role', 'student')
                         .eq('is_active', true)
                         .order('full_name')
@@ -283,12 +284,14 @@ const AdminDashboard = () => {
 
     const filteredStudents = allStudents.filter(s =>
         s.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.registration_number?.toLowerCase().includes(searchTerm.toLowerCase())
+        s.registration_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(s.year_of_joining || '').includes(searchTerm.trim())
     );
 
     const filteredReflections = allReflections.filter(r =>
         r.student?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.student?.registration_number?.toLowerCase().includes(searchTerm.toLowerCase())
+        r.student?.registration_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(r.student?.year_of_joining || '').includes(searchTerm.trim())
     );
 
     const StatCard = ({ icon: Icon, label, value, color, bgGradient, borderColor }) => (
@@ -338,7 +341,7 @@ const AdminDashboard = () => {
                         {reflection.student?.full_name || 'Unknown'}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>
-                        {reflection.student?.registration_number || ''}
+                        {formatStudentIdentifiers(reflection.student)}
                     </div>
                 </div>
                 <span style={{
@@ -394,7 +397,7 @@ const AdminDashboard = () => {
                 {student.full_name}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#6B7280', marginBottom: '0.75rem' }}>
-                {student.registration_number || 'No Reg. No.'} {student.year ? `• Year ${student.year}` : ''}
+                {formatStudentIdentifiers(student)}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
                 <div>
@@ -714,7 +717,9 @@ const AdminDashboard = () => {
                                             </div>
                                             <div style={{ flex: 1 }}>
                                                 <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{student.full_name}</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>{student.gradedCount} Graded Reflections</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>
+                                                    {student.gradedCount} Graded Reflections • {formatStudentIdentifiers(student)}
+                                                </div>
                                             </div>
                                             <BadgeDisplay badges={calculateBadges({
                                                 visits: 0, // Admin view doesn't fetch visits yet per student efficiently

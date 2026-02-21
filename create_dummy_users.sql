@@ -35,13 +35,13 @@ TEACHERS (Password for all: Teacher@123):
 -- ============================================
 
 -- Students
-INSERT INTO profiles (id, username, full_name, role, year, registration_number, is_active)
+INSERT INTO profiles (id, username, full_name, role, year, year_of_joining, registration_number, is_active)
 VALUES 
-  ('STUDENT1_UUID', 'student1', 'Rahul Kumar', 'student', 1, '2024MBBS001', true),
-  ('STUDENT2_UUID', 'student2', 'Priya Sharma', 'student', 1, '2024MBBS002', true),
-  ('STUDENT3_UUID', 'student3', 'Amit Patel', 'student', 2, '2023MBBS045', true),
-  ('STUDENT4_UUID', 'student4', 'Sneha Reddy', 'student', 2, '2023MBBS046', true),
-  ('STUDENT5_UUID', 'student5', 'Arjun Singh', 'student', 3, '2022MBBS089', true);
+  ('STUDENT1_UUID', 'student1', 'Rahul Kumar', 'student', 1, 2024, '2024MBBS001', true),
+  ('STUDENT2_UUID', 'student2', 'Priya Sharma', 'student', 1, 2024, '2024MBBS002', true),
+  ('STUDENT3_UUID', 'student3', 'Amit Patel', 'student', 2, 2023, '2023MBBS045', true),
+  ('STUDENT4_UUID', 'student4', 'Sneha Reddy', 'student', 2, 2023, '2023MBBS046', true),
+  ('STUDENT5_UUID', 'student5', 'Arjun Singh', 'student', 3, 2022, '2022MBBS089', true);
 
 -- Teachers
 INSERT INTO profiles (id, username, full_name, role, department, employee_id, is_active)
@@ -71,7 +71,7 @@ VALUES
 -- ============================================
 
 -- Check all users
-SELECT username, full_name, role, year, department, is_active
+SELECT username, full_name, role, year_of_joining, year, department, is_active
 FROM profiles
 WHERE role IN ('student', 'teacher')
 ORDER BY role, username;
@@ -80,6 +80,7 @@ ORDER BY role, username;
 SELECT 
   t.full_name as teacher,
   s.full_name as student,
+  s.year_of_joining,
   s.year,
   m.assigned_at,
   m.is_active

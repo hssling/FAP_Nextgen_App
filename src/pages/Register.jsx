@@ -13,7 +13,7 @@ const Register = () => {
         username: '',
         fullName: '',
         role: 'student',
-        year: '1',
+        yearOfJoining: `${new Date().getFullYear()}`,
         registrationNumber: '',
         department: '',
         employeeId: ''
@@ -54,6 +54,14 @@ const Register = () => {
                 throw new Error('Registration number is required for students');
             }
 
+            if (formData.role === 'student') {
+                const joiningYear = parseInt(formData.yearOfJoining, 10);
+                const currentYear = new Date().getFullYear();
+                if (Number.isNaN(joiningYear) || joiningYear < 2000 || joiningYear > currentYear + 1) {
+                    throw new Error(`Year of joining must be between 2000 and ${currentYear + 1}`);
+                }
+            }
+
             if (formData.role === 'teacher' && (!formData.department || !formData.employeeId)) {
                 throw new Error('Department and Employee ID are required for teachers');
             }
@@ -90,7 +98,10 @@ const Register = () => {
 
             // Add role-specific fields
             if (formData.role === 'student') {
-                profileData.year = parseInt(formData.year);
+                const joiningYear = parseInt(formData.yearOfJoining, 10);
+                const currentStudyYear = Math.min(3, Math.max(1, new Date().getFullYear() - joiningYear + 1));
+                profileData.year_of_joining = joiningYear;
+                profileData.year = currentStudyYear;
                 profileData.registration_number = formData.registrationNumber;
             } else if (formData.role === 'teacher') {
                 profileData.department = formData.department;
@@ -343,13 +354,17 @@ const Register = () => {
                         <>
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#374151' }}>
-                                    Year *
+                                    Year of Joining *
                                 </label>
-                                <select
-                                    name="year"
-                                    value={formData.year}
+                                <input
+                                    type="number"
+                                    name="yearOfJoining"
+                                    value={formData.yearOfJoining}
                                     onChange={handleChange}
                                     required
+                                    min="2000"
+                                    max={new Date().getFullYear() + 1}
+                                    placeholder="e.g., 2025"
                                     style={{
                                         width: '100%',
                                         padding: '0.875rem 1rem',
@@ -357,11 +372,7 @@ const Register = () => {
                                         borderRadius: '8px',
                                         fontSize: '1rem'
                                     }}
-                                >
-                                    <option value="1">1st Year</option>
-                                    <option value="2">2nd Year</option>
-                                    <option value="3">3rd Year</option>
-                                </select>
+                                />
                             </div>
 
                             <div style={{ marginBottom: '1.5rem' }}>

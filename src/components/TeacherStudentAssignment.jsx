@@ -3,6 +3,7 @@ import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { Users, UserPlus, Search, Trash2, CheckCircle, XCircle, GraduationCap, BookOpen, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { formatStudentIdentifiers } from '../utils/studentIdentity';
 
 const TeacherStudentAssignment = () => {
     const { profile } = useAuth();
@@ -49,7 +50,7 @@ const TeacherStudentAssignment = () => {
                 .select(`
                     *,
                     teacher:profiles!teacher_id(id, username, full_name, department),
-                    student:profiles!student_id(id, username, full_name, year, registration_number)
+                    student:profiles!student_id(id, username, full_name, year, year_of_joining, registration_number)
                 `)
                 .eq('is_active', true)
                 .order('assigned_at', { ascending: false });
@@ -234,7 +235,7 @@ const TeacherStudentAssignment = () => {
                                     const assigned = getTeacherForStudent(student.id);
                                     return (
                                         <option key={student.id} value={student.id}>
-                                            {student.full_name} (Year {student.year}) {assigned ? '✓ Assigned' : ''}
+                                            {student.full_name} ({formatStudentIdentifiers(student)}) {assigned ? '✓ Assigned' : ''}
                                         </option>
                                     );
                                 })}
@@ -345,7 +346,7 @@ const TeacherStudentAssignment = () => {
                                                 </span>
                                             </div>
                                             <p style={{ fontSize: '0.75rem', color: '#1E40AF' }}>
-                                                Year {mapping.student?.year} • {mapping.student?.registration_number}
+                                                {formatStudentIdentifiers(mapping.student)}
                                             </p>
                                         </div>
 
@@ -454,7 +455,7 @@ const TeacherStudentAssignment = () => {
                                                     fontSize: '0.75rem'
                                                 }}
                                             >
-                                                {mapping.student?.full_name}
+                                                {mapping.student?.full_name} ({mapping.student?.registration_number || 'No Roll No.'})
                                             </span>
                                         ))}
                                     </div>

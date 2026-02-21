@@ -4,6 +4,7 @@ import { LayoutDashboard, Users, FileText, Settings, Activity, Map, GraduationCa
 import styles from './Layout.module.css';
 import ErrorBoundary from './ErrorBoundary';
 import { useAuth } from '../contexts/AuthContext';
+import { getCurrentStudyYear, getYearOfJoining } from '../utils/studentIdentity';
 
 const Layout = () => {
     const { profile, signOut } = useAuth();
@@ -24,7 +25,11 @@ const Layout = () => {
     const getRoleDisplay = () => {
         if (isAdmin) return 'Administrator';
         if (isTeacher) return 'Faculty Mentor';
-        return profile?.year ? `Year ${profile.year} MBBS` : 'MBBS Student';
+        const yearOfJoining = getYearOfJoining(profile);
+        const currentYear = getCurrentStudyYear(profile);
+        if (yearOfJoining && currentYear) return `Batch ${yearOfJoining} • Year ${currentYear} MBBS`;
+        if (currentYear) return `Year ${currentYear} MBBS`;
+        return 'MBBS Student';
     };
 
     const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
