@@ -43,10 +43,32 @@ WHERE role = 'student'
 
 -- Keep legacy year synchronized from year_of_joining.
 UPDATE public.profiles
-SET year = LEAST(3, GREATEST(1, EXTRACT(YEAR FROM CURRENT_DATE)::int - year_of_joining + 1))
+SET year = LEAST(
+  3,
+  GREATEST(
+    1,
+    (
+      CASE
+        WHEN EXTRACT(MONTH FROM CURRENT_DATE)::int >= 12 THEN EXTRACT(YEAR FROM CURRENT_DATE)::int
+        ELSE EXTRACT(YEAR FROM CURRENT_DATE)::int - 1
+      END
+    ) - year_of_joining + 1
+  )
+)
 WHERE role = 'student'
   AND year_of_joining IS NOT NULL
-  AND year IS DISTINCT FROM LEAST(3, GREATEST(1, EXTRACT(YEAR FROM CURRENT_DATE)::int - year_of_joining + 1));
+  AND year IS DISTINCT FROM LEAST(
+    3,
+    GREATEST(
+      1,
+      (
+        CASE
+          WHEN EXTRACT(MONTH FROM CURRENT_DATE)::int >= 12 THEN EXTRACT(YEAR FROM CURRENT_DATE)::int
+          ELSE EXTRACT(YEAR FROM CURRENT_DATE)::int - 1
+        END
+      ) - year_of_joining + 1
+    )
+  );
 
 -- =========================================================
 -- 2) Student can read assigned mentor profile (RLS policy)
