@@ -2,6 +2,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { get, set, del } from 'idb-keyval';
+import { getCurrentStudyYear } from '../utils/studentIdentity';
 
 const AuthContext = createContext({});
 
@@ -44,10 +45,29 @@ export const AuthProvider = ({ children }) => {
                 return null;
             }
 
+            let resolvedProfile = data;
+
+            // Auto-sync legacy `year` from `year_of_joining` for student progression.
+            if (data?.role === 'student' && data?.year_of_joining) {
+                const computedYear = getCurrentStudyYear(data);
+                if (computedYear && data.year !== computedYear) {
+                    const { error: syncError } = await supabase
+                        .from('profiles')
+                        .update({ year: computedYear })
+                        .eq('id', userId);
+
+                    if (!syncError) {
+                        resolvedProfile = { ...data, year: computedYear };
+                    } else {
+                        console.warn('Could not auto-sync study year from joining year:', syncError);
+                    }
+                }
+            }
+
             // 3. Success: Update state and cache
-            setProfile(data);
-            await set(cacheKey, data);
-            return data;
+            setProfile(resolvedProfile);
+            await set(cacheKey, resolvedProfile);
+            return resolvedProfile;
         } catch (error) {
             console.error('Error loading profile:', error);
 

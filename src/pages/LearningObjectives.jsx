@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Target, CheckCircle, Calendar, Award, FileText, TrendingUp, Users, X, GraduationCap } from 'lucide-react';
 import competenciesData from '../data/competencies/nmc_competencies.json';
@@ -6,15 +6,25 @@ import LearningContentViewer from '../components/LearningContentViewer';
 import { useAuth } from '../contexts/AuthContext';
 import { useCompetencies } from '../hooks/useCompetencies';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { getCurrentStudyYear } from '../utils/studentIdentity';
 
 const LearningObjectives = () => {
     const { profile } = useAuth();
     const { progress } = useCompetencies(profile?.id);
     
-    const [selectedYear, setSelectedYear] = useState('year_1');
+    const derivedYearKey = useMemo(() => {
+        const currentYear = getCurrentStudyYear(profile);
+        return `year_${currentYear || 1}`;
+    }, [profile]);
+
+    const [selectedYear, setSelectedYear] = useState(derivedYearKey);
     const [activeTab, setActiveTab] = useState('competencies');
     const [selectedCompetency, setSelectedCompetency] = useState(null);
     const [showContentModal, setShowContentModal] = useState(false);
+
+    useEffect(() => {
+        setSelectedYear(derivedYearKey);
+    }, [derivedYearKey]);
 
     const yearData = competenciesData[selectedYear];
     const yearNumber = selectedYear.split('_')[1];
