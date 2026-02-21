@@ -1,8 +1,9 @@
-import React from 'react';
-import { Users, Calendar, AlertCircle, TrendingUp, Activity } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Users, AlertCircle, TrendingUp, Activity, UserCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import { supabase } from '../services/supabaseClient';
 
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -40,12 +41,56 @@ const StatCard = ({ title, value, icon: Icon, color, trend, delay }) => (
 
 const Dashboard = () => {
     const { profile } = useAuth();
+    const [mentorAssignment, setMentorAssignment] = useState(null);
+    const [mentorLoading, setMentorLoading] = useState(true);
 
     // Use React Query Hook
     const {
         data: stats,
         isLoading: loading,
     } = useDashboardStats(profile?.id);
+
+    useEffect(() => {
+        let mounted = true;
+
+        const loadMentor = async () => {
+            if (!profile?.id) {
+                if (mounted) {
+                    setMentorAssignment(null);
+                    setMentorLoading(false);
+                }
+                return;
+            }
+
+            setMentorLoading(true);
+            const { data, error } = await supabase
+                .from('teacher_student_mappings')
+                .select(`
+                    teacher:profiles!teacher_id(full_name, department)
+                `)
+                .eq('student_id', profile.id)
+                .eq('is_active', true)
+                .order('assigned_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (mounted) {
+                if (error) {
+                    console.error('Error loading mentor assignment:', error);
+                    setMentorAssignment(null);
+                } else {
+                    setMentorAssignment(data || null);
+                }
+                setMentorLoading(false);
+            }
+        };
+
+        loadMentor();
+
+        return () => {
+            mounted = false;
+        };
+    }, [profile?.id]);
 
     // Default stats if loading or error (prevents crash)
     const effectiveStats = stats || {
@@ -128,6 +173,34 @@ const Dashboard = () => {
                     />
                 </div>
             )}
+
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
+                className="card"
+                style={{ padding: '1.5rem', marginBottom: '2rem' }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                    <UserCheck size={20} color="#0F766E" />
+                    <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Your Mentor</h2>
+                </div>
+
+                {mentorLoading ? (
+                    <p style={{ color: 'var(--color-text-muted)' }}>Loading mentor details...</p>
+                ) : mentorAssignment?.teacher?.full_name ? (
+                    <div>
+                        <p style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{mentorAssignment.teacher.full_name}</p>
+                        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
+                            {mentorAssignment.teacher.department || 'Faculty Mentor'}
+                        </p>
+                    </div>
+                ) : (
+                    <p style={{ color: 'var(--color-text-muted)' }}>
+                        Mentor not assigned yet. Please contact admin.
+                    </p>
+                )}
+            </motion.div>
 
             <div className="grid-layout grid-2">
                 <motion.div
