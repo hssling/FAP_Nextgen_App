@@ -3,6 +3,82 @@ import { supabase } from '../services/supabaseClient';
 import { Search, UserCheck, UserX, Key, Shield, RefreshCw } from 'lucide-react';
 import { formatStudentIdentifiers } from '../utils/studentIdentity';
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const isEdgeTransportError = (error) => {
+    const message = (error?.message || '').toLowerCase();
+    return message.includes('failed to send a request to the edge function') ||
+        message.includes('failed to fetch') ||
+        message.includes('networkerror') ||
+        message.includes('network request failed');
+};
+
+const invokeAdminResetWithFallback = async (payload) => {
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+        const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+            body: payload,
+        });
+
+        if (!error) {
+            if (data?.error) throw new Error(data.error);
+            return data;
+        }
+
+        lastError = error;
+
+        // Retry only transport-level failures once after a short pause.
+        if (attempt === 1 && isEdgeTransportError(error)) {
+            await sleep(500);
+            continue;
+        }
+
+        break;
+    }
+
+    if (!isEdgeTransportError(lastError)) {
+        throw lastError;
+    }
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !anonKey) {
+        throw lastError;
+    }
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+        throw sessionError;
+    }
+
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) {
+        throw new Error('Admin session expired. Please log in again and retry.');
+    }
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/admin-reset-password`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+            'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(payload),
+    });
+
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(json?.error || `Edge Function error (${response.status})`);
+    }
+
+    if (json?.error) {
+        throw new Error(json.error);
+    }
+
+    return json;
+};
+
 const UserManagement = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -92,12 +168,7 @@ const UserManagement = () => {
         if (!ok) return;
 
         try {
-            const { data, error } = await supabase.functions.invoke('admin-reset-password', {
-                body: { userId: user.id, role: user.role },
-            });
-
-            if (error) throw error;
-            if (data?.error) throw new Error(data.error);
+            await invokeAdminResetWithFallback({ userId: user.id, role: user.role });
 
             setMessage({ type: 'success', text: `Password reset to default (${defaultPassword}) for ${user.full_name || user.username}.` });
             setTimeout(() => setMessage({ type: '', text: '' }), 6000);
