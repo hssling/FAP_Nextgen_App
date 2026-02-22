@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { Search, UserCheck, UserX, Key, Shield, RefreshCw, Filter } from 'lucide-react';
+import { Search, UserCheck, UserX, Key, Shield, RefreshCw } from 'lucide-react';
 import { formatStudentIdentifiers } from '../utils/studentIdentity';
 
 const UserManagement = () => {
@@ -72,6 +72,38 @@ const UserManagement = () => {
         } catch (error) {
             console.error('Reset error:', error);
             setMessage({ type: 'error', text: 'Failed to send reset email: ' + error.message });
+        }
+    };
+
+    const getDefaultPasswordForRole = (role) => {
+        if (role === 'student') return 'Student@123';
+        if (role === 'teacher' || role === 'mentor') return 'Teacher@123';
+        return null;
+    };
+
+    const handleDefaultPasswordReset = async (user) => {
+        const defaultPassword = getDefaultPasswordForRole(user.role);
+        if (!defaultPassword) {
+            setMessage({ type: 'error', text: 'Default reset only supports student and teacher/mentor roles.' });
+            return;
+        }
+
+        const ok = confirm(`Reset password for ${user.full_name || user.username} to "${defaultPassword}"?`);
+        if (!ok) return;
+
+        try {
+            const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+                body: { userId: user.id, role: user.role },
+            });
+
+            if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+
+            setMessage({ type: 'success', text: `Password reset to default (${defaultPassword}) for ${user.full_name || user.username}.` });
+            setTimeout(() => setMessage({ type: '', text: '' }), 6000);
+        } catch (error) {
+            console.error('Default password reset error:', error);
+            setMessage({ type: 'error', text: `Failed default reset: ${error.message || 'Unknown error'}` });
         }
     };
 
@@ -245,6 +277,23 @@ const UserManagement = () => {
                                                 >
                                                     <Key size={18} />
                                                 </button>
+
+                                                {(user.role === 'student' || user.role === 'teacher' || user.role === 'mentor') && (
+                                                    <button
+                                                        onClick={() => handleDefaultPasswordReset(user)}
+                                                        title={`Reset to default (${getDefaultPasswordForRole(user.role)})`}
+                                                        style={{
+                                                            padding: '0.5rem',
+                                                            borderRadius: '0.5rem',
+                                                            border: '1px solid var(--color-border)',
+                                                            cursor: 'pointer',
+                                                            background: 'white',
+                                                            color: '#1D4ED8'
+                                                        }}
+                                                    >
+                                                        <Shield size={18} />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
