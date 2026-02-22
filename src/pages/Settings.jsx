@@ -212,15 +212,15 @@ const Settings = () => {
     };
 
     return (
-        <div style={{ maxWidth: '900px', margin: '0 auto', padding: '1rem' }}>
+        <div className="settings-page-shell">
             <h1 className="page-title" style={{ marginBottom: '2rem' }}>Settings</h1>
 
-            <div className="card" style={{ padding: '2rem', marginBottom: '2rem' }}>
+            <div className="card settings-card" style={{ marginBottom: '2rem' }}>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <User size={20} className="text-primary" /> User Profile
                 </h2>
                 <div style={{ display: 'grid', gap: '1.5rem' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div className="settings-two-col">
                         <div>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Full Name</label>
                             <div className="input" style={{ background: '#F3F4F6', color: '#6B7280' }}>{profile?.full_name || 'N/A'}</div>
@@ -268,7 +268,7 @@ const Settings = () => {
                                 </div>
                             )}
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div className="settings-two-col settings-compact-gap">
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Roll Number</label>
                                     <input
@@ -326,7 +326,7 @@ const Settings = () => {
                 <NotificationManager />
             </section>
 
-            <div className="card" style={{ padding: '2rem', marginBottom: '2rem' }}>
+            <div className="card settings-card" style={{ marginBottom: '2rem' }}>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <KeyRound size={20} className="text-primary" /> AI Integrations
                 </h2>
@@ -438,6 +438,22 @@ const Settings = () => {
             </div>
 
             <style>{`
+                .settings-page-shell {
+                    max-width: 900px;
+                    margin: 0 auto;
+                    padding: 1rem;
+                }
+                .settings-card {
+                    padding: 2rem;
+                }
+                .settings-two-col {
+                    display: grid;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    gap: 1.5rem;
+                }
+                .settings-compact-gap {
+                    gap: 1rem;
+                }
                 .ai-key-actions {
                     display: flex;
                     flex-direction: column;
@@ -461,11 +477,21 @@ const Settings = () => {
                     justify-content: center;
                 }
                 @media (max-width: 640px) {
+                    .settings-page-shell {
+                        padding: 0.75rem;
+                    }
+                    .settings-card {
+                        padding: 1rem;
+                    }
+                    .settings-two-col {
+                        grid-template-columns: 1fr;
+                        gap: 0.85rem;
+                    }
                     .ai-key-button-row { grid-template-columns: 1fr; }
                 }
             `}</style>
 
-            <div className="card" style={{ padding: '2rem', marginBottom: '2rem' }}>
+            <div className="card settings-card" style={{ marginBottom: '2rem' }}>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <Database size={20} className="text-secondary" /> Data Management
                 </h2>
