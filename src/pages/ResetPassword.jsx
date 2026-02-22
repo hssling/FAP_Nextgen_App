@@ -26,7 +26,9 @@ const ResetPassword = () => {
                 const type = hashParams.get('type');
                 const code = queryParams.get('code');
                 const tokenHash = queryParams.get('token_hash');
+                const token = queryParams.get('token');
                 const queryType = queryParams.get('type');
+                const verifyRetried = queryParams.get('verify_retried') === '1';
 
                 if (accessToken && refreshToken && type === 'recovery') {
                     const { error: setSessionError } = await supabase.auth.setSession({
@@ -46,6 +48,15 @@ const ResetPassword = () => {
                     });
                     if (verifyError) throw verifyError;
                     if (mounted) setCanReset(true);
+                } else if (token && queryType === 'recovery' && !verifyRetried) {
+                    // Handle legacy recovery links that pass `token` query param.
+                    // Re-run Auth verify to obtain a usable recovery session for this page.
+                    const verifyUrl = new URL('/auth/v1/verify', import.meta.env.VITE_SUPABASE_URL);
+                    verifyUrl.searchParams.set('token', token);
+                    verifyUrl.searchParams.set('type', 'recovery');
+                    verifyUrl.searchParams.set('redirect_to', `${window.location.origin}/reset-password?verify_retried=1`);
+                    window.location.replace(verifyUrl.toString());
+                    return;
                 } else {
                     // Some in-app browsers may strip URL fragments. Try existing session with timeout.
                     const sessionResult = await Promise.race([
@@ -58,6 +69,8 @@ const ResetPassword = () => {
                         setError('Could not validate reset link in this browser. Please open the link in Chrome or Safari.');
                     } else if (sessionResult?.data?.session) {
                         setCanReset(true);
+                    } else if (token && queryType === 'recovery' && verifyRetried) {
+                        setError('Reset link verification failed. Please request a new link and open it directly from email.');
                     } else {
                         setError('Reset link is invalid or expired. Please request a new one.');
                     }
