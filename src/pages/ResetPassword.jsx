@@ -88,6 +88,7 @@ const ResetPassword = () => {
                 if (!mounted) return;
                 setError(err.message || 'Could not validate reset link. Please request a new one.');
             } finally {
+                if (initTimeout) clearTimeout(initTimeout);
                 if (mounted) setInitializing(false);
             }
         };
