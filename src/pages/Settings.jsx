@@ -236,6 +236,8 @@ const Settings = () => {
             setPasswordForm({ newPassword: '', confirmPassword: '' });
             setPasswordMessage({ type: 'success', text: 'Password updated successfully.' });
             toast.success('Password updated successfully.');
+            // Explicit fallback confirmation for devices where toast rendering is delayed/hidden.
+            alert('Password updated successfully.');
         } catch (error) {
             console.error('Failed to update password:', error);
             setPasswordMessage({ type: 'error', text: error.message || 'Could not update password.' });
