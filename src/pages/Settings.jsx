@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { User, Download, Database, KeyRound, ExternalLink, Save, Eye, EyeOff, Trash2 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 import NotificationManager from '../components/NotificationManager';
 import { AI_PROVIDERS } from '../services/aiProviders';
 import { getAllSavedAiKeys, saveAiProviderKey, clearAiProviderKey } from '../services/aiKeyStore';
@@ -234,9 +235,11 @@ const Settings = () => {
 
             setPasswordForm({ newPassword: '', confirmPassword: '' });
             setPasswordMessage({ type: 'success', text: 'Password updated successfully.' });
+            toast.success('Password updated successfully.');
         } catch (error) {
             console.error('Failed to update password:', error);
             setPasswordMessage({ type: 'error', text: error.message || 'Could not update password.' });
+            toast.error(error.message || 'Could not update password.');
         } finally {
             setPasswordSaving(false);
         }
