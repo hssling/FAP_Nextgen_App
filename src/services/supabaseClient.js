@@ -107,11 +107,8 @@ export const supabase = supabaseUrl && supabaseAnonKey
             // Refresh token 60 seconds before expiry (default is 10 seconds, too tight)
             // This gives more buffer time especially on slow networks
         },
-        global: {
-            headers: {
-                'x-application-name': 'FAP-NextGen'
-            }
-        }
+        // Do not add custom global headers here because Supabase Edge Function CORS
+        // preflight may block unknown headers on some deployments/browsers.
     })
     : null;
 
