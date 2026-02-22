@@ -15,6 +15,7 @@ const ResetPassword = () => {
 
     useEffect(() => {
         let mounted = true;
+        let initTimeout;
 
         const initializeRecoverySession = async () => {
             try {
@@ -29,6 +30,14 @@ const ResetPassword = () => {
                 const token = queryParams.get('token');
                 const queryType = queryParams.get('type');
                 const verifyRetried = queryParams.get('verify_retried') === '1';
+                const hashError = hashParams.get('error');
+                const hashErrorDescription = hashParams.get('error_description');
+
+                if (hashError) {
+                    if (!mounted) return;
+                    setError(decodeURIComponent(hashErrorDescription || 'Reset link is invalid or expired. Please request a new one.'));
+                    return;
+                }
 
                 if (accessToken && refreshToken && type === 'recovery') {
                     const { error: setSessionError } = await supabase.auth.setSession({
@@ -83,6 +92,13 @@ const ResetPassword = () => {
             }
         };
 
+        // Absolute fail-safe so UI never stays in "Validating..." forever.
+        initTimeout = setTimeout(() => {
+            if (!mounted) return;
+            setInitializing(false);
+            setError('Could not validate reset link. Please open the email link in Chrome or Safari, or request a new link.');
+        }, 12000);
+
         initializeRecoverySession();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -95,6 +111,7 @@ const ResetPassword = () => {
 
         return () => {
             mounted = false;
+            if (initTimeout) clearTimeout(initTimeout);
             if (subscription?.unsubscribe) subscription.unsubscribe();
         };
     }, []);
