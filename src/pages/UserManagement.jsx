@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Search, UserCheck, UserX, Key, Shield, RefreshCw } from 'lucide-react';
 import { formatStudentIdentifiers } from '../utils/studentIdentity';
+import toast from 'react-hot-toast';
 
 const UserManagement = () => {
     const [users, setUsers] = useState([]);
@@ -68,10 +69,12 @@ const UserManagement = () => {
 
             if (error) throw error;
             setMessage({ type: 'success', text: `Password reset email sent to ${email}.` });
+            toast.success(`Password reset email sent to ${email}.`);
             setTimeout(() => setMessage({ type: '', text: '' }), 5000);
         } catch (error) {
             console.error('Reset error:', error);
             setMessage({ type: 'error', text: 'Failed to send reset email: ' + error.message });
+            toast.error('Failed to send reset email.');
         }
     };
 
@@ -100,10 +103,12 @@ const UserManagement = () => {
             if (data?.error) throw new Error(data.error);
 
             setMessage({ type: 'success', text: `Password reset to default (${defaultPassword}) for ${user.full_name || user.username}.` });
+            toast.success(`Default password applied for ${user.full_name || user.username}.`);
             setTimeout(() => setMessage({ type: '', text: '' }), 6000);
         } catch (error) {
             console.error('Default password reset error:', error);
             setMessage({ type: 'error', text: `Failed default reset: ${error.message || 'Unknown error'}` });
+            toast.error(error.message || 'Failed default password reset.');
         }
     };
 

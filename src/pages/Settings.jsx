@@ -37,6 +37,9 @@ const Settings = () => {
     });
     const [profileSaving, setProfileSaving] = useState(false);
     const [profileMessage, setProfileMessage] = useState({ type: '', text: '' });
+    const [passwordForm, setPasswordForm] = useState({ newPassword: '', confirmPassword: '' });
+    const [passwordSaving, setPasswordSaving] = useState(false);
+    const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' });
 
     const providerEntries = useMemo(() => Object.entries(AI_PROVIDERS), []);
 
@@ -211,6 +214,34 @@ const Settings = () => {
         }
     };
 
+    const handleUpdatePassword = async () => {
+        setPasswordSaving(true);
+        setPasswordMessage({ type: '', text: '' });
+
+        try {
+            const newPassword = passwordForm.newPassword.trim();
+            const confirmPassword = passwordForm.confirmPassword.trim();
+
+            if (newPassword.length < 8) {
+                throw new Error('Password must be at least 8 characters long.');
+            }
+            if (newPassword !== confirmPassword) {
+                throw new Error('Passwords do not match.');
+            }
+
+            const { error } = await supabase.auth.updateUser({ password: newPassword });
+            if (error) throw error;
+
+            setPasswordForm({ newPassword: '', confirmPassword: '' });
+            setPasswordMessage({ type: 'success', text: 'Password updated successfully.' });
+        } catch (error) {
+            console.error('Failed to update password:', error);
+            setPasswordMessage({ type: 'error', text: error.message || 'Could not update password.' });
+        } finally {
+            setPasswordSaving(false);
+        }
+    };
+
     return (
         <div style={{ maxWidth: '900px', margin: '0 auto', padding: '1rem' }}>
             <h1 className="page-title" style={{ marginBottom: '2rem' }}>Settings</h1>
@@ -313,6 +344,79 @@ const Settings = () => {
                             </button>
                         </div>
                     )}
+
+                    <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '1rem', marginTop: '0.5rem' }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '0.75rem' }}>Change Password</h3>
+                        <p style={{ color: '#6B7280', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                            Use this to change your password after login. Keep it simple and secure.
+                        </p>
+
+                        {passwordMessage.text && (
+                            <div style={{
+                                padding: '0.75rem',
+                                borderRadius: '8px',
+                                marginBottom: '1rem',
+                                backgroundColor: passwordMessage.type === 'error' ? '#FEE2E2' : '#D1FAE5',
+                                color: passwordMessage.type === 'error' ? '#991B1B' : '#065F46',
+                                border: `1px solid ${passwordMessage.type === 'error' ? '#FCA5A5' : '#6EE7B7'}`
+                            }}>
+                                {passwordMessage.text}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>New Password</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        className="input"
+                                        type={visible.accountPassword ? 'text' : 'password'}
+                                        value={passwordForm.newPassword}
+                                        onChange={(e) => setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))}
+                                        placeholder="At least 8 characters"
+                                    />
+                                    <button
+                                        className="btn btn-outline"
+                                        onClick={() => setVisible((prev) => ({ ...prev, accountPassword: !prev.accountPassword }))}
+                                        style={{ position: 'absolute', right: '0.35rem', top: '0.35rem', padding: '0.3rem 0.5rem' }}
+                                        type="button"
+                                    >
+                                        {visible.accountPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Confirm Password</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        className="input"
+                                        type={visible.accountPasswordConfirm ? 'text' : 'password'}
+                                        value={passwordForm.confirmPassword}
+                                        onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                                        placeholder="Re-enter new password"
+                                    />
+                                    <button
+                                        className="btn btn-outline"
+                                        onClick={() => setVisible((prev) => ({ ...prev, accountPasswordConfirm: !prev.accountPasswordConfirm }))}
+                                        style={{ position: 'absolute', right: '0.35rem', top: '0.35rem', padding: '0.3rem 0.5rem' }}
+                                        type="button"
+                                    >
+                                        {visible.accountPasswordConfirm ? <EyeOff size={14} /> : <Eye size={14} />}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            className="btn btn-primary"
+                            onClick={handleUpdatePassword}
+                            disabled={passwordSaving}
+                            style={{ marginTop: '1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                        >
+                            <KeyRound size={16} /> {passwordSaving ? 'Updating...' : 'Update Password'}
+                        </button>
+                    </div>
+
                     <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '1rem' }}>
                         <button className="btn btn-outline" onClick={handleLogout} style={{ color: '#DC2626', borderColor: '#FECACA' }}>
                             Sign Out

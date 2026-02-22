@@ -19,6 +19,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import UserManagement from './pages/UserManagement';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import ResetPasswordFallback from './pages/ResetPasswordFallback';
 import LearningObjectives from './pages/LearningObjectives';
 const AICoach = React.lazy(() => import('./pages/AICoach'));
 import DebugEnv from './pages/DebugEnv';
@@ -125,6 +126,7 @@ const AppRoutes = () => {
       <Route path="/register" element={user ? <Navigate to="/" /> : <Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/reset-password-fallback" element={<ResetPasswordFallback />} />
       <Route path="/debug" element={<DebugEnv />} />
 
       {/* Student Routes */}

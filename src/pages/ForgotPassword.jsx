@@ -77,6 +77,12 @@ const ForgotPassword = () => {
                         <CheckCircle size={48} color="#059669" style={{ margin: '0 auto 1rem' }} />
                         <h3 style={{ color: '#065F46', marginBottom: '0.5rem' }}>Email Sent!</h3>
                         <p style={{ color: '#047857', fontSize: '0.9rem' }}>Check your inbox for instructions to reset your password.</p>
+                        <p style={{ color: '#065F46', fontSize: '0.85rem', marginTop: '0.75rem' }}>
+                            If link does not open properly on mobile, use{' '}
+                            <Link to="/reset-password-fallback" style={{ color: '#0F766E', fontWeight: 600, textDecoration: 'none' }}>
+                                Fallback Reset
+                            </Link>.
+                        </p>
                     </motion.div>
                 ) : (
                     <form onSubmit={handleSubmit}>

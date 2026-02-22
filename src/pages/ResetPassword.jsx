@@ -172,7 +172,12 @@ const ResetPassword = () => {
 
                 {!initializing && error && (
                     <div style={{ padding: '0.75rem', backgroundColor: '#FEE2E2', color: '#991B1B', borderRadius: '8px', marginBottom: '1rem', border: '1px solid #EF4444' }}>
-                        {error}
+                        <div>{error}</div>
+                        <div style={{ marginTop: '0.5rem' }}>
+                            <Link to="/reset-password-fallback" style={{ color: '#0F766E', fontWeight: 600, textDecoration: 'none' }}>
+                                Try Fallback Reset
+                            </Link>
+                        </div>
                     </div>
                 )}
 
