@@ -37,6 +37,12 @@ const Settings = () => {
     });
     const [profileSaving, setProfileSaving] = useState(false);
     const [profileMessage, setProfileMessage] = useState({ type: '', text: '' });
+    const [passwordForm, setPasswordForm] = useState({
+        newPassword: '',
+        confirmPassword: ''
+    });
+    const [passwordSaving, setPasswordSaving] = useState(false);
+    const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' });
 
     const providerEntries = useMemo(() => Object.entries(AI_PROVIDERS), []);
 
@@ -211,6 +217,37 @@ const Settings = () => {
         }
     };
 
+    const handleUpdatePassword = async () => {
+        setPasswordMessage({ type: '', text: '' });
+
+        const newPassword = passwordForm.newPassword;
+        const confirmPassword = passwordForm.confirmPassword;
+
+        if (newPassword.length < 8) {
+            setPasswordMessage({ type: 'error', text: 'Password must be at least 8 characters.' });
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            setPasswordMessage({ type: 'error', text: 'Passwords do not match.' });
+            return;
+        }
+
+        setPasswordSaving(true);
+        try {
+            const { error } = await supabase.auth.updateUser({ password: newPassword });
+            if (error) throw error;
+
+            setPasswordForm({ newPassword: '', confirmPassword: '' });
+            setPasswordMessage({ type: 'success', text: 'Password updated successfully.' });
+        } catch (error) {
+            console.error('Password update failed:', error);
+            setPasswordMessage({ type: 'error', text: error.message || 'Failed to update password.' });
+        } finally {
+            setPasswordSaving(false);
+        }
+    };
+
     return (
         <div className="settings-page-shell">
             <h1 className="page-title" style={{ marginBottom: '2rem' }}>Settings</h1>
@@ -313,6 +350,58 @@ const Settings = () => {
                             </button>
                         </div>
                     )}
+
+                    <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '1rem', marginTop: '0.5rem' }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '0.75rem' }}>Change Password</h3>
+                        <p style={{ color: '#6B7280', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                            Set a new password for your account.
+                        </p>
+
+                        {passwordMessage.text && (
+                            <div style={{
+                                padding: '0.75rem',
+                                borderRadius: '8px',
+                                marginBottom: '1rem',
+                                backgroundColor: passwordMessage.type === 'error' ? '#FEE2E2' : '#D1FAE5',
+                                color: passwordMessage.type === 'error' ? '#991B1B' : '#065F46',
+                                border: `1px solid ${passwordMessage.type === 'error' ? '#FCA5A5' : '#6EE7B7'}`
+                            }}>
+                                {passwordMessage.text}
+                            </div>
+                        )}
+
+                        <div className="settings-two-col settings-compact-gap">
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>New Password</label>
+                                <input
+                                    className="input"
+                                    type="password"
+                                    value={passwordForm.newPassword}
+                                    onChange={(e) => setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))}
+                                    placeholder="Enter new password"
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Confirm Password</label>
+                                <input
+                                    className="input"
+                                    type="password"
+                                    value={passwordForm.confirmPassword}
+                                    onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                                    placeholder="Confirm new password"
+                                />
+                            </div>
+                        </div>
+
+                        <button
+                            className="btn btn-primary"
+                            onClick={handleUpdatePassword}
+                            disabled={passwordSaving}
+                            style={{ marginTop: '1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                        >
+                            <Save size={16} /> {passwordSaving ? 'Updating...' : 'Update Password'}
+                        </button>
+                    </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '1rem' }}>
                         <button className="btn btn-outline" onClick={handleLogout} style={{ color: '#DC2626', borderColor: '#FECACA' }}>
                             Sign Out
