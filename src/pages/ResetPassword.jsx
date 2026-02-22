@@ -25,6 +25,8 @@ const ResetPassword = () => {
                 const refreshToken = hashParams.get('refresh_token');
                 const type = hashParams.get('type');
                 const code = queryParams.get('code');
+                const tokenHash = queryParams.get('token_hash');
+                const queryType = queryParams.get('type');
 
                 if (accessToken && refreshToken && type === 'recovery') {
                     const { error: setSessionError } = await supabase.auth.setSession({
@@ -32,18 +34,33 @@ const ResetPassword = () => {
                         refresh_token: refreshToken,
                     });
                     if (setSessionError) throw setSessionError;
+                    if (mounted) setCanReset(true);
                 } else if (code) {
                     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
                     if (exchangeError) throw exchangeError;
-                }
-
-                const { data: { session } } = await supabase.auth.getSession();
-                if (!mounted) return;
-
-                if (session) {
-                    setCanReset(true);
+                    if (mounted) setCanReset(true);
+                } else if (tokenHash && queryType === 'recovery') {
+                    const { error: verifyError } = await supabase.auth.verifyOtp({
+                        token_hash: tokenHash,
+                        type: 'recovery',
+                    });
+                    if (verifyError) throw verifyError;
+                    if (mounted) setCanReset(true);
                 } else {
-                    setError('Reset link is invalid or expired. Please request a new one.');
+                    // Some in-app browsers may strip URL fragments. Try existing session with timeout.
+                    const sessionResult = await Promise.race([
+                        supabase.auth.getSession(),
+                        new Promise((resolve) => setTimeout(() => resolve({ timeout: true }), 7000)),
+                    ]);
+
+                    if (!mounted) return;
+                    if (sessionResult?.timeout) {
+                        setError('Could not validate reset link in this browser. Please open the link in Chrome or Safari.');
+                    } else if (sessionResult?.data?.session) {
+                        setCanReset(true);
+                    } else {
+                        setError('Reset link is invalid or expired. Please request a new one.');
+                    }
                 }
             } catch (err) {
                 if (!mounted) return;
