@@ -175,6 +175,86 @@ const executeAction = async (item) => {
             if (error) throw error;
             break;
         }
+        case 'UPDATE_MEMBER': {
+            const { id, updates } = payload;
+            const { error } = await supabase
+                .from('family_members')
+                .update(updates)
+                .eq('id', id);
+            if (error) throw error;
+            break;
+        }
+        case 'ARCHIVE_MEMBER': {
+            const { id, updates } = payload;
+            const { error } = await supabase
+                .from('family_members')
+                .update(updates)
+                .eq('id', id);
+            if (error) throw error;
+            break;
+        }
+        case 'UPDATE_FAMILY': {
+            const { id, updates } = payload;
+            const { error } = await supabase
+                .from('families')
+                .update(updates)
+                .eq('id', id);
+            if (error) throw error;
+            break;
+        }
+        case 'ARCHIVE_FAMILY': {
+            const { id, updates } = payload;
+            const { error } = await supabase
+                .from('families')
+                .update(updates)
+                .eq('id', id);
+            if (error) throw error;
+            break;
+        }
+        case 'MERGE_MEMBER': {
+            const { sourceMemberId, targetMemberId, studentId } = payload;
+
+            const { data: source, error: sourceError } = await supabase
+                .from('family_members')
+                .select('*')
+                .eq('id', sourceMemberId)
+                .single();
+            if (sourceError) throw sourceError;
+
+            const { data: target, error: targetError } = await supabase
+                .from('family_members')
+                .select('*')
+                .eq('id', targetMemberId)
+                .single();
+            if (targetError) throw targetError;
+
+            const sourceHealth = source.health_data || {};
+            const targetHealth = target.health_data || {};
+            const mergedHealth = {
+                ...targetHealth,
+                problems: [...(targetHealth.problems || []), ...(sourceHealth.problems || [])],
+                interventions: [...(targetHealth.interventions || []), ...(sourceHealth.interventions || [])],
+                assessments: [...(targetHealth.assessments || []), ...(sourceHealth.assessments || [])]
+            };
+
+            const { error: updateTargetError } = await supabase
+                .from('family_members')
+                .update({ health_data: mergedHealth })
+                .eq('id', targetMemberId);
+            if (updateTargetError) throw updateTargetError;
+
+            const { error: archiveSourceError } = await supabase
+                .from('family_members')
+                .update({
+                    is_deleted: true,
+                    deleted_at: new Date().toISOString(),
+                    deleted_by: studentId,
+                    merged_into_member_id: targetMemberId
+                })
+                .eq('id', sourceMemberId);
+            if (archiveSourceError) throw archiveSourceError;
+            break;
+        }
         default:
             throw new Error(`Unknown action type: ${type}`);
     }

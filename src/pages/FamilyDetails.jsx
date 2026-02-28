@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { User, Activity, Calendar, Droplets, Home, Trash2, PlusCircle, FileText, ArrowRight, ClipboardList, Camera, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../services/supabaseClient';
@@ -17,6 +17,7 @@ import { get, set } from 'idb-keyval';
 
 const FamilyDetails = () => {
     const { id } = useParams();
+    const navigate = useNavigate();
     const { profile } = useAuth();
     const [family, setFamily] = useState(null);
     const [members, setMembers] = useState([]);
@@ -24,16 +25,20 @@ const FamilyDetails = () => {
     const [activeTab, setActiveTab] = useState('members');
 
     // Custom Hooks
-    const { addMember, addVisit } = useFamilyActions(id, profile?.id);
+    const { addMember, addVisit, updateMember, archiveMember, mergeMembers } = useFamilyActions(id, profile?.id);
     const { updateCompetency } = useCompetencies(profile?.id);
 
     // Modals
     const [showMemberModal, setShowMemberModal] = useState(false);
+    const [showEditFamilyModal, setShowEditFamilyModal] = useState(false);
+    const [showEditMemberModal, setShowEditMemberModal] = useState(false);
     const [showVisitModal, setShowVisitModal] = useState(false);
     const [selectedVisitData, setSelectedVisitData] = useState(null);
 
     // States for Forms
     const [newMember, setNewMember] = useState({ name: '', age: '', gender: 'Male', relationship: '' });
+    const [editFamily, setEditFamily] = useState({ head_name: '', village: '', members_count: 1 });
+    const [editingMember, setEditingMember] = useState(null);
     const [visitStep, setVisitStep] = useState(1);
     const [selectedProtocol, setSelectedProtocol] = useState('');
     const [newVisit, setNewVisit] = useState({
@@ -48,6 +53,8 @@ const FamilyDetails = () => {
     const [gpsLocation, setGpsLocation] = useState(null);
     const [isLocating, setIsLocating] = useState(false);
     const [locationError, setLocationError] = useState(null);
+    const [mergeSourceId, setMergeSourceId] = useState('');
+    const [mergeTargetId, setMergeTargetId] = useState('');
 
     // Capture GPS when visit modal opens
     useEffect(() => {
@@ -96,13 +103,29 @@ const FamilyDetails = () => {
                 photoUrl: famData.photo_url
             };
             setFamily(mappedFam);
+            setEditFamily({
+                head_name: famData.head_name || '',
+                village: famData.village || '',
+                members_count: famData.members_count || 1
+            });
             await set(cacheKeys.family, mappedFam);
 
             // Fetch Members
-            const { data: memData, error: memError } = await supabase
+            let { data: memData, error: memError } = await supabase
                 .from('family_members')
                 .select('*')
-                .eq('family_id', id);
+                .eq('family_id', id)
+                .neq('is_deleted', true);
+
+            if (memError) {
+                // Backward-compatible fallback if is_deleted column not present yet.
+                const fallbackMembers = await supabase
+                    .from('family_members')
+                    .select('*')
+                    .eq('family_id', id);
+                memData = fallbackMembers.data;
+                memError = fallbackMembers.error;
+            }
 
             if (memError) throw memError;
             setMembers(memData || []);
@@ -157,6 +180,21 @@ const FamilyDetails = () => {
     const handleAddMember = async (e) => {
         e.preventDefault();
         try {
+            const normalizedName = (newMember.name || '').trim().toLowerCase();
+            const normalizedRelation = (newMember.relationship || '').trim().toLowerCase();
+            const duplicate = members.find((m) =>
+                (m.name || '').trim().toLowerCase() === normalizedName &&
+                Number(m.age) === Number(newMember.age) &&
+                (m.relationship || '').trim().toLowerCase() === normalizedRelation
+            );
+
+            if (duplicate) {
+                const shouldContinue = window.confirm(
+                    `Possible duplicate found: "${duplicate.name}" (${duplicate.age}, ${duplicate.relationship}). Add anyway?`
+                );
+                if (!shouldContinue) return;
+            }
+
             const newMemberPayload = {
                 name: newMember.name,
                 age: parseInt(newMember.age),
@@ -178,6 +216,124 @@ const FamilyDetails = () => {
         } catch (error) {
             console.error("Error adding member:", error);
             toast.error("Failed to add member");
+        }
+    };
+
+    const handleEditMember = async (e) => {
+        e.preventDefault();
+        if (!editingMember?.id) return;
+        try {
+            const result = await updateMember({
+                memberId: editingMember.id,
+                updates: {
+                    name: editingMember.name,
+                    age: parseInt(editingMember.age),
+                    gender: editingMember.gender,
+                    relationship: editingMember.relationship
+                }
+            });
+            setMembers((prev) => prev.map((m) => (m.id === editingMember.id ? { ...m, ...result } : m)));
+            setShowEditMemberModal(false);
+            setEditingMember(null);
+            toast.success('Member updated.');
+        } catch (error) {
+            console.error('Error updating member:', error);
+            toast.error('Failed to update member.');
+        }
+    };
+
+    const handleArchiveMember = async (memberId) => {
+        const target = members.find((m) => m.id === memberId);
+        if (!target) return;
+        const ok = window.confirm(`Archive member "${target.name}"? This can be restored later from DB.`);
+        if (!ok) return;
+
+        try {
+            await archiveMember(memberId);
+            setMembers((prev) => prev.filter((m) => m.id !== memberId));
+            toast.success('Member archived.');
+        } catch (error) {
+            console.error('Error archiving member:', error);
+            toast.error('Failed to archive member.');
+        }
+    };
+
+    const handleMergeMembers = async () => {
+        if (!mergeSourceId || !mergeTargetId) {
+            toast.error('Select both source and target members.');
+            return;
+        }
+        if (mergeSourceId === mergeTargetId) {
+            toast.error('Source and target cannot be same.');
+            return;
+        }
+
+        const source = members.find((m) => m.id === mergeSourceId);
+        const target = members.find((m) => m.id === mergeTargetId);
+        const ok = window.confirm(
+            `Merge "${source?.name || 'Source'}" into "${target?.name || 'Target'}"? Source will be archived.`
+        );
+        if (!ok) return;
+
+        try {
+            await mergeMembers({ sourceMemberId: mergeSourceId, targetMemberId: mergeTargetId });
+            setMembers((prev) => prev.filter((m) => m.id !== mergeSourceId));
+            setMergeSourceId('');
+            setMergeTargetId('');
+            toast.success('Members merged successfully.');
+            await loadData();
+        } catch (error) {
+            console.error('Error merging members:', error);
+            toast.error('Failed to merge members.');
+        }
+    };
+
+    const handleUpdateFamily = async (e) => {
+        e.preventDefault();
+        try {
+            const payload = {
+                head_name: editFamily.head_name,
+                village: editFamily.village,
+                members_count: parseInt(editFamily.members_count, 10) || members.length
+            };
+            const { error } = await supabase
+                .from('families')
+                .update(payload)
+                .eq('id', id);
+            if (error) throw error;
+
+            setFamily((prev) => ({
+                ...prev,
+                headName: payload.head_name,
+                village: payload.village,
+                membersCount: payload.members_count
+            }));
+            setShowEditFamilyModal(false);
+            toast.success('Family updated.');
+        } catch (error) {
+            console.error('Error updating family:', error);
+            toast.error('Failed to update family.');
+        }
+    };
+
+    const handleArchiveFamily = async () => {
+        const ok = window.confirm('Archive this family? It will no longer appear in active list.');
+        if (!ok) return;
+        try {
+            const { error } = await supabase
+                .from('families')
+                .update({
+                    is_deleted: true,
+                    deleted_at: new Date().toISOString(),
+                    deleted_by: profile?.id || null
+                })
+                .eq('id', id);
+            if (error) throw error;
+            toast.success('Family archived.');
+            navigate('/families');
+        } catch (error) {
+            console.error('Error archiving family:', error);
+            toast.error('Failed to archive family.');
         }
     };
 
@@ -365,14 +521,33 @@ const FamilyDetails = () => {
                             </div>
                         </div>
                     </div>
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="btn btn-primary"
-                        onClick={() => setShowMemberModal(true)}
-                    >
-                        <PlusCircle size={20} /> Add Member
-                    </motion.button>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="btn btn-outline"
+                            onClick={() => setShowEditFamilyModal(true)}
+                        >
+                            Edit Family
+                        </motion.button>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="btn btn-outline"
+                            onClick={handleArchiveFamily}
+                            style={{ color: '#B91C1C', borderColor: '#FCA5A5' }}
+                        >
+                            <Trash2 size={16} /> Archive Family
+                        </motion.button>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="btn btn-primary"
+                            onClick={() => setShowMemberModal(true)}
+                        >
+                            <PlusCircle size={20} /> Add Member
+                        </motion.button>
+                    </div>
                 </div>
             </motion.div>
 
@@ -412,7 +587,38 @@ const FamilyDetails = () => {
                     style={{ minHeight: '400px' }}
                 >
                     {activeTab === 'members' && (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                        <div style={{ display: 'grid', gap: '1.5rem' }}>
+                            {members.length > 1 && (
+                                <div className="card" style={{ padding: '1rem' }}>
+                                    <div style={{ fontWeight: '600', marginBottom: '0.75rem' }}>Merge Possible Duplicates</div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.75rem', alignItems: 'end' }}>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.85rem' }}>Source (to archive)</label>
+                                            <select
+                                                value={mergeSourceId}
+                                                onChange={(e) => setMergeSourceId(e.target.value)}
+                                                style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--color-border)' }}
+                                            >
+                                                <option value="">Select source member</option>
+                                                {members.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.age}, {m.relationship})</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.85rem' }}>Target (to keep)</label>
+                                            <select
+                                                value={mergeTargetId}
+                                                onChange={(e) => setMergeTargetId(e.target.value)}
+                                                style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--color-border)' }}
+                                            >
+                                                <option value="">Select target member</option>
+                                                {members.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.age}, {m.relationship})</option>)}
+                                            </select>
+                                        </div>
+                                        <button className="btn btn-outline" onClick={handleMergeMembers}>Merge</button>
+                                    </div>
+                                </div>
+                            )}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
                             {members.map((member, index) => (
                                 <motion.div
                                     key={member.id}
@@ -433,10 +639,33 @@ const FamilyDetails = () => {
                                     </div>
                                     <h3 style={{ fontSize: '1.125rem', fontWeight: '600' }}>{member.name}</h3>
                                     <p style={{ color: 'var(--color-text-muted)', marginBottom: '1rem' }}>{member.age} years • {member.relationship}</p>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        <Link to={`/families/${id}/members/${member.id}`} className="btn btn-outline" style={{ fontSize: '0.875rem', width: '100%', textDecoration: 'none' }}>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                        <Link to={`/families/${id}/members/${member.id}`} className="btn btn-outline" style={{ fontSize: '0.875rem', textDecoration: 'none' }}>
                                             View History
                                         </Link>
+                                        <button
+                                            className="btn btn-outline"
+                                            style={{ fontSize: '0.875rem' }}
+                                            onClick={() => {
+                                                setEditingMember({
+                                                    id: member.id,
+                                                    name: member.name || '',
+                                                    age: member.age || '',
+                                                    gender: member.gender || 'Male',
+                                                    relationship: member.relationship || ''
+                                                });
+                                                setShowEditMemberModal(true);
+                                            }}
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            className="btn btn-outline"
+                                            style={{ fontSize: '0.875rem', color: '#B91C1C', borderColor: '#FCA5A5' }}
+                                            onClick={() => handleArchiveMember(member.id)}
+                                        >
+                                            Archive
+                                        </button>
                                     </div>
                                 </motion.div>
                             ))}
@@ -446,6 +675,7 @@ const FamilyDetails = () => {
                                     <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={() => setShowMemberModal(true)}>Add First Member</button>
                                 </div>
                             )}
+                        </div>
                         </div>
                     )}
 
@@ -568,6 +798,138 @@ const FamilyDetails = () => {
 
             {/* Modals remain the same but wrapped in AnimatePresence */}
             <AnimatePresence>
+                {showEditFamilyModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            backdropFilter: 'blur(4px)', zIndex: 100
+                        }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className="card"
+                            style={{ width: '100%', maxWidth: '500px', padding: '2rem' }}
+                        >
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem' }}>Edit Family</h2>
+                            <form onSubmit={handleUpdateFamily}>
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Head of Household Name</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
+                                        value={editFamily.head_name}
+                                        onChange={(e) => setEditFamily((prev) => ({ ...prev, head_name: e.target.value }))}
+                                    />
+                                </div>
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Village / Area</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
+                                        value={editFamily.village}
+                                        onChange={(e) => setEditFamily((prev) => ({ ...prev, village: e.target.value }))}
+                                    />
+                                </div>
+                                <div style={{ marginBottom: '2rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Members Count</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
+                                        value={editFamily.members_count}
+                                        onChange={(e) => setEditFamily((prev) => ({ ...prev, members_count: e.target.value }))}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                                    <button type="button" className="btn btn-outline" onClick={() => setShowEditFamilyModal(false)}>Cancel</button>
+                                    <button type="submit" className="btn btn-primary">Save Changes</button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+
+                {showEditMemberModal && editingMember && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            backdropFilter: 'blur(4px)', zIndex: 100
+                        }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className="card"
+                            style={{ width: '100%', maxWidth: '500px', padding: '2rem' }}
+                        >
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem' }}>Edit Member</h2>
+                            <form onSubmit={handleEditMember}>
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Full Name</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
+                                        value={editingMember.name}
+                                        onChange={(e) => setEditingMember((prev) => ({ ...prev, name: e.target.value }))}
+                                    />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Age</label>
+                                        <input
+                                            type="number"
+                                            required
+                                            style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
+                                            value={editingMember.age}
+                                            onChange={(e) => setEditingMember((prev) => ({ ...prev, age: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Gender</label>
+                                        <select
+                                            style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
+                                            value={editingMember.gender}
+                                            onChange={(e) => setEditingMember((prev) => ({ ...prev, gender: e.target.value }))}
+                                        >
+                                            <option>Male</option>
+                                            <option>Female</option>
+                                            <option>Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div style={{ marginBottom: '2rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Relationship to Head</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
+                                        value={editingMember.relationship}
+                                        onChange={(e) => setEditingMember((prev) => ({ ...prev, relationship: e.target.value }))}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                                    <button type="button" className="btn btn-outline" onClick={() => { setShowEditMemberModal(false); setEditingMember(null); }}>Cancel</button>
+                                    <button type="submit" className="btn btn-primary">Save Changes</button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+
                 {showMemberModal && (
                     <motion.div
                         initial={{ opacity: 0 }}
