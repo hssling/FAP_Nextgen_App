@@ -51,6 +51,14 @@ export const removeFromQueue = async (id) => {
 export const processQueue = async () => {
     const queue = await getQueue();
     if (queue.length === 0) return;
+    if (!navigator.onLine) return;
+
+    // Prevent processing before auth is available (common on app boot before login/session restore).
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        console.log('[OfflineQueue] Skipping queue processing: user not authenticated yet.');
+        return;
+    }
 
     console.log(`[OfflineQueue] Processing ${queue.length} items...`);
     window.dispatchEvent(new CustomEvent('fap-sync-progress', {
