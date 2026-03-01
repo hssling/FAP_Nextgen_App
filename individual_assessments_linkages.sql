@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.individual_assessments (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   member_id uuid NOT NULL REFERENCES public.family_members(id) ON DELETE CASCADE,
   family_id uuid NOT NULL REFERENCES public.families(id) ON DELETE CASCADE,
+  visit_id uuid REFERENCES public.family_visits(id) ON DELETE SET NULL,
   form_id text NOT NULL,
   assessment_date date NOT NULL DEFAULT CURRENT_DATE,
   payload jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -31,6 +32,9 @@ CREATE INDEX IF NOT EXISTS idx_individual_assessments_member_date
 
 CREATE INDEX IF NOT EXISTS idx_individual_assessments_family
   ON public.individual_assessments(family_id);
+
+CREATE INDEX IF NOT EXISTS idx_individual_assessments_visit_id
+  ON public.individual_assessments(visit_id);
 
 CREATE INDEX IF NOT EXISTS idx_individual_assessments_form
   ON public.individual_assessments(form_id);

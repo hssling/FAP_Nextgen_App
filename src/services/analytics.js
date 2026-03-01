@@ -38,7 +38,7 @@ export const generateCommunityHealthReport = async (studentId) => {
             if (memberIds.length > 0) {
                 const { data: normalizedData, error: normalizedError } = await supabase
                     .from('individual_assessments')
-                    .select('id, member_id, form_id, assessment_date, payload, calculated_fields, legacy_assessment_id')
+                    .select('id, member_id, form_id, assessment_date, payload, calculated_fields, legacy_assessment_id, visit_id')
                     .in('member_id', memberIds)
                     .eq('is_deleted', false)
                     .order('assessment_date', { ascending: false });
@@ -83,6 +83,7 @@ export const generateCommunityHealthReport = async (studentId) => {
                 data: a.payload || {},
                 calculated_fields: a.calculated_fields || null,
                 legacyId: a.legacy_assessment_id || null,
+                visitId: a.visit_id || null,
                 source: 'normalized'
             }));
 
@@ -121,9 +122,13 @@ export const generateCommunityHealthReport = async (studentId) => {
 
     // Calculate all metrics
     const assessmentIndex = new Map();
+    const visitAssessmentIndex = new Map();
     normalizedAssessments.forEach((a) => {
         const key = `${a.member_id}|${a.assessment_date}`;
         assessmentIndex.set(key, (assessmentIndex.get(key) || 0) + 1);
+        if (a.visit_id) {
+            visitAssessmentIndex.set(a.visit_id, (visitAssessmentIndex.get(a.visit_id) || 0) + 1);
+        }
     });
 
     const report = {
@@ -154,7 +159,7 @@ export const generateCommunityHealthReport = async (studentId) => {
                     date: v.visit_date,
                     familyName: family?.head_name || 'Unknown',
                     memberName: member?.name || v.data?.member_name || null,
-                    linkedAssessments: member?.id ? (assessmentIndex.get(`${member.id}|${v.visit_date}`) || 0) : 0,
+                    linkedAssessments: visitAssessmentIndex.get(v.id) || (member?.id ? (assessmentIndex.get(`${member.id}|${v.visit_date}`) || 0) : 0),
                     protocol: v.data?.protocol || 'General Visit',
                     notes: v.notes || v.data?.notes || '',
                     reflection: v.data?.reflection || null,

@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { User, Activity, AlertCircle, CheckCircle, Pill, Utensils, FileText, ClipboardList, Plus, ShieldCheck, CreditCard, ChevronRight, Edit3, Trash2, Eye } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
+import { getCurrentLocation } from '../utils/locationUtils';
 import DynamicForm from '../components/DynamicForm';
 import formRegistry from '../data/forms/registry.json';
 
@@ -22,7 +24,8 @@ const normalizeDbAssessment = (row) => ({
     data: row.payload || {},
     calculated_fields: row.calculated_fields || null,
     storage: 'normalized',
-    legacyId: row.legacy_assessment_id || null
+    legacyId: row.legacy_assessment_id || null,
+    visitId: row.visit_id || null
 });
 
 const mergeAssessments = (dbRows, legacyAssessments) => {
@@ -50,6 +53,7 @@ const toLegacyAssessmentShape = (assessment) => ({
 });
 
 const MemberDetails = () => {
+    const { profile } = useAuth();
     const { id, memberId } = useParams();
     const [member, setMember] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -85,7 +89,7 @@ const MemberDetails = () => {
             try {
                 const { data: dbAssessments, error: assessError } = await supabase
                     .from('individual_assessments')
-                    .select('id, form_id, assessment_date, payload, calculated_fields, legacy_assessment_id')
+                    .select('id, form_id, assessment_date, payload, calculated_fields, legacy_assessment_id, visit_id')
                     .eq('member_id', memberId)
                     .eq('is_deleted', false)
                     .order('assessment_date', { ascending: false });
@@ -158,6 +162,7 @@ const MemberDetails = () => {
             payload: assessmentRecord.data || {},
             calculated_fields: assessmentRecord.calculated_fields || null,
             legacy_assessment_id: assessmentRecord.legacyId || null,
+            visit_id: assessmentRecord.visitId || null,
             source: 'member_details'
         };
 
@@ -178,6 +183,86 @@ const MemberDetails = () => {
 
         if (error) throw error;
         return data.id;
+    };
+
+    const upsertAssessmentVisit = async (assessmentRecord) => {
+        let gps = null;
+        try {
+            gps = await getCurrentLocation();
+        } catch (gpsError) {
+            console.warn('[MemberDetails] GPS capture failed for assessment-linked visit:', gpsError.message || gpsError);
+        }
+
+        const visitData = {
+            protocol: assessmentRecord.formId,
+            member_id: memberId,
+            assessment_id: String(assessmentRecord.id),
+            auto_generated_from_assessment: true
+        };
+
+        const gpsPayload = {
+            latitude: gps?.latitude || null,
+            longitude: gps?.longitude || null,
+            gps_accuracy: gps?.accuracy || null,
+            device_info: {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                online: navigator.onLine,
+                source: 'member_assessment'
+            }
+        };
+
+        if (assessmentRecord.visitId) {
+            const { error } = await supabase
+                .from('family_visits')
+                .update({
+                    visit_date: assessmentRecord.date,
+                    activity_type: 'Assessment Entry',
+                    data: visitData,
+                    ...gpsPayload
+                })
+                .eq('id', assessmentRecord.visitId);
+            if (!error) return assessmentRecord.visitId;
+            console.warn('[MemberDetails] Failed to update linked visit, creating a new one:', error.message);
+        }
+
+        const baseInsert = {
+            family_id: member.family_id,
+            student_id: profile?.id || null,
+            visit_date: assessmentRecord.date,
+            activity_type: 'Assessment Entry',
+            notes: 'Auto-created from member assessment entry',
+            data: visitData
+        };
+
+        let insertResult = await supabase
+            .from('family_visits')
+            .insert({ ...baseInsert, ...gpsPayload })
+            .select('id')
+            .single();
+
+        if (insertResult.error) {
+            // Backward compatibility if GPS columns are unavailable.
+            insertResult = await supabase
+                .from('family_visits')
+                .insert(baseInsert)
+                .select('id')
+                .single();
+            if (insertResult.error) throw insertResult.error;
+        }
+
+        return insertResult.data.id;
+    };
+
+    const syncAssessmentVisitId = async (assessmentId, visitId) => {
+        if (!assessmentId || !visitId) return;
+        const { error } = await supabase
+            .from('individual_assessments')
+            .update({ visit_id: visitId })
+            .eq('id', assessmentId);
+        if (error) {
+            console.warn('[MemberDetails] Failed to sync visit_id on assessment:', error.message);
+        }
     };
 
     const addProblem = async (e) => {
@@ -214,15 +299,25 @@ const MemberDetails = () => {
             data: data.calculated_fields ? data : { ...data },
             calculated_fields: data.calculated_fields || null,
             storage: existing?.storage || 'legacy',
-            legacyId: existing?.legacyId || (existing?.id ? String(existing.id) : String(Date.now()))
+            legacyId: existing?.legacyId || (existing?.id ? String(existing.id) : String(Date.now())),
+            visitId: existing?.visitId || null
         };
 
         try {
             const normalizedId = await writeNormalizedAssessment(assessmentRecord);
             assessmentRecord.id = normalizedId;
             assessmentRecord.storage = 'normalized';
+            const visitId = await upsertAssessmentVisit(assessmentRecord);
+            assessmentRecord.visitId = visitId;
+            await syncAssessmentVisitId(normalizedId, visitId);
         } catch (normError) {
             console.warn('[MemberDetails] normalized assessment write failed; saving legacy only:', normError);
+            try {
+                const visitId = await upsertAssessmentVisit(assessmentRecord);
+                assessmentRecord.visitId = visitId;
+            } catch (visitError) {
+                console.warn('[MemberDetails] linked visit logging also failed:', visitError);
+            }
         }
 
         const nextAssessments = editingAssessmentId
@@ -264,6 +359,23 @@ const MemberDetails = () => {
                     .delete()
                     .eq('id', assessment.id);
                 if (error) throw error;
+
+                if (assessment.visitId) {
+                    const { data: visitData, error: visitFetchError } = await supabase
+                        .from('family_visits')
+                        .select('id, data')
+                        .eq('id', assessment.visitId)
+                        .single();
+                    if (!visitFetchError && visitData?.data?.auto_generated_from_assessment === true) {
+                        const linkedAssessmentId = String(visitData.data.assessment_id || '');
+                        if (!linkedAssessmentId || linkedAssessmentId === String(assessment.id)) {
+                            await supabase
+                                .from('family_visits')
+                                .delete()
+                                .eq('id', assessment.visitId);
+                        }
+                    }
+                }
             }
         } catch (normDeleteError) {
             console.warn('[MemberDetails] normalized assessment delete failed; continuing legacy delete:', normDeleteError);
