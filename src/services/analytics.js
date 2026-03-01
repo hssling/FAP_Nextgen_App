@@ -5,6 +5,7 @@ export const generateCommunityHealthReport = async (studentId) => {
     let members = [];
     let visits = [];
     let reflections = [];
+    let normalizedAssessments = [];
 
     try {
         // Fetch Families with all details
@@ -32,6 +33,22 @@ export const generateCommunityHealthReport = async (studentId) => {
                 .in('family_id', familyIds)
                 .order('visit_date', { ascending: false });
             visits = visData || [];
+
+            const memberIds = (memData || []).map(m => m.id);
+            if (memberIds.length > 0) {
+                const { data: normalizedData, error: normalizedError } = await supabase
+                    .from('individual_assessments')
+                    .select('id, member_id, form_id, assessment_date, payload, calculated_fields, legacy_assessment_id')
+                    .in('member_id', memberIds)
+                    .eq('is_deleted', false)
+                    .order('assessment_date', { ascending: false });
+
+                if (!normalizedError) {
+                    normalizedAssessments = normalizedData || [];
+                } else {
+                    console.warn('[Analytics] individual_assessments not available, falling back to health_data only:', normalizedError.message);
+                }
+            }
         }
 
         // Fetch ALL Reflections with feedback
@@ -57,8 +74,24 @@ export const generateCommunityHealthReport = async (studentId) => {
 
     // Process Members: Combine health_data.assessments with visits for complete picture
     const membersWithAssessments = members.map(m => {
+        const dbAssessments = normalizedAssessments
+            .filter(a => a.member_id === m.id)
+            .map(a => ({
+                id: a.id,
+                formId: a.form_id,
+                date: a.assessment_date,
+                data: a.payload || {},
+                calculated_fields: a.calculated_fields || null,
+                legacyId: a.legacy_assessment_id || null,
+                source: 'normalized'
+            }));
+
         // Get assessments from health_data (new format)
         const healthAssessments = m.health_data?.assessments || [];
+        const dbKeys = new Set(dbAssessments.map(a => `${a.formId}|${a.date}|${a.legacyId || ''}`));
+        const dedupedHealthAssessments = healthAssessments
+            .filter(a => !dbKeys.has(`${a.formId}|${a.date}|${a.id ? String(a.id) : ''}`))
+            .map(a => ({ ...a, source: 'health_data' }));
         
         // Get assessments from visits (legacy format)
         const memberVisits = visits.filter(v => v.data?.member_id === m.id);
@@ -71,7 +104,8 @@ export const generateCommunityHealthReport = async (studentId) => {
 
         // Combine both sources
         const allAssessments = [
-            ...healthAssessments.map(a => ({ ...a, source: 'health_data' })),
+            ...dbAssessments,
+            ...dedupedHealthAssessments,
             ...visitAssessments
         ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -86,6 +120,12 @@ export const generateCommunityHealthReport = async (studentId) => {
     });
 
     // Calculate all metrics
+    const assessmentIndex = new Map();
+    normalizedAssessments.forEach((a) => {
+        const key = `${a.member_id}|${a.assessment_date}`;
+        assessmentIndex.set(key, (assessmentIndex.get(key) || 0) + 1);
+    });
+
     const report = {
         demographics: {
             totalFamilies: families.length,
@@ -114,6 +154,7 @@ export const generateCommunityHealthReport = async (studentId) => {
                     date: v.visit_date,
                     familyName: family?.head_name || 'Unknown',
                     memberName: member?.name || v.data?.member_name || null,
+                    linkedAssessments: member?.id ? (assessmentIndex.get(`${member.id}|${v.visit_date}`) || 0) : 0,
                     protocol: v.data?.protocol || 'General Visit',
                     notes: v.notes || v.data?.notes || '',
                     reflection: v.data?.reflection || null,

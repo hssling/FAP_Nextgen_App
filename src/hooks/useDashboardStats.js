@@ -16,6 +16,7 @@ const fetchOptimizedStats = async (studentId) => {
 
     let membersCount = 0;
     let problemsCount = 0;
+    let assessmentsCount = 0;
 
     // 2. Fetch Members only if there are families
     if (families.length > 0) {
@@ -29,11 +30,29 @@ const fetchOptimizedStats = async (studentId) => {
 
         if (!memError && members) {
             membersCount = members.length;
+            const memberIds = members.map((m) => m.id).filter(Boolean);
             members.forEach(m => {
                 if (m.health_data && m.health_data.problems) {
                     problemsCount += m.health_data.problems.length;
                 }
             });
+
+            if (memberIds.length > 0) {
+                const { count: normalizedCount, error: assessError } = await supabase
+                    .from('individual_assessments')
+                    .select('id', { count: 'exact', head: true })
+                    .in('member_id', memberIds)
+                    .eq('is_deleted', false);
+
+                if (!assessError) {
+                    assessmentsCount = normalizedCount || 0;
+                } else {
+                    // Fallback when normalized table is not yet deployed
+                    members.forEach((m) => {
+                        assessmentsCount += m.health_data?.assessments?.length || 0;
+                    });
+                }
+            }
         }
     }
 
@@ -41,6 +60,7 @@ const fetchOptimizedStats = async (studentId) => {
         families: families.length,
         members: membersCount,
         activeProblems: problemsCount,
+        assessments: assessmentsCount,
         recentActivity: families.slice(0, 3).map(f => ({
             title: `Family Added: ${f.head_name}`,
             date: f.created_at ? new Date(f.created_at).toLocaleDateString() : 'Recently'

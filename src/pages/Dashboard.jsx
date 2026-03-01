@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Users, AlertCircle, TrendingUp, Activity, UserCheck } from 'lucide-react';
+import { Users, AlertCircle, TrendingUp, Activity, UserCheck, ClipboardList } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -128,6 +128,7 @@ const Dashboard = () => {
         families: 0,
         members: 0,
         activeProblems: 0,
+        assessments: 0,
         recentActivity: []
     };
 
@@ -201,6 +202,14 @@ const Dashboard = () => {
                         color="#F43F5E"
                         trend="Identified so far"
                         delay={0.3}
+                    />
+                    <StatCard
+                        title="Assessments Logged"
+                        value={effectiveStats.assessments || 0}
+                        icon={ClipboardList}
+                        color="#7C3AED"
+                        trend="For tracking over time"
+                        delay={0.4}
                     />
                 </div>
             )}
