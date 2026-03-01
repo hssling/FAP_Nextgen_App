@@ -55,6 +55,8 @@ const FamilyDetails = () => {
     const [locationError, setLocationError] = useState(null);
     const [mergeSourceId, setMergeSourceId] = useState('');
     const [mergeTargetId, setMergeTargetId] = useState('');
+    const [showSesEditModal, setShowSesEditModal] = useState(false);
+    const [editingSesVisit, setEditingSesVisit] = useState(null);
 
     // Capture GPS when visit modal opens
     useEffect(() => {
@@ -337,6 +339,51 @@ const FamilyDetails = () => {
         }
     };
 
+    const getLatestSesVisit = () => {
+        return visits.find(v => v.protocol === 'socio_economic_v1') || null;
+    };
+
+    const openSesEditModal = () => {
+        const latestSesVisit = getLatestSesVisit();
+        if (!latestSesVisit) {
+            toast.error('No socio-economic assessment found to edit.');
+            return;
+        }
+        setEditingSesVisit(latestSesVisit);
+        setShowSesEditModal(true);
+    };
+
+    const handleSesEditSubmit = async (formData) => {
+        if (!editingSesVisit?.id) return;
+
+        try {
+            const nextData = {
+                ...(editingSesVisit.data || {}),
+                ...formData,
+                protocol: 'socio_economic_v1'
+            };
+
+            const { error } = await supabase
+                .from('family_visits')
+                .update({ data: nextData })
+                .eq('id', editingSesVisit.id);
+            if (error) throw error;
+
+            setVisits((prev) => prev.map((visit) => (
+                visit.id === editingSesVisit.id
+                    ? { ...visit, data: nextData, protocol: 'socio_economic_v1' }
+                    : visit
+            )));
+
+            setShowSesEditModal(false);
+            setEditingSesVisit(null);
+            toast.success('Socio-economic entry updated.');
+        } catch (error) {
+            console.error('Error updating socio-economic data:', error);
+            toast.error('Failed to update socio-economic entry.');
+        }
+    };
+
     const handleVisitBasicSubmit = (e) => {
         e.preventDefault();
         if (newVisit.protocol) {
@@ -467,6 +514,18 @@ const FamilyDetails = () => {
 
     const getFormSchema = (formId) => {
         return formRegistry.find(f => f.form_id === formId);
+    };
+
+    const getSesInitialData = (visitData = {}) => {
+        const schema = getFormSchema('socio_economic_v1');
+        if (!schema?.fields) return {};
+        const initial = {};
+        schema.fields.forEach((field) => {
+            if (Object.prototype.hasOwnProperty.call(visitData, field.key)) {
+                initial[field.key] = visitData[field.key];
+            }
+        });
+        return initial;
     };
 
     const viewVisitData = (visit) => {
@@ -680,28 +739,36 @@ const FamilyDetails = () => {
                     )}
 
                     {activeTab === 'socio' && (
-                        <div className="card" style={{ padding: '2rem' }}>
+                        <div className="card" style={{ padding: 'clamp(1rem, 3vw, 2rem)' }}>
                             {visits.find(v => v.protocol === 'socio_economic_v1') ? (
                                 (() => {
-                                    const sesData = visits.find(v => v.protocol === 'socio_economic_v1').data || {};
+                                    const sesVisit = visits.find(v => v.protocol === 'socio_economic_v1');
+                                    const sesData = sesVisit?.data || {};
                                     return (
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                                        <div style={{ display: 'grid', gap: '1rem' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                                                <div style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                                                    Last updated: {sesVisit?.date || '-'}
+                                                </div>
+                                                <button className="btn btn-outline" onClick={openSesEditModal}>Edit SES Entry</button>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
                                             <div>
                                                 <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                     <Home size={20} className="text-primary" /> SES Status
                                                 </h3>
                                                 <div style={{ display: 'grid', gap: '1rem' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--color-border)' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--color-border)' }}>
                                                         <span style={{ color: 'var(--color-text-muted)' }}>Head Education</span>
                                                         <span style={{ fontWeight: '500' }}>{sesData.head_education || '-'}</span>
                                                     </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--color-border)' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--color-border)' }}>
                                                         <span style={{ color: 'var(--color-text-muted)' }}>Head Occupation</span>
                                                         <span style={{ fontWeight: '500' }}>{sesData.head_occupation || '-'}</span>
                                                     </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--color-border)' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--color-border)' }}>
                                                         <span style={{ color: 'var(--color-text-muted)' }}>Monthly Income</span>
-                                                        <span style={{ fontWeight: '500' }}>₹{sesData.monthly_income || '-'}</span>
+                                                        <span style={{ fontWeight: '500' }}>INR {sesData.monthly_income || '-'}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -717,6 +784,7 @@ const FamilyDetails = () => {
                                                     <div style={{ color: '#0F766E' }}>Estimated Socio-Economic Class</div>
                                                 </div>
                                             </div>
+                                        </div>
                                         </div>
                                     );
                                 })()
@@ -926,6 +994,38 @@ const FamilyDetails = () => {
                                     <button type="submit" className="btn btn-primary">Save Changes</button>
                                 </div>
                             </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+
+                {showSesEditModal && editingSesVisit && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            backdropFilter: 'blur(4px)', zIndex: 100, overflowY: 'auto', padding: '1rem'
+                        }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 20 }}
+                            className="card"
+                            style={{ width: '100%', maxWidth: '680px', padding: 'clamp(1rem, 3vw, 2rem)', maxHeight: '90vh', overflowY: 'auto' }}
+                        >
+                            <DynamicForm
+                                key={`ses-edit-${editingSesVisit.id}`}
+                                schema={getFormSchema('socio_economic_v1')}
+                                initialData={getSesInitialData(editingSesVisit.data)}
+                                onSubmit={handleSesEditSubmit}
+                                onCancel={() => {
+                                    setShowSesEditModal(false);
+                                    setEditingSesVisit(null);
+                                }}
+                            />
                         </motion.div>
                     </motion.div>
                 )}
@@ -1209,3 +1309,5 @@ const FamilyDetails = () => {
 };
 
 export default FamilyDetails;
+
+
