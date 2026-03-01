@@ -4,6 +4,17 @@ import toast from 'react-hot-toast';
 
 const QUEUE_KEY = 'fap_mutation_queue';
 
+const stripSyncFields = (obj = {}) => {
+    const { is_offline_sync: _IS_OFFLINE_SYNC, synced_at: _SYNCED_AT, ...rest } = obj;
+    return rest;
+};
+
+const isMissingSyncColumnError = (error) => {
+    const msg = String(error?.message || '').toLowerCase();
+    return msg.includes('column')
+        && (msg.includes('is_offline_sync') || msg.includes('synced_at'));
+};
+
 /**
  * Adds an action to the offline queue.
  * @param {string} type - The type of action (e.g., 'ADD_FAMILY', 'ADD_MEMBER', 'ADD_VISIT')
@@ -137,7 +148,10 @@ const executeAction = async (item) => {
             // Actually, `useFamilies` generated a "temp_" ID. This won't work for SQL relations unless we fix it.
             // FIX: We should use real UUIDs on the client for "temp" items so they remain valid in DB.
 
-            const { error } = await supabase.from('family_members').insert([cleanPayload]);
+            let { error } = await supabase.from('family_members').insert([cleanPayload]);
+            if (error && isMissingSyncColumnError(error)) {
+                ({ error } = await supabase.from('family_members').insert([stripSyncFields(cleanPayload)]));
+            }
             if (error) throw error;
             break;
         }
@@ -185,19 +199,31 @@ const executeAction = async (item) => {
         }
         case 'UPDATE_MEMBER': {
             const { id, updates } = payload;
-            const { error } = await supabase
+            let { error } = await supabase
                 .from('family_members')
                 .update(updates)
                 .eq('id', id);
+            if (error && isMissingSyncColumnError(error)) {
+                ({ error } = await supabase
+                    .from('family_members')
+                    .update(stripSyncFields(updates))
+                    .eq('id', id));
+            }
             if (error) throw error;
             break;
         }
         case 'ARCHIVE_MEMBER': {
             const { id, updates } = payload;
-            const { error } = await supabase
+            let { error } = await supabase
                 .from('family_members')
                 .update(updates)
                 .eq('id', id);
+            if (error && isMissingSyncColumnError(error)) {
+                ({ error } = await supabase
+                    .from('family_members')
+                    .update(stripSyncFields(updates))
+                    .eq('id', id));
+            }
             if (error) throw error;
             break;
         }

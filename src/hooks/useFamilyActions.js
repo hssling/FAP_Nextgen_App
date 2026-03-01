@@ -3,6 +3,17 @@ import { supabase } from '../services/supabaseClient';
 import { addToQueue } from '../services/offlineQueue';
 import { invalidateAnalyticsCache } from '../utils/cacheUtils';
 
+const stripSyncFields = (obj = {}) => {
+    const { is_offline_sync: _IS_OFFLINE_SYNC, synced_at: _SYNCED_AT, ...rest } = obj;
+    return rest;
+};
+
+const isMissingSyncColumnError = (error) => {
+    const msg = String(error?.message || '').toLowerCase();
+    return msg.includes('column')
+        && (msg.includes('is_offline_sync') || msg.includes('synced_at'));
+};
+
 export const useFamilyActions = (familyId, studentId) => {
     // Mutation action hooks
 
@@ -30,6 +41,15 @@ export const useFamilyActions = (familyId, studentId) => {
                 .select()
                 .single();
 
+            if (error && isMissingSyncColumnError(error)) {
+                const fallback = await supabase
+                    .from('family_members')
+                    .insert([stripSyncFields(payload)])
+                    .select()
+                    .single();
+                if (fallback.error) throw fallback.error;
+                return fallback.data;
+            }
             if (error) throw error;
             return data;
         },
@@ -95,6 +115,16 @@ export const useFamilyActions = (familyId, studentId) => {
                 .select()
                 .single();
 
+            if (error && isMissingSyncColumnError(error)) {
+                const fallback = await supabase
+                    .from('family_members')
+                    .update(stripSyncFields(payload.updates))
+                    .eq('id', memberId)
+                    .select()
+                    .single();
+                if (fallback.error) throw fallback.error;
+                return fallback.data;
+            }
             if (error) throw error;
             return data;
         },
@@ -128,6 +158,16 @@ export const useFamilyActions = (familyId, studentId) => {
                 .select()
                 .single();
 
+            if (error && isMissingSyncColumnError(error)) {
+                const fallback = await supabase
+                    .from('family_members')
+                    .update(stripSyncFields(updates))
+                    .eq('id', memberId)
+                    .select()
+                    .single();
+                if (fallback.error) throw fallback.error;
+                return fallback.data;
+            }
             if (error) throw error;
             return data;
         },
@@ -187,7 +227,17 @@ export const useFamilyActions = (familyId, studentId) => {
                     synced_at: new Date().toISOString()
                 })
                 .eq('id', targetMemberId);
-            if (updateTargetError) throw updateTargetError;
+            if (updateTargetError && isMissingSyncColumnError(updateTargetError)) {
+                const fallbackTarget = await supabase
+                    .from('family_members')
+                    .update({
+                        health_data: mergedHealth
+                    })
+                    .eq('id', targetMemberId);
+                if (fallbackTarget.error) throw fallbackTarget.error;
+            } else if (updateTargetError) {
+                throw updateTargetError;
+            }
 
             const { error: archiveSourceError } = await supabase
                 .from('family_members')
@@ -200,7 +250,20 @@ export const useFamilyActions = (familyId, studentId) => {
                     synced_at: new Date().toISOString()
                 })
                 .eq('id', sourceMemberId);
-            if (archiveSourceError) throw archiveSourceError;
+            if (archiveSourceError && isMissingSyncColumnError(archiveSourceError)) {
+                const fallbackSource = await supabase
+                    .from('family_members')
+                    .update({
+                        is_deleted: true,
+                        deleted_at: new Date().toISOString(),
+                        deleted_by: studentId,
+                        merged_into_member_id: targetMemberId
+                    })
+                    .eq('id', sourceMemberId);
+                if (fallbackSource.error) throw fallbackSource.error;
+            } else if (archiveSourceError) {
+                throw archiveSourceError;
+            }
 
             return payload;
         },
