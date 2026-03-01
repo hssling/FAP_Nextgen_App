@@ -15,6 +15,14 @@ import { toast } from 'react-hot-toast';
 import { MapPin, Signal, SignalLow, Globe, Info, RefreshCw } from 'lucide-react';
 import { get, set } from 'idb-keyval';
 
+const NETWORK_TIMEOUT_MS = 12000;
+const withTimeout = (promise, ms, label) => Promise.race([
+    promise,
+    new Promise((_, reject) => {
+        setTimeout(() => reject(new Error(`${label}_timeout`)), ms);
+    })
+]);
+
 const FamilyDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -89,11 +97,15 @@ const FamilyDetails = () => {
 
         try {
             // Fetch Family
-            const { data: famData, error: famError } = await supabase
-                .from('families')
-                .select('*')
-                .eq('id', id)
-                .single();
+            const { data: famData, error: famError } = await withTimeout(
+                supabase
+                    .from('families')
+                    .select('*')
+                    .eq('id', id)
+                    .single(),
+                NETWORK_TIMEOUT_MS,
+                'family_details_fetch_family'
+            );
 
             if (famError) throw famError;
 
@@ -113,18 +125,26 @@ const FamilyDetails = () => {
             await set(cacheKeys.family, mappedFam);
 
             // Fetch Members
-            let { data: memData, error: memError } = await supabase
-                .from('family_members')
-                .select('*')
-                .eq('family_id', id)
-                .neq('is_deleted', true);
+            let { data: memData, error: memError } = await withTimeout(
+                supabase
+                    .from('family_members')
+                    .select('*')
+                    .eq('family_id', id)
+                    .neq('is_deleted', true),
+                NETWORK_TIMEOUT_MS,
+                'family_details_fetch_members'
+            );
 
             if (memError) {
                 // Backward-compatible fallback if is_deleted column not present yet.
-                const fallbackMembers = await supabase
-                    .from('family_members')
-                    .select('*')
-                    .eq('family_id', id);
+                const fallbackMembers = await withTimeout(
+                    supabase
+                        .from('family_members')
+                        .select('*')
+                        .eq('family_id', id),
+                    NETWORK_TIMEOUT_MS,
+                    'family_details_fetch_members_fallback'
+                );
                 memData = fallbackMembers.data;
                 memError = fallbackMembers.error;
             }
@@ -134,11 +154,15 @@ const FamilyDetails = () => {
             await set(cacheKeys.members, memData || []);
 
             // Fetch Visits
-            const { data: visData, error: visError } = await supabase
-                .from('family_visits')
-                .select('*')
-                .eq('family_id', id)
-                .order('visit_date', { ascending: false });
+            const { data: visData, error: visError } = await withTimeout(
+                supabase
+                    .from('family_visits')
+                    .select('*')
+                    .eq('family_id', id)
+                    .order('visit_date', { ascending: false }),
+                NETWORK_TIMEOUT_MS,
+                'family_details_fetch_visits'
+            );
 
             if (visError) throw visError;
 

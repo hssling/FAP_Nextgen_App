@@ -4,27 +4,44 @@ import { addToQueue } from '../services/offlineQueue';
 import { get, set } from 'idb-keyval';
 
 const CACHE_KEY_PREFIX = 'fap_families_cache_';
+const NETWORK_TIMEOUT_MS = 12000;
+
+const withTimeout = (promise, ms, label) => Promise.race([
+    promise,
+    new Promise((_, reject) => {
+        setTimeout(() => reject(new Error(`${label}_timeout`)), ms);
+    })
+]);
 
 const fetchFamilies = async (studentId) => {
     if (!studentId) return [];
 
     const cacheKey = `${CACHE_KEY_PREFIX}${studentId}`;
+    const cachedData = await get(cacheKey);
 
     try {
-        let { data, error } = await supabase
-            .from('families')
-            .select('*')
-            .eq('student_id', studentId)
-            .neq('is_deleted', true)
-            .order('created_at', { ascending: false });
-
-        // Backward-compatible fallback if is_deleted column is not yet deployed.
-        if (error) {
-            const fallback = await supabase
+        let { data, error } = await withTimeout(
+            supabase
                 .from('families')
                 .select('*')
                 .eq('student_id', studentId)
-                .order('created_at', { ascending: false });
+                .neq('is_deleted', true)
+                .order('created_at', { ascending: false }),
+            NETWORK_TIMEOUT_MS,
+            'families_fetch'
+        );
+
+        // Backward-compatible fallback if is_deleted column is not yet deployed.
+        if (error) {
+            const fallback = await withTimeout(
+                supabase
+                    .from('families')
+                    .select('*')
+                    .eq('student_id', studentId)
+                    .order('created_at', { ascending: false }),
+                NETWORK_TIMEOUT_MS,
+                'families_fetch_fallback'
+            );
             data = fallback.data;
             error = fallback.error;
         }
@@ -39,7 +56,6 @@ const fetchFamilies = async (studentId) => {
     } catch (error) {
         console.warn('[useFamilies] Fetch failed, trying cache:', error);
         // If fetch fails (offline), try to get from IndexedDB
-        const cachedData = await get(cacheKey);
         if (cachedData) {
             console.log('[useFamilies] Loading from local cache');
             return cachedData;
