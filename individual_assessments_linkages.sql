@@ -27,6 +27,10 @@ CREATE TABLE IF NOT EXISTS public.individual_assessments (
   version integer NOT NULL DEFAULT 1
 );
 
+-- Ensure new linkage column exists even when table was created in earlier deployments.
+ALTER TABLE IF EXISTS public.individual_assessments
+  ADD COLUMN IF NOT EXISTS visit_id uuid REFERENCES public.family_visits(id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS idx_individual_assessments_member_date
   ON public.individual_assessments(member_id, assessment_date DESC);
 
