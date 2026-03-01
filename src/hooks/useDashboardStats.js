@@ -25,7 +25,7 @@ const fetchOptimizedStats = async (studentId) => {
         // Use .in() filter
         const { data: members, error: memError } = await supabase
             .from('family_members')
-            .select('health_data')
+            .select('id, health_data')
             .in('family_id', familyIds);
 
         if (!memError && members) {
@@ -44,8 +44,16 @@ const fetchOptimizedStats = async (studentId) => {
                     .in('member_id', memberIds)
                     .eq('is_deleted', false);
 
-                if (!assessError) {
+                if (!assessError && Number.isFinite(normalizedCount)) {
                     assessmentsCount = normalizedCount || 0;
+                } else if (!assessError) {
+                    // Some environments can return null count with HEAD requests; fallback to row length.
+                    const { data: assessRows, error: assessRowsError } = await supabase
+                        .from('individual_assessments')
+                        .select('id')
+                        .in('member_id', memberIds)
+                        .eq('is_deleted', false);
+                    if (!assessRowsError) assessmentsCount = assessRows?.length || 0;
                 } else {
                     // Fallback when normalized table is not yet deployed
                     members.forEach((m) => {
