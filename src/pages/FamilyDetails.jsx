@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { User, Activity, Calendar, Droplets, Home, Trash2, PlusCircle, FileText, ArrowRight, ClipboardList, Camera, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -30,6 +30,8 @@ const FamilyDetails = () => {
     const [family, setFamily] = useState(null);
     const [members, setMembers] = useState([]);
     const [visits, setVisits] = useState([]);
+    const [pageLoading, setPageLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
     const [activeTab, setActiveTab] = useState('members');
 
     // Custom Hooks
@@ -65,6 +67,11 @@ const FamilyDetails = () => {
     const [mergeTargetId, setMergeTargetId] = useState('');
     const [showSesEditModal, setShowSesEditModal] = useState(false);
     const [editingSesVisit, setEditingSesVisit] = useState(null);
+    const cacheKeys = useMemo(() => ({
+        family: `fap_family_${id}`,
+        members: `fap_members_${id}`,
+        visits: `fap_visits_${id}`
+    }), [id]);
 
     // Capture GPS when visit modal opens
     useEffect(() => {
@@ -87,13 +94,18 @@ const FamilyDetails = () => {
         }
     };
 
+    const persistMembersCache = useCallback(async (nextMembers) => {
+        try {
+            await set(cacheKeys.members, nextMembers || []);
+        } catch (cacheError) {
+            console.warn('Failed to persist members cache:', cacheError);
+        }
+    }, [cacheKeys.members]);
+
     const loadData = useCallback(async () => {
         if (!profile?.id) return;
-        const cacheKeys = {
-            family: `fap_family_${id}`,
-            members: `fap_members_${id}`,
-            visits: `fap_visits_${id}`
-        };
+        setPageLoading(true);
+        setLoadError('');
 
         try {
             // Fetch Family
@@ -188,16 +200,19 @@ const FamilyDetails = () => {
                 get(cacheKeys.visits)
             ]);
 
-            if (cachedFam) {
-                setFamily(cachedFam);
-                setMembers(cachedMembers || []);
-                setVisits(cachedVisits || []);
+            if (cachedFam || cachedMembers || cachedVisits) {
+                if (cachedFam) setFamily(cachedFam);
+                if (cachedMembers) setMembers(cachedMembers);
+                if (cachedVisits) setVisits(cachedVisits);
                 toast('Showing cached data (Offline)', { icon: '📴' });
             } else {
+                setLoadError('Could not load family details. Please retry.');
                 toast.error("Failed to load data and no cache found.");
             }
+        } finally {
+            setPageLoading(false);
         }
-    }, [id, profile?.id]);
+    }, [cacheKeys.family, cacheKeys.members, cacheKeys.visits, id, profile?.id]);
 
     useEffect(() => {
         loadData();
@@ -231,7 +246,11 @@ const FamilyDetails = () => {
             const result = await addMember(newMemberPayload);
 
             // Optimistic / Result Update
-            setMembers(prev => [...prev, result]);
+            setMembers(prev => {
+                const next = [...prev, result];
+                persistMembersCache(next);
+                return next;
+            });
 
             // Invalidate analytics cache
             // invalidateAnalyticsCache(profile.id); // Handled in hook
@@ -258,7 +277,11 @@ const FamilyDetails = () => {
                     relationship: editingMember.relationship
                 }
             });
-            setMembers((prev) => prev.map((m) => (m.id === editingMember.id ? { ...m, ...result } : m)));
+            setMembers((prev) => {
+                const next = prev.map((m) => (m.id === editingMember.id ? { ...m, ...result } : m));
+                persistMembersCache(next);
+                return next;
+            });
             setShowEditMemberModal(false);
             setEditingMember(null);
             toast.success('Member updated.');
@@ -276,7 +299,11 @@ const FamilyDetails = () => {
 
         try {
             await archiveMember(memberId);
-            setMembers((prev) => prev.filter((m) => m.id !== memberId));
+            setMembers((prev) => {
+                const next = prev.filter((m) => m.id !== memberId);
+                persistMembersCache(next);
+                return next;
+            });
             toast.success('Member archived.');
         } catch (error) {
             console.error('Error archiving member:', error);
@@ -303,7 +330,11 @@ const FamilyDetails = () => {
 
         try {
             await mergeMembers({ sourceMemberId: mergeSourceId, targetMemberId: mergeTargetId });
-            setMembers((prev) => prev.filter((m) => m.id !== mergeSourceId));
+            setMembers((prev) => {
+                const next = prev.filter((m) => m.id !== mergeSourceId);
+                persistMembersCache(next);
+                return next;
+            });
             setMergeSourceId('');
             setMergeTargetId('');
             toast.success('Members merged successfully.');
@@ -559,7 +590,26 @@ const FamilyDetails = () => {
         }
     };
 
-    if (!family) return <div className="container" style={{ paddingTop: '2rem' }}>Loading...</div>;
+    if (pageLoading && !family) {
+        return <div className="container" style={{ paddingTop: '2rem' }}>Loading family details...</div>;
+    }
+
+    if (!pageLoading && !family) {
+        return (
+            <div className="container" style={{ paddingTop: '2rem' }}>
+                <div className="card" style={{ padding: '1.5rem', maxWidth: '560px' }}>
+                    <h3 style={{ marginBottom: '0.5rem' }}>Family details unavailable</h3>
+                    <p style={{ color: '#6B7280', marginBottom: '1rem' }}>
+                        {loadError || 'Unable to load family data right now.'}
+                    </p>
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <button className="btn btn-primary" onClick={loadData}>Retry</button>
+                        <Link className="btn btn-outline" to="/families">Back to Families</Link>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div>
