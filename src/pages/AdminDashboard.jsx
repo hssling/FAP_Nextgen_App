@@ -49,11 +49,10 @@ const AdminDashboard = () => {
     const handleExport = async () => {
         try {
             console.log("Exporting Admin Report...");
-            const topStudents = [...allStudents]
-                .sort((a, b) => (b.gradedCount || 0) - (a.gradedCount || 0))
-                .slice(0, 10); // Top 10 for report
+            const studentsForReport = [...allStudents]
+                .sort((a, b) => (b.gradedCount || 0) - (a.gradedCount || 0));
             const { generateAdminReport } = await import('../utils/reportGenerator');
-            generateAdminReport(stats, topStudents);
+            generateAdminReport(stats, studentsForReport);
             console.log("Export Complete");
         } catch (err) {
             console.error(err);
@@ -63,11 +62,10 @@ const AdminDashboard = () => {
 
     const handleLocalExport = async (language = 'kn') => {
         try {
-            const topStudents = [...allStudents]
-                .sort((a, b) => (b.gradedCount || 0) - (a.gradedCount || 0))
-                .slice(0, 10);
+            const studentsForReport = [...allStudents]
+                .sort((a, b) => (b.gradedCount || 0) - (a.gradedCount || 0));
             const { generateAdminLocalStaffReport } = await import('../utils/reportGenerator');
-            generateAdminLocalStaffReport(stats, topStudents, language);
+            generateAdminLocalStaffReport(stats, studentsForReport, language);
         } catch (err) {
             console.error(err);
             alert(`Local language export failed: ${err.message}`);
