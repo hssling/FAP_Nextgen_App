@@ -170,15 +170,7 @@ const AdminDashboard = () => {
                         .select('*', { count: 'exact', head: true }),
                     supabase
                         .from('reflections')
-                        .select(`
-                            id, student_id, family_id, phase, content, created_at, updated_at, reflection_date,
-                            status, grade, total_score, teacher_feedback, graded_at,
-                            score_exploration, score_voice, score_description, score_emotions, score_analysis,
-                            reflection_type, file_url, file_name, file_size, file_type,
-                            gibbs_description, gibbs_feelings, gibbs_evaluation, gibbs_analysis, gibbs_conclusion, gibbs_action_plan,
-                            ai_extracted_text, ai_extraction_status, ai_extraction_provider, ai_extraction_model,
-                            ai_extraction_missing_sections, ai_extraction_error
-                        `)
+                        .select('*')
                         .order('created_at', { ascending: false })
                         .limit(200),
                     supabase
