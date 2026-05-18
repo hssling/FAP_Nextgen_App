@@ -4,7 +4,7 @@ import { supabase } from '../services/supabaseClient';
 import {
     GraduationCap, BookOpen, CheckCircle, Users, Home,
     FileText, Star, TrendingUp, RefreshCw, AlertCircle,
-    Search, AlertTriangle, Crown, Download, X, ExternalLink
+    Search, AlertTriangle, Crown, Download, X, ExternalLink, FileSpreadsheet
 } from 'lucide-react';
 import { calculateBadges } from '../utils/gamification';
 import BadgeDisplay from '../components/shared/BadgeDisplay';
@@ -64,11 +64,13 @@ const AdminDashboard = () => {
         };
     }, []);
 
+    const getStudentsForReport = () => [...allStudents]
+        .sort((a, b) => (b.gradedCount || 0) - (a.gradedCount || 0));
+
     const handleExport = async () => {
         try {
             console.log("Exporting Admin Report...");
-            const studentsForReport = [...allStudents]
-                .sort((a, b) => (b.gradedCount || 0) - (a.gradedCount || 0));
+            const studentsForReport = getStudentsForReport();
             const { generateAdminReport } = await import('../utils/reportGenerator');
             generateAdminReport(stats, studentsForReport);
             console.log("Export Complete");
@@ -78,10 +80,22 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleExcelExport = async () => {
+        try {
+            console.log("Exporting Admin Excel Report...");
+            const studentsForReport = getStudentsForReport();
+            const { generateAdminExcelReport } = await import('../utils/reportGenerator');
+            generateAdminExcelReport(stats, studentsForReport);
+            console.log("Excel Export Complete");
+        } catch (err) {
+            console.error(err);
+            alert("Excel Export Failed: " + err.message);
+        }
+    };
+
     const handleLocalExport = async (language = 'kn') => {
         try {
-            const studentsForReport = [...allStudents]
-                .sort((a, b) => (b.gradedCount || 0) - (a.gradedCount || 0));
+            const studentsForReport = getStudentsForReport();
             const { generateAdminLocalStaffReport } = await import('../utils/reportGenerator');
             generateAdminLocalStaffReport(stats, studentsForReport, language);
         } catch (err) {
@@ -650,7 +664,7 @@ const AdminDashboard = () => {
                         Welcome, {profile?.full_name || 'Administrator'}!
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <button
                         onClick={fetchDashboardData}
                         disabled={loading}
@@ -691,7 +705,28 @@ const AdminDashboard = () => {
                         }}
                     >
                         <Download size={16} />
-                        Export
+                        PDF
+                    </button>
+                    <button
+                        onClick={handleExcelExport}
+                        disabled={loading}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                            padding: '0.75rem 1.5rem',
+                            backgroundColor: '#1D4ED8',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            flex: 1
+                        }}
+                    >
+                        <FileSpreadsheet size={16} />
+                        Excel
                     </button>
                     <button
                         onClick={() => handleLocalExport('kn')}

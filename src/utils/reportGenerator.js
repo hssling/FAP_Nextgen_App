@@ -6,6 +6,8 @@ const formatDate = () => {
     return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
 };
 
+const formatFileDate = () => new Date().toISOString().split('T')[0];
+
 const LOCALIZATION = {
     kn: {
         headingAdmin: 'FAP NextGen - ಸ್ಥಳೀಯ ಆರೋಗ್ಯ ವರದಿ',
@@ -61,9 +63,7 @@ const LOCALIZATION = {
     }
 };
 
-const downloadTextFile = (filename, content) => {
-    // UTF-8 BOM ensures Hindi/Kannada render correctly in Windows editors.
-    const blob = new Blob(['\uFEFF', content], { type: 'text/plain;charset=utf-8' });
+const downloadBlobFile = (filename, blob) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -71,6 +71,35 @@ const downloadTextFile = (filename, content) => {
     a.click();
     URL.revokeObjectURL(url);
 };
+
+const downloadTextFile = (filename, content) => {
+    // UTF-8 BOM ensures Hindi/Kannada render correctly in Windows editors.
+    const blob = new Blob(['\uFEFF', content], { type: 'text/plain;charset=utf-8' });
+    downloadBlobFile(filename, blob);
+};
+
+const escapeXml = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
+const excelCell = (value, styleId) => {
+    const isNumber = typeof value === 'number' && Number.isFinite(value);
+    const style = styleId ? ` ss:StyleID="${styleId}"` : '';
+    return `<Cell${style}><Data ss:Type="${isNumber ? 'Number' : 'String'}">${escapeXml(value)}</Data></Cell>`;
+};
+
+const excelRow = (cells, styleId) => `<Row>${cells.map(cell => excelCell(cell, styleId)).join('')}</Row>`;
+
+const excelWorksheet = (name, rows, columnWidths = []) => `
+    <Worksheet ss:Name="${escapeXml(name)}">
+        <Table>
+            ${columnWidths.map(width => `<Column ss:Width="${width}"/>`).join('')}
+            ${rows.join('')}
+        </Table>
+    </Worksheet>`;
 
 export const generateAdminReport = (stats, students) => {
     const doc = new jsPDF();
@@ -136,7 +165,92 @@ export const generateAdminReport = (stats, students) => {
         doc.text(`Page ${i} of ${pageCount}`, 190, 290, { align: 'right' });
     }
 
-    doc.save(`FAP_Admin_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`FAP_Admin_Report_${formatFileDate()}.pdf`);
+};
+
+export const generateAdminExcelReport = (stats, students) => {
+    const overviewRows = [
+        ['FAP NextGen - Administrative Report', ''],
+        ['Generated on', formatDate()],
+        ['Confidentiality', 'Confidential - For Official Use Only'],
+        [],
+        ['Metric', 'Count'],
+        ['Total Students', stats.totalStudents || 0],
+        ['Total Teachers', stats.totalTeachers || 0],
+        ['Families Adopted', stats.totalFamilies || 0],
+        ['Reflections Submitted', stats.totalReflections || 0],
+        ['Reflections Graded', stats.gradedReflections || 0],
+        ['Pending Review', stats.pendingReflections || 0]
+    ];
+
+    const studentHeaders = [
+        'Rank',
+        'Student Name',
+        'Registration Number',
+        'Email',
+        'Year',
+        'Year of Joining',
+        'Mentor',
+        'Families',
+        'Submitted Reflections',
+        'Mentor Verified',
+        'Avg Score'
+    ];
+
+    const studentRows = students.length > 0
+        ? students.map((s, index) => [
+            index + 1,
+            s.full_name || '-',
+            s.registration_number || 'N/A',
+            s.email || '-',
+            s.year || '-',
+            s.year_of_joining || '-',
+            s.mentor?.full_name || '-',
+            s.familyCount || 0,
+            s.reflectionCount || 0,
+            s.gradedCount || 0,
+            s.avgScore || '-'
+        ])
+        : [['-', 'No active students found', '-', '-', '-', '-', '-', '-', '-', '-', '-']];
+
+    const overviewSheetRows = overviewRows.map((row, idx) => {
+        if (idx === 0) return excelRow(row, 'Title');
+        if (idx === 4) return excelRow(row, 'Header');
+        return excelRow(row);
+    });
+
+    const studentSheetRows = [
+        excelRow(studentHeaders, 'Header'),
+        ...studentRows.map(row => excelRow(row))
+    ];
+
+    const workbookXml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+    xmlns:o="urn:schemas-microsoft-com:office:office"
+    xmlns:x="urn:schemas-microsoft-com:office:excel"
+    xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+    <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+        <Title>FAP NextGen Administrative Report</Title>
+        <Subject>Registered Students Work Summary</Subject>
+        <Author>FAP NextGen</Author>
+        <Created>${new Date().toISOString()}</Created>
+    </DocumentProperties>
+    <Styles>
+        <Style ss:ID="Title">
+            <Font ss:Bold="1" ss:Size="14" ss:Color="#0F766E"/>
+        </Style>
+        <Style ss:ID="Header">
+            <Font ss:Bold="1" ss:Color="#FFFFFF"/>
+            <Interior ss:Color="#0F766E" ss:Pattern="Solid"/>
+        </Style>
+    </Styles>
+    ${excelWorksheet('Overview', overviewSheetRows, [190, 130])}
+    ${excelWorksheet('Registered Students', studentSheetRows, [55, 190, 135, 210, 80, 105, 190, 75, 130, 110, 85])}
+</Workbook>`;
+
+    const blob = new Blob(['\uFEFF', workbookXml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    downloadBlobFile(`FAP_Admin_Report_${formatFileDate()}.xls`, blob);
 };
 
 export const generateClassReport = (students, className = 'Assigned Class') => {
@@ -208,7 +322,7 @@ export const generateAdminLocalStaffReport = (stats, students, language = 'kn') 
 
     lines.push('', t.note);
     const suffix = language === 'hi' ? 'Hindi' : 'Kannada';
-    downloadTextFile(`FAP_Admin_Local_Staff_Report_${suffix}_${new Date().toISOString().split('T')[0]}.txt`, lines.join('\n'));
+    downloadTextFile(`FAP_Admin_Local_Staff_Report_${suffix}_${formatFileDate()}.txt`, lines.join('\n'));
 };
 
 export const generateClassLocalStaffReport = (students, className = 'Assigned Class', language = 'kn') => {
@@ -233,5 +347,5 @@ export const generateClassLocalStaffReport = (students, className = 'Assigned Cl
 
     lines.push('', t.note);
     const suffix = language === 'hi' ? 'Hindi' : 'Kannada';
-    downloadTextFile(`FAP_Class_Local_Staff_Report_${suffix}_${new Date().toISOString().split('T')[0]}.txt`, lines.join('\n'));
+    downloadTextFile(`FAP_Class_Local_Staff_Report_${suffix}_${formatFileDate()}.txt`, lines.join('\n'));
 };
