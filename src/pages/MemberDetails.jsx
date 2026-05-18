@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { User, Activity, AlertCircle, CheckCircle, Pill, Utensils, FileText, ClipboardList, Plus, ShieldCheck, CreditCard, ChevronRight } from 'lucide-react';
+import { User, Activity, AlertCircle, CheckCircle, Pill, Utensils, FileText, ClipboardList, Plus, ShieldCheck, CreditCard, ChevronRight, Edit3, Trash2, Eye } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import DynamicForm from '../components/DynamicForm';
 import formRegistry from '../data/forms/registry.json';
@@ -15,6 +15,9 @@ const MemberDetails = () => {
     const [showInterventionModal, setShowInterventionModal] = useState(false);
     const [showAssessmentModal, setShowAssessmentModal] = useState(false);
     const [selectedAssessmentForm, setSelectedAssessmentForm] = useState(null);
+    const [selectedAssessmentRecord, setSelectedAssessmentRecord] = useState(null);
+    const [editingAssessmentId, setEditingAssessmentId] = useState(null);
+    const [showAssessmentDataModal, setShowAssessmentDataModal] = useState(false);
 
     // Form States
     const [newProblem, setNewProblem] = useState({ title: '', date: '', notes: '' });
@@ -106,19 +109,51 @@ const MemberDetails = () => {
 
     const handleAssessmentSubmit = async (data) => {
         const assessmentRecord = {
-            id: Date.now(),
+            id: editingAssessmentId || Date.now(),
             formId: selectedAssessmentForm,
-            date: new Date().toISOString().split('T')[0],
+            date: editingAssessmentId
+                ? (member.assessments.find(a => a.id === editingAssessmentId)?.date || new Date().toISOString().split('T')[0])
+                : new Date().toISOString().split('T')[0],
             data: data.calculated_fields ? data : { ...data },
             calculated_fields: data.calculated_fields || null
         };
+
+        const nextAssessments = editingAssessmentId
+            ? member.assessments.map(a => (a.id === editingAssessmentId ? assessmentRecord : a))
+            : [...member.assessments, assessmentRecord];
+
         const updated = {
             ...member,
-            assessments: [...member.assessments, assessmentRecord]
+            assessments: nextAssessments
         };
         await handleUpdateMember(updated);
         setSelectedAssessmentForm(null);
+        setEditingAssessmentId(null);
+        setSelectedAssessmentRecord(null);
         setShowAssessmentModal(false);
+    };
+
+    const handleViewAssessment = (assessment) => {
+        setSelectedAssessmentRecord(assessment);
+        setShowAssessmentDataModal(true);
+    };
+
+    const handleEditAssessment = (assessment) => {
+        setEditingAssessmentId(assessment.id);
+        setSelectedAssessmentRecord(assessment);
+        setSelectedAssessmentForm(assessment.formId);
+        setShowAssessmentModal(true);
+    };
+
+    const handleDeleteAssessment = async (assessmentId) => {
+        const ok = window.confirm('Remove this assessment entry? This action updates the member record immediately.');
+        if (!ok) return;
+
+        const updated = {
+            ...member,
+            assessments: member.assessments.filter(a => a.id !== assessmentId)
+        };
+        await handleUpdateMember(updated);
     };
 
     const verifyAbha = async () => {
@@ -212,7 +247,15 @@ const MemberDetails = () => {
                             <p style={{ color: 'var(--color-text-muted)' }}>{member.age} years • {member.gender} • {member.relationship}</p>
                         </div>
                     </div>
-                    <button className="btn btn-primary" onClick={() => setShowAssessmentModal(true)}>
+                    <button
+                        className="btn btn-primary"
+                        onClick={() => {
+                            setEditingAssessmentId(null);
+                            setSelectedAssessmentRecord(null);
+                            setSelectedAssessmentForm(null);
+                            setShowAssessmentModal(true);
+                        }}
+                    >
                         <ClipboardList size={20} /> New Assessment
                     </button>
                 </div>
@@ -262,7 +305,12 @@ const MemberDetails = () => {
                         {member.assessments.map((a) => {
                             const schema = getFormSchema(a.formId);
                             return (
-                                <div key={a.id || `${a.formId}-${a.date}`} className="card" style={{ padding: '1rem', minWidth: '220px', position: 'relative' }}>
+                                <div
+                                    key={a.id || `${a.formId}-${a.date}`}
+                                    className="card"
+                                    style={{ padding: '1rem', minWidth: '220px', position: 'relative', cursor: 'pointer' }}
+                                    onClick={() => handleViewAssessment(a)}
+                                >
                                     <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{a.date}</div>
                                     <div style={{ fontWeight: '600', marginBottom: '0.5rem' }}>{schema ? schema.title : a.formId}</div>
 
@@ -289,7 +337,31 @@ const MemberDetails = () => {
                                     )}
 
                                     <div style={{ fontSize: '0.875rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                        View Data <ChevronRight size={14} />
+                                        <Eye size={14} /> View Data <ChevronRight size={14} />
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline"
+                                            style={{ fontSize: '0.75rem', padding: '0.35rem 0.5rem' }}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleEditAssessment(a);
+                                            }}
+                                        >
+                                            <Edit3 size={12} /> Edit
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline"
+                                            style={{ fontSize: '0.75rem', padding: '0.35rem 0.5rem', color: '#B91C1C', borderColor: '#FCA5A5' }}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteAssessment(a.id);
+                                            }}
+                                        >
+                                            <Trash2 size={12} /> Remove
+                                        </button>
                                     </div>
                                 </div>
                             );
@@ -380,7 +452,9 @@ const MemberDetails = () => {
                     <div className="card" style={{ width: '100%', maxWidth: '600px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
                         {!selectedAssessmentForm ? (
                             <>
-                                <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem' }}>Select Assessment Protocol</h2>
+                                <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem' }}>
+                                    {editingAssessmentId ? 'Edit Assessment' : 'Select Assessment Protocol'}
+                                </h2>
                                 <div style={{ display: 'grid', gap: '1rem' }}>
                                     {formRegistry.filter(f => !f.form_id.includes('household') && !f.form_id.includes('village')).map(form => (
                                         <button
@@ -409,9 +483,28 @@ const MemberDetails = () => {
                             </>
                         ) : (
                             <DynamicForm
+                                key={`${selectedAssessmentForm}-${editingAssessmentId || 'new'}`}
                                 schema={getFormSchema(selectedAssessmentForm)}
                                 onSubmit={handleAssessmentSubmit}
-                                onCancel={() => setSelectedAssessmentForm(null)}
+                                onCancel={() => {
+                                    if (editingAssessmentId) {
+                                        setShowAssessmentModal(false);
+                                        setEditingAssessmentId(null);
+                                        setSelectedAssessmentRecord(null);
+                                        setSelectedAssessmentForm(null);
+                                    } else {
+                                        setSelectedAssessmentForm(null);
+                                    }
+                                }}
+                                initialData={editingAssessmentId
+                                    ? (() => {
+                                        const existing = selectedAssessmentRecord?.data || {};
+                                        return Object.fromEntries(
+                                            Object.entries(existing).filter(([key]) => key !== 'calculated_fields')
+                                        );
+                                    })()
+                                    : {}
+                                }
                                 memberData={{
                                     gender: member.gender,
                                     age: member.age,
@@ -424,6 +517,46 @@ const MemberDetails = () => {
             )}
 
             {/* Problem & Intervention Modals */}
+            {showAssessmentDataModal && selectedAssessmentRecord && (
+                <div className="modal-overlay">
+                    <div className="card" style={{ width: '100%', maxWidth: '640px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '0.5rem' }}>
+                            {getFormSchema(selectedAssessmentRecord.formId)?.title || selectedAssessmentRecord.formId}
+                        </h2>
+                        <p style={{ color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
+                            Date: {selectedAssessmentRecord.date}
+                        </p>
+
+                        <div style={{ display: 'grid', gap: '0.75rem' }}>
+                            {getFormSchema(selectedAssessmentRecord.formId)?.fields?.map((field) => (
+                                <div key={field.key} style={{ padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{field.label}</div>
+                                    <div style={{ fontWeight: '600', marginTop: '0.15rem' }}>
+                                        {String(selectedAssessmentRecord.data?.[field.key] ?? '-')}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem' }}>
+                            <button
+                                type="button"
+                                className="btn btn-outline"
+                                onClick={() => {
+                                    setShowAssessmentDataModal(false);
+                                    handleEditAssessment(selectedAssessmentRecord);
+                                }}
+                            >
+                                <Edit3 size={16} /> Edit Assessment
+                            </button>
+                            <button type="button" className="btn btn-outline" onClick={() => setShowAssessmentDataModal(false)}>
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {showProblemModal && (
                 <div className="modal-overlay">
                     <div className="card" style={{ width: '100%', maxWidth: '500px', padding: '2rem' }}>

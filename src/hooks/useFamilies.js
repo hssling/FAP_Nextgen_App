@@ -11,11 +11,23 @@ const fetchFamilies = async (studentId) => {
     const cacheKey = `${CACHE_KEY_PREFIX}${studentId}`;
 
     try {
-        const { data, error } = await supabase
+        let { data, error } = await supabase
             .from('families')
             .select('*')
             .eq('student_id', studentId)
+            .neq('is_deleted', true)
             .order('created_at', { ascending: false });
+
+        // Backward-compatible fallback if is_deleted column is not yet deployed.
+        if (error) {
+            const fallback = await supabase
+                .from('families')
+                .select('*')
+                .eq('student_id', studentId)
+                .order('created_at', { ascending: false });
+            data = fallback.data;
+            error = fallback.error;
+        }
 
         if (error) throw error;
 
@@ -81,9 +93,28 @@ export const useFamilies = (studentId) => {
         }
     });
 
+    const updateFamilyMutation = useMutation({
+        mutationFn: async ({ id, updates }) => {
+            const { data, error } = await supabase
+                .from('families')
+                .update(updates)
+                .eq('id', id)
+                .select()
+                .single();
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['families', studentId] });
+            queryClient.invalidateQueries({ queryKey: ['dashboardStats', studentId] });
+        }
+    });
+
     return {
         ...query,
         addFamily: addFamilyMutation.mutateAsync,
-        isAdding: addFamilyMutation.isPending
+        updateFamily: updateFamilyMutation.mutateAsync,
+        isAdding: addFamilyMutation.isPending,
+        isUpdatingFamily: updateFamilyMutation.isPending
     };
 };
