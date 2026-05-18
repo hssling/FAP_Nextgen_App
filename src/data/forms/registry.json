@@ -1321,5 +1321,538 @@
                 ]
             }
         ]
+    },
+    {
+        "form_id": "tb_ntep_screen_followup_v1",
+        "title": "TB Screening and NTEP Follow-up",
+        "fields": [
+            {
+                "key": "screening_date",
+                "label": "Screening Date",
+                "type": "date",
+                "required": true
+            },
+            {
+                "key": "cough_2_weeks",
+                "label": "Cough for 2 weeks or more",
+                "type": "checkbox"
+            },
+            {
+                "key": "fever_2_weeks",
+                "label": "Fever for 2 weeks or more",
+                "type": "checkbox"
+            },
+            {
+                "key": "weight_loss",
+                "label": "Unintentional weight loss",
+                "type": "checkbox"
+            },
+            {
+                "key": "night_sweats",
+                "label": "Night sweats",
+                "type": "checkbox"
+            },
+            {
+                "key": "hemoptysis",
+                "label": "Hemoptysis present",
+                "type": "checkbox"
+            },
+            {
+                "key": "presumptive_tb",
+                "label": "Presumptive TB status",
+                "type": "select",
+                "options": [
+                    "No",
+                    "Yes"
+                ]
+            },
+            {
+                "key": "sputum_collected",
+                "label": "Sputum sample collected",
+                "type": "checkbox"
+            },
+            {
+                "key": "nikshay_id",
+                "label": "Nikshay ID (if available)",
+                "type": "text"
+            },
+            {
+                "key": "contact_screening_done",
+                "label": "Household contacts screened",
+                "type": "checkbox"
+            },
+            {
+                "key": "referral_status",
+                "label": "Referral Status",
+                "type": "select",
+                "options": [
+                    "Not required",
+                    "Referred to PHC",
+                    "Referred to CHC",
+                    "Referred to DTC"
+                ]
+            },
+            {
+                "key": "follow_up_plan",
+                "label": "Follow-up Plan",
+                "type": "textarea"
+            }
+        ]
+    },
+    {
+        "form_id": "ncd_cancer_screening_v1",
+        "title": "Cancer Screening (Oral, Breast, Cervical)",
+        "fields": [
+            {
+                "key": "screening_date",
+                "label": "Screening Date",
+                "type": "date",
+                "required": true
+            },
+            {
+                "key": "age_eligible",
+                "label": "Age 30 years or above",
+                "type": "checkbox"
+            },
+            {
+                "key": "tobacco_use",
+                "label": "Current tobacco use",
+                "type": "checkbox"
+            },
+            {
+                "key": "oral_visual_exam",
+                "label": "Oral visual examination result",
+                "type": "select",
+                "options": [
+                    "Normal",
+                    "Suspicious lesion",
+                    "Not done"
+                ]
+            },
+            {
+                "key": "breast_symptoms",
+                "label": "Breast symptoms/red flags",
+                "type": "textarea",
+                "placeholder": "Lump, discharge, skin changes, pain"
+            },
+            {
+                "key": "cervical_risk_symptoms",
+                "label": "Cervical risk symptoms",
+                "type": "textarea",
+                "placeholder": "Postcoital bleeding, foul discharge, intermenstrual bleeding"
+            },
+            {
+                "key": "via_status",
+                "label": "VIA/Pap test status",
+                "type": "select",
+                "options": [
+                    "Not applicable",
+                    "Not done",
+                    "Done - normal",
+                    "Done - abnormal"
+                ]
+            },
+            {
+                "key": "referral_needed",
+                "label": "Referral needed",
+                "type": "checkbox"
+            },
+            {
+                "key": "referral_site",
+                "label": "Referred to",
+                "type": "select",
+                "options": [
+                    "Not referred",
+                    "PHC",
+                    "CHC",
+                    "District Hospital",
+                    "Medical College"
+                ]
+            },
+            {
+                "key": "counselling_notes",
+                "label": "Counselling Notes",
+                "type": "textarea"
+            }
+        ]
+    },
+    {
+        "form_id": "immunization_lifecycle_uip_v1",
+        "title": "Life-course Immunization and Due-list (UIP)",
+        "fields": [
+            {
+                "key": "assessment_date",
+                "label": "Assessment Date",
+                "type": "date",
+                "required": true
+            },
+            {
+                "key": "beneficiary_group",
+                "label": "Beneficiary Group",
+                "type": "select",
+                "required": true,
+                "options": [
+                    "Infant (0-1 year)",
+                    "Child (1-5 years)",
+                    "Adolescent",
+                    "Pregnant woman",
+                    "Adult",
+                    "Elderly"
+                ]
+            },
+            {
+                "key": "mcp_card_available",
+                "label": "MCP/Immunization card available",
+                "type": "checkbox"
+            },
+            {
+                "key": "uwin_status",
+                "label": "U-WIN registration status",
+                "type": "select",
+                "options": [
+                    "Not checked",
+                    "Registered",
+                    "Not registered"
+                ]
+            },
+            {
+                "key": "immunization_status",
+                "label": "Current status",
+                "type": "select",
+                "options": [
+                    "Up-to-date",
+                    "Partially immunized",
+                    "Unimmunized",
+                    "Unknown"
+                ]
+            },
+            {
+                "key": "due_vaccines",
+                "label": "Due Vaccines",
+                "type": "textarea",
+                "placeholder": "List pending doses with schedule"
+            },
+            {
+                "key": "adverse_event_history",
+                "label": "History of AEFI",
+                "type": "checkbox"
+            },
+            {
+                "key": "next_session_date",
+                "label": "Next Immunization Session Date",
+                "type": "date"
+            },
+            {
+                "key": "session_site",
+                "label": "Planned session site",
+                "type": "text",
+                "placeholder": "Sub-center/PHC/outreach site"
+            },
+            {
+                "key": "caregiver_counselling",
+                "label": "Caregiver counselling points",
+                "type": "textarea"
+            }
+        ]
+    },
+    {
+        "form_id": "viral_hepatitis_nvhcp_v1",
+        "title": "Viral Hepatitis Risk and NVHCP Linkage",
+        "fields": [
+            {
+                "key": "assessment_date",
+                "label": "Assessment Date",
+                "type": "date",
+                "required": true
+            },
+            {
+                "key": "high_risk_exposure",
+                "label": "High-risk exposure present",
+                "type": "checkbox"
+            },
+            {
+                "key": "risk_profile",
+                "label": "Risk Profile",
+                "type": "textarea",
+                "placeholder": "Unsafe injections, blood exposure, dialysis, high-risk sexual exposure"
+            },
+            {
+                "key": "symptoms",
+                "label": "Current symptoms",
+                "type": "textarea",
+                "placeholder": "Jaundice, dark urine, anorexia, fatigue"
+            },
+            {
+                "key": "hbsag_test_status",
+                "label": "HBsAg test status",
+                "type": "select",
+                "options": [
+                    "Not done",
+                    "Done - negative",
+                    "Done - positive",
+                    "Awaiting report"
+                ]
+            },
+            {
+                "key": "hcv_test_status",
+                "label": "HCV antibody test status",
+                "type": "select",
+                "options": [
+                    "Not done",
+                    "Done - negative",
+                    "Done - positive",
+                    "Awaiting report"
+                ]
+            },
+            {
+                "key": "hepatitis_b_vaccination_status",
+                "label": "Hepatitis B vaccination status",
+                "type": "select",
+                "options": [
+                    "Complete",
+                    "Partial",
+                    "Not vaccinated",
+                    "Unknown"
+                ]
+            },
+            {
+                "key": "referral_status",
+                "label": "Referral status",
+                "type": "select",
+                "options": [
+                    "Not required",
+                    "Referred to PHC",
+                    "Referred to District Hospital",
+                    "Referred to Medical College"
+                ]
+            },
+            {
+                "key": "counselling_notes",
+                "label": "Counselling and prevention advice",
+                "type": "textarea"
+            }
+        ]
+    },
+    {
+        "form_id": "telemanas_triage_v1",
+        "title": "Mental Health Triage and Tele-MANAS Referral",
+        "fields": [
+            {
+                "key": "assessment_date",
+                "label": "Assessment Date",
+                "type": "date",
+                "required": true
+            },
+            {
+                "key": "recent_distress",
+                "label": "Current emotional distress",
+                "type": "select",
+                "options": [
+                    "None",
+                    "Mild",
+                    "Moderate",
+                    "Severe"
+                ]
+            },
+            {
+                "key": "self_harm_risk",
+                "label": "Self-harm or suicide risk concern",
+                "type": "checkbox"
+            },
+            {
+                "key": "substance_dependence_risk",
+                "label": "Substance dependence concern",
+                "type": "checkbox"
+            },
+            {
+                "key": "sleep_disturbance",
+                "label": "Sleep disturbance",
+                "type": "select",
+                "options": [
+                    "No",
+                    "Occasional",
+                    "Frequent",
+                    "Severe"
+                ]
+            },
+            {
+                "key": "function_impairment",
+                "label": "Functional impairment",
+                "type": "select",
+                "options": [
+                    "No impairment",
+                    "Mild",
+                    "Moderate",
+                    "Severe"
+                ]
+            },
+            {
+                "key": "telemanas_referral",
+                "label": "Tele-MANAS referral advised",
+                "type": "checkbox"
+            },
+            {
+                "key": "telemanas_call_status",
+                "label": "Tele-MANAS call status (14416)",
+                "type": "select",
+                "options": [
+                    "Not attempted",
+                    "Advised only",
+                    "Call completed",
+                    "Follow-up pending"
+                ]
+            },
+            {
+                "key": "urgent_referral_needed",
+                "label": "Urgent in-person referral needed",
+                "type": "checkbox"
+            },
+            {
+                "key": "safety_plan",
+                "label": "Safety plan and caregiver guidance",
+                "type": "textarea"
+            }
+        ]
+    },
+    {
+        "form_id": "elderly_care_nphce_extended_v1",
+        "title": "Elderly Care Extension (NPHCE)",
+        "fields": [
+            {
+                "key": "assessment_date",
+                "label": "Assessment Date",
+                "type": "date",
+                "required": true
+            },
+            {
+                "key": "fall_history_last_year",
+                "label": "History of fall in last 12 months",
+                "type": "checkbox"
+            },
+            {
+                "key": "timed_up_and_go",
+                "label": "Timed Up and Go test (seconds)",
+                "type": "number",
+                "min": 0,
+                "max": 120,
+                "step": 0.1
+            },
+            {
+                "key": "vision_issue",
+                "label": "Significant vision issue",
+                "type": "checkbox"
+            },
+            {
+                "key": "hearing_issue",
+                "label": "Significant hearing issue",
+                "type": "checkbox"
+            },
+            {
+                "key": "memory_concern",
+                "label": "Memory/cognition concern",
+                "type": "checkbox"
+            },
+            {
+                "key": "incontinence",
+                "label": "Urinary/fecal incontinence",
+                "type": "checkbox"
+            },
+            {
+                "key": "polypharmacy",
+                "label": "Polypharmacy (5 or more medicines)",
+                "type": "checkbox"
+            },
+            {
+                "key": "caregiver_support",
+                "label": "Caregiver support availability",
+                "type": "select",
+                "options": [
+                    "Adequate",
+                    "Limited",
+                    "Absent"
+                ]
+            },
+            {
+                "key": "nphce_referral",
+                "label": "NPHCE clinic referral status",
+                "type": "select",
+                "options": [
+                    "Not required",
+                    "Referred",
+                    "Visited",
+                    "Follow-up pending"
+                ]
+            }
+        ]
+    },
+    {
+        "form_id": "abdm_pmjay_entitlement_linkage_v1",
+        "title": "ABDM and PM-JAY Entitlement Linkage",
+        "fields": [
+            {
+                "key": "assessment_date",
+                "label": "Assessment Date",
+                "type": "date",
+                "required": true
+            },
+            {
+                "key": "abha_available",
+                "label": "ABHA number available",
+                "type": "checkbox"
+            },
+            {
+                "key": "abha_verified",
+                "label": "ABHA verified",
+                "type": "checkbox"
+            },
+            {
+                "key": "abdm_consent_status",
+                "label": "ABDM consent status",
+                "type": "select",
+                "options": [
+                    "Not taken",
+                    "Given",
+                    "Declined",
+                    "Withdrawn"
+                ]
+            },
+            {
+                "key": "pmjay_eligible",
+                "label": "PM-JAY eligibility",
+                "type": "select",
+                "options": [
+                    "Eligible",
+                    "Not eligible",
+                    "Unknown"
+                ]
+            },
+            {
+                "key": "pmjay_card_status",
+                "label": "PM-JAY card status",
+                "type": "select",
+                "options": [
+                    "Not initiated",
+                    "Applied",
+                    "Active",
+                    "Rejected"
+                ]
+            },
+            {
+                "key": "other_scheme_linkages",
+                "label": "Other active scheme linkages",
+                "type": "textarea",
+                "placeholder": "State insurance, disability pension, old age pension, etc."
+            },
+            {
+                "key": "documents_missing",
+                "label": "Missing documents",
+                "type": "textarea"
+            },
+            {
+                "key": "next_linkage_action",
+                "label": "Next linkage action",
+                "type": "textarea"
+            }
+        ]
     }
 ]

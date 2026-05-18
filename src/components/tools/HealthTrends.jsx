@@ -80,6 +80,39 @@ const HealthTrends = () => {
             const healthData = selectedMember.health_data || {};
             const assessments = healthData.assessments || [];
 
+            // Prefer normalized assessments when available
+            let normalizedAssessments = [];
+            try {
+                const { data: dbAssessments, error: dbError } = await supabase
+                    .from('individual_assessments')
+                    .select('id, form_id, assessment_date, payload, calculated_fields, legacy_assessment_id')
+                    .eq('member_id', selectedMemberId)
+                    .eq('is_deleted', false)
+                    .order('assessment_date', { ascending: true });
+                if (!dbError) {
+                    normalizedAssessments = (dbAssessments || []).map((a) => ({
+                        id: a.id,
+                        formId: a.form_id,
+                        date: a.assessment_date,
+                        data: a.payload || {},
+                        calculated_fields: a.calculated_fields || null,
+                        legacyId: a.legacy_assessment_id || null
+                    }));
+                } else {
+                    console.warn('[HealthTrends] individual_assessments unavailable, using legacy assessments only:', dbError.message);
+                }
+            } catch (dbQueryError) {
+                console.warn('[HealthTrends] normalized assessment query failed, using legacy assessments only:', dbQueryError);
+            }
+
+            const normalizedKeys = new Set(
+                normalizedAssessments.map((a) => `${a.formId}|${a.date}|${a.legacyId || ''}`)
+            );
+            const mergedAssessments = [
+                ...normalizedAssessments,
+                ...assessments.filter((a) => !normalizedKeys.has(`${a.formId}|${a.date}|${a.id ? String(a.id) : ''}`))
+            ];
+
             // Also try to fetch from family_visits for backward compatibility
             const { data: visits } = await supabase
                 .from('family_visits')
@@ -89,8 +122,8 @@ const HealthTrends = () => {
 
             const trends = [];
 
-            // Process assessments from member's health_data
-            assessments.forEach(assessment => {
+            // Process assessments from normalized + legacy health_data
+            mergedAssessments.forEach(assessment => {
                 const point = {
                     date: assessment.date,
                     systolic: null,
@@ -214,12 +247,19 @@ const HealthTrends = () => {
                 });
             }
 
-            // Sort by date and remove duplicates
-            const sortedTrends = trends
+            const trendByDate = new Map();
+            trends
                 .sort((a, b) => new Date(a.date) - new Date(b.date))
-                .filter((item, index, arr) => 
-                    index === 0 || item.date !== arr[index - 1].date
-                );
+                .forEach((point) => {
+                    const existing = trendByDate.get(point.date) || { date: point.date };
+                    trendByDate.set(point.date, {
+                        ...existing,
+                        ...Object.fromEntries(
+                            Object.entries(point).filter(([, value]) => value !== null && value !== undefined)
+                        )
+                    });
+                });
+            const sortedTrends = Array.from(trendByDate.values());
 
             setChartData(sortedTrends);
         } catch (err) {

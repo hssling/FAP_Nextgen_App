@@ -2,10 +2,58 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { User, Activity, AlertCircle, CheckCircle, Pill, Utensils, FileText, ClipboardList, Plus, ShieldCheck, CreditCard, ChevronRight, Edit3, Trash2, Eye } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
+import { getCurrentLocation } from '../utils/locationUtils';
 import DynamicForm from '../components/DynamicForm';
 import formRegistry from '../data/forms/registry.json';
 
+const normalizeLegacyAssessment = (assessment) => ({
+    id: assessment.id,
+    formId: assessment.formId,
+    date: assessment.date,
+    data: assessment.data || {},
+    calculated_fields: assessment.calculated_fields || null,
+    storage: 'legacy',
+    legacyId: assessment.id ? String(assessment.id) : null
+});
+
+const normalizeDbAssessment = (row) => ({
+    id: row.id,
+    formId: row.form_id,
+    date: row.assessment_date,
+    data: row.payload || {},
+    calculated_fields: row.calculated_fields || null,
+    storage: 'normalized',
+    legacyId: row.legacy_assessment_id || null,
+    visitId: row.visit_id || null
+});
+
+const mergeAssessments = (dbRows, legacyAssessments) => {
+    const normalized = (dbRows || []).map(normalizeDbAssessment);
+    const legacy = (legacyAssessments || []).map(normalizeLegacyAssessment);
+
+    // Keep legacy records only when there is no matching normalized row.
+    const normalizedKeys = new Set(
+        normalized.map((a) => `${a.formId}|${a.date}|${a.legacyId || ''}`)
+    );
+    const merged = [
+        ...normalized,
+        ...legacy.filter((a) => !normalizedKeys.has(`${a.formId}|${a.date}|${a.legacyId || ''}`))
+    ];
+
+    return merged.sort((a, b) => new Date(b.date) - new Date(a.date));
+};
+
+const toLegacyAssessmentShape = (assessment) => ({
+    id: assessment.legacyId || assessment.id,
+    formId: assessment.formId,
+    date: assessment.date,
+    data: assessment.data || {},
+    calculated_fields: assessment.calculated_fields || null
+});
+
 const MemberDetails = () => {
+    const { profile } = useAuth();
     const { id, memberId } = useParams();
     const [member, setMember] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -37,11 +85,30 @@ const MemberDetails = () => {
 
             // Normalize health_data
             const healthData = data.health_data || {};
+            let normalizedAssessments = [];
+            try {
+                const { data: dbAssessments, error: assessError } = await supabase
+                    .from('individual_assessments')
+                    .select('id, form_id, assessment_date, payload, calculated_fields, legacy_assessment_id, visit_id')
+                    .eq('member_id', memberId)
+                    .eq('is_deleted', false)
+                    .order('assessment_date', { ascending: false });
+
+                if (!assessError) {
+                    normalizedAssessments = dbAssessments || [];
+                } else {
+                    console.warn('[MemberDetails] individual_assessments unavailable, using legacy health_data:', assessError.message);
+                }
+            } catch (assessQueryError) {
+                console.warn('[MemberDetails] assessment normalization query failed, using legacy health_data:', assessQueryError);
+            }
+
             const preparedMember = {
                 ...data,
+                health_data: healthData,
                 problems: healthData.problems || [],
                 interventions: healthData.interventions || [],
-                assessments: healthData.assessments || [],
+                assessments: mergeAssessments(normalizedAssessments, healthData.assessments || []),
                 abhaId: healthData.abhaId || ''
             };
 
@@ -66,9 +133,12 @@ const MemberDetails = () => {
         try {
             // Extract health data
             const healthData = {
+                ...(updatedMember.health_data || {}),
                 problems: updatedMember.problems,
                 interventions: updatedMember.interventions,
-                assessments: updatedMember.assessments,
+                assessments: (updatedMember.assessments || [])
+                    .filter((assessment) => assessment.storage !== 'normalized')
+                    .map(toLegacyAssessmentShape),
                 abhaId: updatedMember.abhaId
             };
 
@@ -78,10 +148,122 @@ const MemberDetails = () => {
                 .eq('id', memberId);
 
             if (error) throw error;
-            setMember(updatedMember);
+            setMember({ ...updatedMember, health_data: healthData });
         } catch (error) {
             console.error("Error updating member:", error);
             alert("Failed to update member.");
+        }
+    };
+
+    const writeNormalizedAssessment = async (assessmentRecord) => {
+        const payload = {
+            member_id: memberId,
+            family_id: member.family_id,
+            form_id: assessmentRecord.formId,
+            assessment_date: assessmentRecord.date,
+            payload: assessmentRecord.data || {},
+            calculated_fields: assessmentRecord.calculated_fields || null,
+            legacy_assessment_id: assessmentRecord.legacyId || null,
+            visit_id: assessmentRecord.visitId || null,
+            source: 'member_details'
+        };
+
+        if (assessmentRecord.storage === 'normalized') {
+            const { error } = await supabase
+                .from('individual_assessments')
+                .update(payload)
+                .eq('id', assessmentRecord.id);
+            if (error) throw error;
+            return assessmentRecord.id;
+        }
+
+        const { data, error } = await supabase
+            .from('individual_assessments')
+            .insert(payload)
+            .select('id')
+            .single();
+
+        if (error) throw error;
+        return data.id;
+    };
+
+    const upsertAssessmentVisit = async (assessmentRecord) => {
+        let gps = null;
+        try {
+            gps = await getCurrentLocation();
+        } catch (gpsError) {
+            console.warn('[MemberDetails] GPS capture failed for assessment-linked visit:', gpsError.message || gpsError);
+        }
+
+        const visitData = {
+            protocol: assessmentRecord.formId,
+            member_id: memberId,
+            assessment_id: String(assessmentRecord.id),
+            auto_generated_from_assessment: true
+        };
+
+        const gpsPayload = {
+            latitude: gps?.latitude || null,
+            longitude: gps?.longitude || null,
+            gps_accuracy: gps?.accuracy || null,
+            device_info: {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                online: navigator.onLine,
+                source: 'member_assessment'
+            }
+        };
+
+        if (assessmentRecord.visitId) {
+            const { error } = await supabase
+                .from('family_visits')
+                .update({
+                    visit_date: assessmentRecord.date,
+                    activity_type: 'Assessment Entry',
+                    data: visitData,
+                    ...gpsPayload
+                })
+                .eq('id', assessmentRecord.visitId);
+            if (!error) return assessmentRecord.visitId;
+            console.warn('[MemberDetails] Failed to update linked visit, creating a new one:', error.message);
+        }
+
+        const baseInsert = {
+            family_id: member.family_id,
+            student_id: profile?.id || null,
+            visit_date: assessmentRecord.date,
+            activity_type: 'Assessment Entry',
+            notes: 'Auto-created from member assessment entry',
+            data: visitData
+        };
+
+        let insertResult = await supabase
+            .from('family_visits')
+            .insert({ ...baseInsert, ...gpsPayload })
+            .select('id')
+            .single();
+
+        if (insertResult.error) {
+            // Backward compatibility if GPS columns are unavailable.
+            insertResult = await supabase
+                .from('family_visits')
+                .insert(baseInsert)
+                .select('id')
+                .single();
+            if (insertResult.error) throw insertResult.error;
+        }
+
+        return insertResult.data.id;
+    };
+
+    const syncAssessmentVisitId = async (assessmentId, visitId) => {
+        if (!assessmentId || !visitId) return;
+        const { error } = await supabase
+            .from('individual_assessments')
+            .update({ visit_id: visitId })
+            .eq('id', assessmentId);
+        if (error) {
+            console.warn('[MemberDetails] Failed to sync visit_id on assessment:', error.message);
         }
     };
 
@@ -108,18 +290,42 @@ const MemberDetails = () => {
     };
 
     const handleAssessmentSubmit = async (data) => {
+        const today = new Date().toISOString().split('T')[0];
+        const existing = editingAssessmentId
+            ? member.assessments.find(a => String(a.id) === String(editingAssessmentId))
+            : member.assessments.find(a => a.formId === selectedAssessmentForm && a.date === today);
         const assessmentRecord = {
-            id: editingAssessmentId || Date.now(),
+            id: existing?.id || Date.now(),
             formId: selectedAssessmentForm,
-            date: editingAssessmentId
-                ? (member.assessments.find(a => a.id === editingAssessmentId)?.date || new Date().toISOString().split('T')[0])
-                : new Date().toISOString().split('T')[0],
+            date: existing?.date || today,
             data: data.calculated_fields ? data : { ...data },
-            calculated_fields: data.calculated_fields || null
+            calculated_fields: data.calculated_fields || null,
+            storage: existing?.storage || 'legacy',
+            legacyId: existing?.legacyId || (existing?.id ? String(existing.id) : String(Date.now())),
+            visitId: existing?.visitId || null
         };
 
+        try {
+            const normalizedId = await writeNormalizedAssessment(assessmentRecord);
+            assessmentRecord.id = normalizedId;
+            assessmentRecord.storage = 'normalized';
+            const visitId = await upsertAssessmentVisit(assessmentRecord);
+            assessmentRecord.visitId = visitId;
+            await syncAssessmentVisitId(normalizedId, visitId);
+        } catch (normError) {
+            console.warn('[MemberDetails] normalized assessment write failed; saving legacy only:', normError);
+            try {
+                const visitId = await upsertAssessmentVisit(assessmentRecord);
+                assessmentRecord.visitId = visitId;
+            } catch (visitError) {
+                console.warn('[MemberDetails] linked visit logging also failed:', visitError);
+            }
+        }
+
         const nextAssessments = editingAssessmentId
-            ? member.assessments.map(a => (a.id === editingAssessmentId ? assessmentRecord : a))
+            ? member.assessments.map(a => (String(a.id) === String(editingAssessmentId) ? assessmentRecord : a))
+            : existing
+                ? member.assessments.map(a => (String(a.id) === String(existing.id) ? assessmentRecord : a))
             : [...member.assessments, assessmentRecord];
 
         const updated = {
@@ -139,7 +345,7 @@ const MemberDetails = () => {
     };
 
     const handleEditAssessment = (assessment) => {
-        setEditingAssessmentId(assessment.id);
+        setEditingAssessmentId(String(assessment.id));
         setSelectedAssessmentRecord(assessment);
         setSelectedAssessmentForm(assessment.formId);
         setShowAssessmentModal(true);
@@ -149,9 +355,43 @@ const MemberDetails = () => {
         const ok = window.confirm('Remove this assessment entry? This action updates the member record immediately.');
         if (!ok) return;
 
+        try {
+            const assessment = member.assessments.find(a => String(a.id) === String(assessmentId));
+            if (assessment?.storage === 'normalized') {
+                const { error } = await supabase
+                    .from('individual_assessments')
+                    .update({
+                        is_deleted: true,
+                        deleted_at: new Date().toISOString(),
+                        deleted_by: profile?.id || null
+                    })
+                    .eq('id', assessment.id);
+                if (error) throw error;
+
+                if (assessment.visitId) {
+                    const { data: visitData, error: visitFetchError } = await supabase
+                        .from('family_visits')
+                        .select('id, data')
+                        .eq('id', assessment.visitId)
+                        .single();
+                    if (!visitFetchError && visitData?.data?.auto_generated_from_assessment === true) {
+                        const linkedAssessmentId = String(visitData.data.assessment_id || '');
+                        if (!linkedAssessmentId || linkedAssessmentId === String(assessment.id)) {
+                            await supabase
+                                .from('family_visits')
+                                .delete()
+                                .eq('id', assessment.visitId);
+                        }
+                    }
+                }
+            }
+        } catch (normDeleteError) {
+            console.warn('[MemberDetails] normalized assessment delete failed; continuing legacy delete:', normDeleteError);
+        }
+
         const updated = {
             ...member,
-            assessments: member.assessments.filter(a => a.id !== assessmentId)
+            assessments: member.assessments.filter(a => String(a.id) !== String(assessmentId))
         };
         await handleUpdateMember(updated);
     };
@@ -499,9 +739,7 @@ const MemberDetails = () => {
                                 initialData={editingAssessmentId
                                     ? (() => {
                                         const existing = selectedAssessmentRecord?.data || {};
-                                        return Object.fromEntries(
-                                            Object.entries(existing).filter(([key]) => key !== 'calculated_fields')
-                                        );
+                                        return { ...existing };
                                     })()
                                     : {}
                                 }

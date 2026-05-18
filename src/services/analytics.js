@@ -5,13 +5,24 @@ export const generateCommunityHealthReport = async (studentId) => {
     let members = [];
     let visits = [];
     let reflections = [];
+    let normalizedAssessments = [];
 
     try {
         // Fetch Families with all details
-        const { data: famData, error: famError } = await supabase
+        let { data: famData, error: famError } = await supabase
             .from('families')
             .select('*')
-            .eq('student_id', studentId);
+            .eq('student_id', studentId)
+            .neq('is_deleted', true);
+
+        if (famError) {
+            const fallback = await supabase
+                .from('families')
+                .select('*')
+                .eq('student_id', studentId);
+            famData = fallback.data;
+            famError = fallback.error;
+        }
 
         if (famError) throw famError;
         families = famData || [];
@@ -20,10 +31,18 @@ export const generateCommunityHealthReport = async (studentId) => {
         if (families.length > 0) {
             const familyIds = families.map(f => f.id);
 
-            const { data: memData } = await supabase
+            let { data: memData, error: memError } = await supabase
                 .from('family_members')
                 .select('*')
-                .in('family_id', familyIds);
+                .in('family_id', familyIds)
+                .neq('is_deleted', true);
+            if (memError) {
+                const fallback = await supabase
+                    .from('family_members')
+                    .select('*')
+                    .in('family_id', familyIds);
+                memData = fallback.data;
+            }
             members = memData || [];
 
             const { data: visData } = await supabase
@@ -32,6 +51,22 @@ export const generateCommunityHealthReport = async (studentId) => {
                 .in('family_id', familyIds)
                 .order('visit_date', { ascending: false });
             visits = visData || [];
+
+            const memberIds = (memData || []).map(m => m.id);
+            if (memberIds.length > 0) {
+                const { data: normalizedData, error: normalizedError } = await supabase
+                    .from('individual_assessments')
+                    .select('id, member_id, form_id, assessment_date, payload, calculated_fields, legacy_assessment_id, visit_id')
+                    .in('member_id', memberIds)
+                    .eq('is_deleted', false)
+                    .order('assessment_date', { ascending: false });
+
+                if (!normalizedError) {
+                    normalizedAssessments = normalizedData || [];
+                } else {
+                    console.warn('[Analytics] individual_assessments not available, falling back to health_data only:', normalizedError.message);
+                }
+            }
         }
 
         // Fetch ALL Reflections with feedback
@@ -57,21 +92,42 @@ export const generateCommunityHealthReport = async (studentId) => {
 
     // Process Members: Combine health_data.assessments with visits for complete picture
     const membersWithAssessments = members.map(m => {
+        const dbAssessments = normalizedAssessments
+            .filter(a => a.member_id === m.id)
+            .map(a => ({
+                id: a.id,
+                formId: a.form_id,
+                date: a.assessment_date,
+                data: a.payload || {},
+                calculated_fields: a.calculated_fields || null,
+                legacyId: a.legacy_assessment_id || null,
+                visitId: a.visit_id || null,
+                source: 'normalized'
+            }));
+
         // Get assessments from health_data (new format)
         const healthAssessments = m.health_data?.assessments || [];
+        const dbKeys = new Set(dbAssessments.map(a => `${a.formId}|${a.date}|${a.legacyId || ''}`));
+        const dedupedHealthAssessments = healthAssessments
+            .filter(a => !dbKeys.has(`${a.formId}|${a.date}|${a.id ? String(a.id) : ''}`))
+            .map(a => ({ ...a, source: 'health_data' }));
         
         // Get assessments from visits (legacy format)
-        const memberVisits = visits.filter(v => v.data?.member_id === m.id);
-        const visitAssessments = memberVisits.map(v => ({
-            formId: v.data.protocol,
-            data: v.data,
-            date: v.visit_date,
-            source: 'visit'
-        }));
+        const normalizedIds = new Set(dbAssessments.map((a) => String(a.id)));
+        const memberVisits = visits.filter(v => String(v.data?.member_id || '') === String(m.id));
+        const visitAssessments = memberVisits
+            .filter((v) => !(v.data?.auto_generated_from_assessment === true && normalizedIds.has(String(v.data?.assessment_id || ''))))
+            .map(v => ({
+                formId: v.data.protocol,
+                data: v.data,
+                date: v.visit_date,
+                source: 'visit'
+            }));
 
         // Combine both sources
         const allAssessments = [
-            ...healthAssessments.map(a => ({ ...a, source: 'health_data' })),
+            ...dbAssessments,
+            ...dedupedHealthAssessments,
             ...visitAssessments
         ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -86,6 +142,16 @@ export const generateCommunityHealthReport = async (studentId) => {
     });
 
     // Calculate all metrics
+    const assessmentIndex = new Map();
+    const visitAssessmentIndex = new Map();
+    normalizedAssessments.forEach((a) => {
+        const key = `${a.member_id}|${a.assessment_date}`;
+        assessmentIndex.set(key, (assessmentIndex.get(key) || 0) + 1);
+        if (a.visit_id) {
+            visitAssessmentIndex.set(a.visit_id, (visitAssessmentIndex.get(a.visit_id) || 0) + 1);
+        }
+    });
+
     const report = {
         demographics: {
             totalFamilies: families.length,
@@ -114,6 +180,7 @@ export const generateCommunityHealthReport = async (studentId) => {
                     date: v.visit_date,
                     familyName: family?.head_name || 'Unknown',
                     memberName: member?.name || v.data?.member_name || null,
+                    linkedAssessments: visitAssessmentIndex.get(v.id) || (member?.id ? (assessmentIndex.get(`${member.id}|${v.visit_date}`) || 0) : 0),
                     protocol: v.data?.protocol || 'General Visit',
                     notes: v.notes || v.data?.notes || '',
                     reflection: v.data?.reflection || null,
