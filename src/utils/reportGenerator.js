@@ -101,6 +101,31 @@ const excelWorksheet = (name, rows, columnWidths = []) => `
         </Table>
     </Worksheet>`;
 
+const formatFormId = (formId) => String(formId || 'unknown')
+    .replace(/_v\d+$/, '')
+    .replace(/_/g, ' ');
+
+const buildAssessmentRows = (students) => students.flatMap((student) => {
+    const byForm = student.assessmentByForm || {};
+    const entries = Object.entries(byForm);
+    if (entries.length === 0 && (student.assessmentCount || 0) > 0) {
+        return [[
+            student.full_name || '-',
+            student.registration_number || 'N/A',
+            student.email || '-',
+            'All assessments',
+            student.assessmentCount || 0
+        ]];
+    }
+    return entries.map(([formId, count]) => [
+        student.full_name || '-',
+        student.registration_number || 'N/A',
+        student.email || '-',
+        formatFormId(formId),
+        count || 0
+    ]);
+});
+
 export const generateAdminReport = (stats, students) => {
     const doc = new jsPDF();
 
@@ -122,6 +147,7 @@ export const generateAdminReport = (stats, students) => {
         ['Total Students', stats.totalStudents],
         ['Total Teachers', stats.totalTeachers],
         ['Families Adopted', stats.totalFamilies],
+        ['Individual Assessments', students.reduce((sum, s) => sum + (s.assessmentCount || 0), 0)],
         ['Reflections Submitted', stats.totalReflections],
         ['Reflections Graded', stats.gradedReflections],
         ['Pending Review', stats.pendingReflections]
@@ -143,6 +169,7 @@ export const generateAdminReport = (stats, students) => {
         s.full_name,
         s.registration_number || 'N/A',
         s.familyCount,
+        s.assessmentCount || 0,
         s.reflectionCount,
         s.gradedCount || 0,
         s.avgScore
@@ -150,10 +177,10 @@ export const generateAdminReport = (stats, students) => {
 
     autoTable(doc, {
         startY: finalY + 5,
-        head: [['Rank', 'Student Name', 'Reg. No', 'Families', 'Submitted', 'Mentor Verified', 'Avg Score']],
+        head: [['Rank', 'Student Name', 'Reg. No', 'Families', 'Assessments', 'Submitted', 'Mentor Verified', 'Avg Score']],
         body: studentData.length > 0
             ? studentData
-            : [['-', 'No active students found', '-', '-', '-', '-', '-']],
+            : [['-', 'No active students found', '-', '-', '-', '-', '-', '-']],
         theme: 'grid',
         headStyles: { fillColor: [59, 130, 246] }
     });
@@ -178,6 +205,7 @@ export const generateAdminExcelReport = (stats, students) => {
         ['Total Students', stats.totalStudents || 0],
         ['Total Teachers', stats.totalTeachers || 0],
         ['Families Adopted', stats.totalFamilies || 0],
+        ['Individual Assessments', students.reduce((sum, s) => sum + (s.assessmentCount || 0), 0)],
         ['Reflections Submitted', stats.totalReflections || 0],
         ['Reflections Graded', stats.gradedReflections || 0],
         ['Pending Review', stats.pendingReflections || 0]
@@ -192,6 +220,7 @@ export const generateAdminExcelReport = (stats, students) => {
         'Year of Joining',
         'Mentor',
         'Families',
+        'Individual Assessments',
         'Submitted Reflections',
         'Mentor Verified',
         'Avg Score'
@@ -207,11 +236,12 @@ export const generateAdminExcelReport = (stats, students) => {
             s.year_of_joining || '-',
             s.mentor?.full_name || '-',
             s.familyCount || 0,
+            s.assessmentCount || 0,
             s.reflectionCount || 0,
             s.gradedCount || 0,
             s.avgScore || '-'
         ])
-        : [['-', 'No active students found', '-', '-', '-', '-', '-', '-', '-', '-', '-']];
+        : [['-', 'No active students found', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-']];
 
     const overviewSheetRows = overviewRows.map((row, idx) => {
         if (idx === 0) return excelRow(row, 'Title');
@@ -222,6 +252,13 @@ export const generateAdminExcelReport = (stats, students) => {
     const studentSheetRows = [
         excelRow(studentHeaders, 'Header'),
         ...studentRows.map(row => excelRow(row))
+    ];
+    const assessmentRows = buildAssessmentRows(students);
+    const assessmentSheetRows = [
+        excelRow(['Student Name', 'Registration Number', 'Email', 'Assessment Type', 'Count'], 'Header'),
+        ...(assessmentRows.length > 0
+            ? assessmentRows.map(row => excelRow(row))
+            : [excelRow(['No assessment records found', '-', '-', '-', '-'])])
     ];
 
     const workbookXml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -246,7 +283,8 @@ export const generateAdminExcelReport = (stats, students) => {
         </Style>
     </Styles>
     ${excelWorksheet('Overview', overviewSheetRows, [190, 130])}
-    ${excelWorksheet('Registered Students', studentSheetRows, [55, 190, 135, 210, 80, 105, 190, 75, 130, 110, 85])}
+    ${excelWorksheet('Registered Students', studentSheetRows, [55, 190, 135, 210, 80, 105, 190, 75, 120, 130, 110, 85])}
+    ${excelWorksheet('Assessments', assessmentSheetRows, [190, 135, 210, 230, 80])}
 </Workbook>`;
 
     const blob = new Blob(['\uFEFF', workbookXml], { type: 'application/vnd.ms-excel;charset=utf-8' });
@@ -316,7 +354,7 @@ export const generateAdminLocalStaffReport = (stats, students, language = 'kn') 
 
     students.forEach((s, idx) => {
         lines.push(
-            `${idx + 1}. ${t.studentName}: ${s.full_name || '-'} | ${t.regNo}: ${s.registration_number || '-'} | ${t.families}: ${s.familyCount || 0} | ${t.reflections}: ${s.reflectionCount || 0} | ${t.graded}: ${s.gradedCount || 0} | ${t.score}: ${s.avgScore || '-'}`
+            `${idx + 1}. ${t.studentName}: ${s.full_name || '-'} | ${t.regNo}: ${s.registration_number || '-'} | ${t.families}: ${s.familyCount || 0} | Assessments: ${s.assessmentCount || 0} | ${t.reflections}: ${s.reflectionCount || 0} | ${t.graded}: ${s.gradedCount || 0} | ${t.score}: ${s.avgScore || '-'}`
         );
     });
 

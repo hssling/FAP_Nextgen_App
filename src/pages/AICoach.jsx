@@ -152,7 +152,7 @@ const scrollToBottom = () => {
         }
     };
 
-    const getSystemPrompt = () => {
+    const getSystemPrompt = useCallback(() => {
         const currentStudyYear = getCurrentStudyYear(profile);
         const joiningYear = getYearOfJoining(profile);
         return `You are an expert medical educator specializing in Community Medicine and Family Medicine for Indian medical students following the NMC-CBME curriculum. 
@@ -168,7 +168,7 @@ Guidelines:
 - Keep responses concise (2-3 paragraphs max)
 - Include clinical pearls and practical tips
 - Reference NMC competencies when applicable`;
-    };
+    }, [profile]);
 
     const callSelectedProvider = useCallback(async (conversationMessages, controller) => {
         return callProviderChat({

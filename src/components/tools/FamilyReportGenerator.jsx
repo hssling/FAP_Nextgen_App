@@ -1,9 +1,54 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Page, Text, View, Document, StyleSheet, PDFDownloadLink } from '@react-pdf/renderer';
 import { supabase } from '../../services/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFamilies } from '../../hooks/useFamilies';
 import { get, set } from 'idb-keyval';
+import formRegistry from '../../data/forms/registry.json';
+
+const getFormTitle = (formId) => formRegistry.find((form) => form.form_id === formId)?.title || formId;
+
+const normalizeLegacyAssessment = (member, assessment) => ({
+    id: assessment.id ? String(assessment.id) : `${member.id}-${assessment.formId}-${assessment.date}`,
+    member_id: member.id,
+    memberName: member.name,
+    formId: assessment.formId,
+    title: getFormTitle(assessment.formId),
+    date: assessment.date,
+    source: 'Legacy',
+    legacyId: assessment.id ? String(assessment.id) : ''
+});
+
+const normalizeDbAssessment = (memberMap, row) => {
+    const member = memberMap[row.member_id] || {};
+    return {
+        id: row.id,
+        member_id: row.member_id,
+        memberName: member.name || 'Unknown',
+        formId: row.form_id,
+        title: getFormTitle(row.form_id),
+        date: row.assessment_date,
+        source: row.visit_id ? 'Assessment + Visit' : 'Assessment',
+        legacyId: row.legacy_assessment_id || ''
+    };
+};
+
+const mergeAssessmentRows = (members, normalizedRows) => {
+    const memberMap = Object.fromEntries((members || []).map((member) => [member.id, member]));
+    const normalized = (normalizedRows || []).map((row) => normalizeDbAssessment(memberMap, row));
+    const normalizedKeys = new Set(
+        normalized.map((row) => `${row.member_id}|${row.formId}|${row.date}|${row.legacyId || ''}`)
+    );
+
+    const legacy = (members || []).flatMap((member) => (
+        member.health_data?.assessments || []
+    ).map((assessment) => normalizeLegacyAssessment(member, assessment)));
+
+    return [
+        ...normalized,
+        ...legacy.filter((row) => !normalizedKeys.has(`${row.member_id}|${row.formId}|${row.date}|${row.legacyId || ''}`))
+    ].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+};
 
 // PDF Styles
 const styles = StyleSheet.create({
@@ -20,11 +65,15 @@ const styles = StyleSheet.create({
     col1: { width: '25%' },
     col2: { width: '40%' },
     col3: { width: '35%' },
+    colDate: { width: '18%' },
+    colMember: { width: '22%' },
+    colAssessment: { width: '42%' },
+    colSource: { width: '18%' },
     footer: { position: 'absolute', bottom: 30, left: 30, right: 30, fontSize: 8, textAlign: 'center', color: '#94a3b8' }
 });
 
 // PDF Document Component
-const FamilyReportDocument = ({ family, members, visits, studentName }) => (
+const FamilyReportDocument = ({ family, members, visits, assessments, studentName }) => (
     <Document>
         <Page size="A4" style={styles.page}>
             <View style={styles.header}>
@@ -72,6 +121,26 @@ const FamilyReportDocument = ({ family, members, visits, studentName }) => (
                 </View>
             ))}
 
+            <Text style={styles.subtitle}>Individual Assessments</Text>
+            <View style={styles.tableHeader}>
+                <Text style={[styles.text, styles.colDate, { fontWeight: 'bold' }]}>Date</Text>
+                <Text style={[styles.text, styles.colMember, { fontWeight: 'bold' }]}>Member</Text>
+                <Text style={[styles.text, styles.colAssessment, { fontWeight: 'bold' }]}>Assessment</Text>
+                <Text style={[styles.text, styles.colSource, { fontWeight: 'bold' }]}>Source</Text>
+            </View>
+            {assessments.length === 0 ? (
+                <Text style={[styles.text, { padding: 10, fontStyle: 'italic' }]}>No assessments recorded yet.</Text>
+            ) : (
+                assessments.map((assessment, i) => (
+                    <View key={assessment.id || `${assessment.memberName}-${assessment.formId}-${assessment.date}` || i} style={styles.tableRow}>
+                        <Text style={[styles.text, styles.colDate]}>{assessment.date || '-'}</Text>
+                        <Text style={[styles.text, styles.colMember]}>{assessment.memberName || '-'}</Text>
+                        <Text style={[styles.text, styles.colAssessment]}>{assessment.title || assessment.formId || '-'}</Text>
+                        <Text style={[styles.text, styles.colSource]}>{assessment.source || '-'}</Text>
+                    </View>
+                ))
+            )}
+
             <Text style={styles.subtitle}>Visit Logbook</Text>
             <View style={styles.tableHeader}>
                 <Text style={[styles.text, styles.col1, { fontWeight: 'bold' }]}>Date</Text>
@@ -118,15 +187,7 @@ const FamilyReportGenerator = () => {
     // Use cached families hook
     const { data: families = [] } = useFamilies(profile?.id);
 
-    useEffect(() => {
-        if (selectedFamilyId) {
-            prepareReport(selectedFamilyId);
-        } else {
-            setReportData(null);
-        }
-    }, [selectedFamilyId]);
-
-    const prepareReport = async (famId) => {
+    const prepareReport = useCallback(async (famId) => {
         setLoading(true);
         try {
             const family = families.find(f => f.id === famId);
@@ -134,22 +195,41 @@ const FamilyReportGenerator = () => {
 
             let members = [];
             let visits = [];
+            let assessments = [];
 
             if (!isOffline) {
                 // Fetch fresh data
-                const { data: mData } = await supabase.from('family_members').select('*').eq('family_id', famId);
+                let { data: mData, error: mError } = await supabase.from('family_members').select('*').eq('family_id', famId).neq('is_deleted', true);
+                if (mError) {
+                    const fallbackMembers = await supabase.from('family_members').select('*').eq('family_id', famId);
+                    mData = fallbackMembers.data;
+                }
                 const { data: vData } = await supabase.from('family_visits').select('*').eq('family_id', famId).order('visit_date', { ascending: false });
                 members = mData || [];
                 visits = vData || [];
+
+                const memberIds = members.map((member) => member.id).filter(Boolean);
+                let normalizedAssessments = [];
+                if (memberIds.length > 0) {
+                    const { data: aData, error: aError } = await supabase
+                        .from('individual_assessments')
+                        .select('id, member_id, form_id, assessment_date, legacy_assessment_id, visit_id')
+                        .in('member_id', memberIds)
+                        .eq('is_deleted', false)
+                        .order('assessment_date', { ascending: false });
+                    if (!aError) normalizedAssessments = aData || [];
+                }
+                assessments = mergeAssessmentRows(members, normalizedAssessments);
                 
                 // Cache for offline use
-                await set(`fap_report_cache_${famId}`, { members, visits });
+                await set(`fap_report_cache_${famId}`, { members, visits, assessments });
             } else {
                 // Try to load from cache
                 const cached = await get(`fap_report_cache_${famId}`);
                 if (cached) {
                     members = cached.members;
                     visits = cached.visits;
+                    assessments = cached.assessments || mergeAssessmentRows(cached.members || [], []);
                 }
             }
 
@@ -157,6 +237,7 @@ const FamilyReportGenerator = () => {
                 family,
                 members,
                 visits,
+                assessments,
                 studentName: profile?.full_name || profile?.email
             });
         } catch (err) {
@@ -164,7 +245,15 @@ const FamilyReportGenerator = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [families, isOffline, profile?.email, profile?.full_name]);
+
+    useEffect(() => {
+        if (selectedFamilyId) {
+            prepareReport(selectedFamilyId);
+        } else {
+            setReportData(null);
+        }
+    }, [prepareReport, selectedFamilyId]);
 
     return (
         <div className='tool-card'>

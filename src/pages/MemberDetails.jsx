@@ -4,6 +4,7 @@ import { User, Activity, AlertCircle, CheckCircle, Pill, Utensils, FileText, Cli
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { getCurrentLocation } from '../utils/locationUtils';
+import { del } from 'idb-keyval';
 import DynamicForm from '../components/DynamicForm';
 import formRegistry from '../data/forms/registry.json';
 
@@ -51,6 +52,18 @@ const toLegacyAssessmentShape = (assessment) => ({
     data: assessment.data || {},
     calculated_fields: assessment.calculated_fields || null
 });
+
+const clearAnalyticsCaches = (studentId) => {
+    if (!studentId) return;
+    try {
+        sessionStorage.removeItem(`analytics_${studentId}`);
+    } catch (cacheError) {
+        console.warn('[MemberDetails] Failed to clear session analytics cache:', cacheError);
+    }
+    del(`analytics_persistent_${studentId}`).catch((cacheError) => {
+        console.warn('[MemberDetails] Failed to clear persistent analytics cache:', cacheError);
+    });
+};
 
 const MemberDetails = () => {
     const { profile } = useAuth();
@@ -333,6 +346,7 @@ const MemberDetails = () => {
             assessments: nextAssessments
         };
         await handleUpdateMember(updated);
+        clearAnalyticsCaches(profile?.id);
         setSelectedAssessmentForm(null);
         setEditingAssessmentId(null);
         setSelectedAssessmentRecord(null);
@@ -394,6 +408,7 @@ const MemberDetails = () => {
             assessments: member.assessments.filter(a => String(a.id) !== String(assessmentId))
         };
         await handleUpdateMember(updated);
+        clearAnalyticsCaches(profile?.id);
     };
 
     const verifyAbha = async () => {

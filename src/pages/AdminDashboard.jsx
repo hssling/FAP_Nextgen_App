@@ -258,16 +258,45 @@ const AdminDashboard = () => {
                 const [{ data: familiesData }, { data: refsData }] = await Promise.all([
                     supabase
                         .from('families')
-                        .select('student_id')
+                        .select('id, student_id')
                         .in('student_id', studentIds),
                     supabase
                         .from('reflections')
                         .select('student_id, status, total_score, grade')
                         .in('student_id', studentIds)
                 ]);
+                const familyIds = (familiesData || []).map((family) => family.id).filter(Boolean);
+                let membersData = [];
+                let assessmentRows = [];
+
+                if (familyIds.length > 0) {
+                    const { data: membersResult } = await supabase
+                        .from('family_members')
+                        .select('id, family_id, health_data')
+                        .in('family_id', familyIds);
+                    membersData = membersResult || [];
+                }
+
+                const memberIds = membersData.map((member) => member.id).filter(Boolean);
+                if (memberIds.length > 0) {
+                    const { data: normalizedAssessments, error: normalizedError } = await supabase
+                        .from('individual_assessments')
+                        .select('id, member_id, form_id, assessment_date, legacy_assessment_id, is_deleted')
+                        .in('member_id', memberIds)
+                        .eq('is_deleted', false);
+                    if (!normalizedError) assessmentRows = normalizedAssessments || [];
+                }
 
                 const familyCounts = (familiesData || []).reduce((acc, f) => {
                     acc[f.student_id] = (acc[f.student_id] || 0) + 1;
+                    return acc;
+                }, {});
+                const familyStudentMap = (familiesData || []).reduce((acc, family) => {
+                    acc[family.id] = family.student_id;
+                    return acc;
+                }, {});
+                const memberStudentMap = membersData.reduce((acc, member) => {
+                    acc[member.id] = familyStudentMap[member.family_id];
                     return acc;
                 }, {});
 
@@ -281,9 +310,38 @@ const AdminDashboard = () => {
                     acc[r.student_id] = bucket;
                     return acc;
                 }, {});
+                const normalizedKeysByStudent = {};
+                const assessmentBuckets = assessmentRows.reduce((acc, row) => {
+                    const studentId = memberStudentMap[row.member_id];
+                    if (!studentId) return acc;
+                    const bucket = acc[studentId] || { total: 0, byForm: {}, recent: [] };
+                    bucket.total += 1;
+                    bucket.byForm[row.form_id] = (bucket.byForm[row.form_id] || 0) + 1;
+                    bucket.recent.push(row);
+                    acc[studentId] = bucket;
+                    normalizedKeysByStudent[studentId] = normalizedKeysByStudent[studentId] || new Set();
+                    normalizedKeysByStudent[studentId].add(`${row.member_id}|${row.form_id}|${row.assessment_date}|${row.legacy_assessment_id || ''}`);
+                    return acc;
+                }, {});
+
+                membersData.forEach((member) => {
+                    const studentId = memberStudentMap[member.id];
+                    if (!studentId) return;
+                    const bucket = assessmentBuckets[studentId] || { total: 0, byForm: {}, recent: [] };
+                    const normalizedKeys = normalizedKeysByStudent[studentId] || new Set();
+                    (member.health_data?.assessments || []).forEach((assessment) => {
+                        const key = `${member.id}|${assessment.formId || 'unknown'}|${assessment.date || ''}|${assessment.id ? String(assessment.id) : ''}`;
+                        if (normalizedKeys.has(key)) return;
+                        bucket.total += 1;
+                        const formId = assessment.formId || 'unknown';
+                        bucket.byForm[formId] = (bucket.byForm[formId] || 0) + 1;
+                    });
+                    assessmentBuckets[studentId] = bucket;
+                });
 
                 enrichedStudents = students.map(s => {
                     const bucket = reflectionBuckets[s.id] || { total: 0, graded: [], gradedCount: 0 };
+                    const assessmentBucket = assessmentBuckets[s.id] || { total: 0, byForm: {}, recent: [] };
                     const avgScore = bucket.graded.length > 0
                         ? (bucket.graded.reduce((a, b) => a + (b.total_score || 0), 0) / bucket.graded.length).toFixed(1)
                         : '-';
@@ -294,6 +352,8 @@ const AdminDashboard = () => {
                         reflectionCount: bucket.total,
                         gradedCount: bucket.gradedCount,
                         avgScore: avgScore,
+                        assessmentCount: assessmentBucket.total,
+                        assessmentByForm: assessmentBucket.byForm,
                         mentor: mentorMap[s.id] || null
                     };
                 });
@@ -631,10 +691,14 @@ const AdminDashboard = () => {
             <div style={{ fontSize: '0.75rem', color: '#64748B', marginBottom: '0.75rem' }}>
                 Mentor: {student.mentor?.full_name || 'Not assigned'}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem' }}>
                 <div>
                     <div style={{ fontSize: '0.6rem', color: '#9CA3AF', textTransform: 'uppercase' }}>Families</div>
                     <div style={{ fontSize: '1rem', fontWeight: '700', color: '#0F766E' }}>{student.familyCount}</div>
+                </div>
+                <div>
+                    <div style={{ fontSize: '0.6rem', color: '#9CA3AF', textTransform: 'uppercase' }}>Assess.</div>
+                    <div style={{ fontSize: '1rem', fontWeight: '700', color: '#7C3AED' }}>{student.assessmentCount || 0}</div>
                 </div>
                 <div>
                     <div style={{ fontSize: '0.6rem', color: '#9CA3AF', textTransform: 'uppercase' }}>Reflect.</div>

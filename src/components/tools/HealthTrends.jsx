@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
@@ -16,25 +16,8 @@ const HealthTrends = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    useEffect(() => {
-        if (profile) loadFamilies();
-    }, [profile]);
-
-    useEffect(() => {
-        if (selectedFamilyId) {
-            loadMembers();
-            setChartData([]);
-            setSelectedMemberId('');
-        }
-    }, [selectedFamilyId]);
-
-    useEffect(() => {
-        if (selectedMemberId) {
-            loadHealthData();
-        }
-    }, [selectedMemberId]);
-
-    const loadFamilies = async () => {
+    const loadFamilies = useCallback(async () => {
+        if (!profile?.id) return;
         try {
             const { data, error } = await supabase
                 .from('families')
@@ -47,9 +30,10 @@ const HealthTrends = () => {
             console.error('Error loading families:', err);
             setError('Failed to load families');
         }
-    };
+    }, [profile?.id]);
 
-    const loadMembers = async () => {
+    const loadMembers = useCallback(async () => {
+        if (!selectedFamilyId) return;
         try {
             const { data, error } = await supabase
                 .from('family_members')
@@ -62,9 +46,9 @@ const HealthTrends = () => {
             console.error('Error loading members:', err);
             setError('Failed to load family members');
         }
-    };
+    }, [selectedFamilyId]);
 
-    const loadHealthData = async () => {
+    const loadHealthData = useCallback(async () => {
         setLoading(true);
         setError(null);
         
@@ -268,7 +252,25 @@ const HealthTrends = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [members, selectedFamilyId, selectedMemberId]);
+
+    useEffect(() => {
+        if (profile?.id) loadFamilies();
+    }, [loadFamilies, profile?.id]);
+
+    useEffect(() => {
+        if (selectedFamilyId) {
+            loadMembers();
+            setChartData([]);
+            setSelectedMemberId('');
+        }
+    }, [loadMembers, selectedFamilyId]);
+
+    useEffect(() => {
+        if (selectedMemberId) {
+            loadHealthData();
+        }
+    }, [loadHealthData, selectedMemberId]);
 
     const selectedMemberName = members.find(m => m.id === selectedMemberId)?.name || '';
 
