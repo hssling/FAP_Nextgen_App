@@ -136,19 +136,24 @@ export const AuthProvider = ({ children }) => {
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (_event, session) => {
+            (_event, session) => {
                 if (!mounted) return;
 
                 setSession(session);
                 setUser(session?.user ?? null);
 
                 if (session?.user) {
-                    await loadUserProfile(session.user.id);
-                    await set('fap_cached_session', {
-                        user: session.user,
-                        expires_at: session.expires_at,
-                        timestamp: Date.now()
-                    });
+                    // Supabase warns against awaiting other Supabase calls inside
+                    // onAuthStateChange; doing so can block sign-in on some clients.
+                    setTimeout(async () => {
+                        if (!mounted) return;
+                        await loadUserProfile(session.user.id);
+                        await set('fap_cached_session', {
+                            user: session.user,
+                            expires_at: session.expires_at,
+                            timestamp: Date.now()
+                        });
+                    }, 0);
                 } else {
                     setProfile(null);
                 }
