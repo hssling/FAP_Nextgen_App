@@ -28,7 +28,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, signOut } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -86,9 +86,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
           Retry
         </button>
         <button
-          onClick={() => {
-            // Force logout
-            localStorage.clear();
+          onClick={async () => {
+            await signOut();
             window.location.href = '/login';
           }}
           style={{

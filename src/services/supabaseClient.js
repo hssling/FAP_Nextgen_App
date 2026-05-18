@@ -33,19 +33,34 @@ const createRobustStorage = () => {
         }
     };
 
-    const getPreferredStorage = () => {
+    const getAvailableStorages = () => {
         if (typeof window === 'undefined') return null;
-        if (isStorageAvailable(window.localStorage)) return window.localStorage;
-        if (isStorageAvailable(window.sessionStorage)) return window.sessionStorage;
-        console.warn('No persistent storage available, using in-memory fallback');
-        return null;
+        const stores = [];
+        if (isStorageAvailable(window.localStorage)) stores.push(window.localStorage);
+        if (isStorageAvailable(window.sessionStorage)) stores.push(window.sessionStorage);
+        if (stores.length === 0) console.warn('No persistent storage available, using in-memory fallback');
+        return stores;
     };
 
     return {
         getItem: (key) => {
             try {
-                const storage = getPreferredStorage();
-                if (storage) return storage.getItem(key);
+                const storages = getAvailableStorages();
+                if (storages?.length) {
+                    for (const storage of storages) {
+                        const value = storage.getItem(key);
+                        if (value !== null) {
+                            // Repair missing copies so mobile storage changes do not lose the session.
+                            storages.forEach((target) => {
+                                if (target !== storage) {
+                                    try { target.setItem(key, value); } catch { /* ignore mirror failures */ }
+                                }
+                            });
+                            return value;
+                        }
+                    }
+                    return inMemoryStorage[key] || null;
+                }
                 return inMemoryStorage[key] || null;
             } catch (e) {
                 console.warn('Storage getItem failed:', e);
@@ -54,9 +69,11 @@ const createRobustStorage = () => {
         },
         setItem: (key, value) => {
             try {
-                const storage = getPreferredStorage();
-                if (storage) {
-                    storage.setItem(key, value);
+                const storages = getAvailableStorages();
+                if (storages?.length) {
+                    storages.forEach((storage) => {
+                        try { storage.setItem(key, value); } catch (e) { console.warn('Storage mirror setItem failed:', e); }
+                    });
                 } else {
                     inMemoryStorage[key] = value;
                 }
@@ -67,8 +84,12 @@ const createRobustStorage = () => {
         },
         removeItem: (key) => {
             try {
-                const storage = getPreferredStorage();
-                if (storage) storage.removeItem(key);
+                const storages = getAvailableStorages();
+                if (storages?.length) {
+                    storages.forEach((storage) => {
+                        try { storage.removeItem(key); } catch (e) { console.warn('Storage mirror removeItem failed:', e); }
+                    });
+                }
                 delete inMemoryStorage[key];
             } catch (e) {
                 console.warn('Storage removeItem failed:', e);
@@ -82,7 +103,7 @@ const createRobustStorage = () => {
 const robustStorage = createRobustStorage();
 
 // Session refresh function - call this when tab becomes visible
-const refreshSession = async (client) => {
+export const refreshSession = async (client) => {
     if (!client) return;
     try {
         const { data, error } = await client.auth.refreshSession();
@@ -91,8 +112,10 @@ const refreshSession = async (client) => {
         } else if (data?.session) {
             console.log('Session refreshed successfully');
         }
+        return data;
     } catch (e) {
         console.warn('Session refresh error:', e);
+        return null;
     }
 };
 
@@ -112,21 +135,51 @@ export const supabase = supabaseUrl && supabaseAnonKey
     })
     : null;
 
+export const ensureActiveSession = async ({ minValiditySeconds = 180, force = false } = {}) => {
+    if (!supabase) return null;
+
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) {
+        console.warn('Could not read Supabase session:', error.message);
+        throw error;
+    }
+    if (!session) return null;
+
+    const expiresAtMs = Number(session.expires_at || 0) * 1000;
+    const shouldRefresh = force || !expiresAtMs || expiresAtMs - Date.now() < minValiditySeconds * 1000;
+
+    if (!shouldRefresh) return session;
+
+    const refreshed = await refreshSession(supabase);
+    if (refreshed?.session) return refreshed.session;
+
+    const { data: { session: latestSession } } = await supabase.auth.getSession();
+    return latestSession || session;
+};
+
 // Set up visibility change listener - refresh session when user returns to tab
 if (typeof document !== 'undefined' && supabase) {
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
             console.log('Tab visible - refreshing session...');
-            refreshSession(supabase);
+            ensureActiveSession({ minValiditySeconds: 300 }).catch((e) => console.warn('Visible session check failed:', e?.message || e));
         }
     });
 
-    // Also refresh session periodically every 10 minutes to keep it alive
+    window.addEventListener('online', () => {
+        ensureActiveSession({ minValiditySeconds: 300 }).catch((e) => console.warn('Online session check failed:', e?.message || e));
+    });
+
+    window.addEventListener('focus', () => {
+        ensureActiveSession({ minValiditySeconds: 300 }).catch((e) => console.warn('Focus session check failed:', e?.message || e));
+    });
+
+    // Also keep the session warm while the app is active.
     setInterval(() => {
         if (document.visibilityState === 'visible') {
-            refreshSession(supabase);
+            ensureActiveSession({ minValiditySeconds: 300 }).catch((e) => console.warn('Periodic session check failed:', e?.message || e));
         }
-    }, 10 * 60 * 1000); // 10 minutes
+    }, 60 * 1000);
 }
 
 // Check if Supabase is configured

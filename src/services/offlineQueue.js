@@ -1,5 +1,5 @@
 import { get, update } from 'idb-keyval';
-import { supabase } from './supabaseClient';
+import { ensureActiveSession, supabase } from './supabaseClient';
 import toast from 'react-hot-toast';
 
 const QUEUE_KEY = 'fap_mutation_queue';
@@ -97,6 +97,7 @@ export const processQueue = async () => {
  */
 const executeAction = async (item) => {
     const { type, payload } = item;
+    await ensureActiveSession({ minValiditySeconds: 180 });
 
     switch (type) {
         case 'ADD_FAMILY': {

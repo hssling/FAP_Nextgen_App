@@ -6,11 +6,11 @@ import {
     AlertCircle, Info, Loader2, Check, RefreshCw, Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../services/supabaseClient';
+import { ensureActiveSession, supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { addToQueue } from '../services/offlineQueue';
-import { get, set } from 'idb-keyval';
+import { del, get, set } from 'idb-keyval';
 import { callProviderChat } from '../services/aiClient';
 import { AI_PROVIDERS, DEFAULT_AI_PROVIDER } from '../services/aiProviders';
 import { extractGibbsFromText } from '../services/gibbsExtractor';
@@ -23,7 +23,7 @@ import './Reflections.css';
 /**
  * Compresses an image file before upload to save bandwidth and speed up mobile uploads.
  */
-const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
+const compressImageLegacy = (file, maxWidth = 1200, quality = 0.7) => {
     return new Promise((resolve) => {
         if (!file.type.startsWith('image/')) {
             resolve(file); // Return original if not an image
@@ -60,6 +60,31 @@ const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
                 }, 'image/jpeg', quality);
             };
         };
+    });
+};
+
+const isCanvasCompressibleImage = (file) => {
+    const type = (file?.type || '').toLowerCase();
+    const name = (file?.name || '').toLowerCase();
+    return ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(type) || /\.(jpe?g|png|webp)$/.test(name);
+};
+
+const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
+    if (!file?.type?.startsWith('image/') || !isCanvasCompressibleImage(file)) {
+        return Promise.resolve(file);
+    }
+
+    return Promise.race([
+        compressImageLegacy(file, maxWidth, quality),
+        new Promise((resolve) => {
+            setTimeout(() => {
+                console.warn('Image compression timed out; uploading original file.');
+                resolve(file);
+            }, 25000);
+        })
+    ]).catch((err) => {
+        console.warn('Image compression failed; uploading original file.', err);
+        return file;
     });
 };
 
@@ -109,6 +134,8 @@ const Reflections = () => {
     const [aiExtractionMeta, setAiExtractionMeta] = useState(null);
     const [isParsingDocumentText, setIsParsingDocumentText] = useState(false);
     const [documentParseError, setDocumentParseError] = useState(null);
+    const [draftAvailable, setDraftAvailable] = useState(false);
+    const draftSaveTimer = useRef(null);
 
     const resetReflectionForm = useCallback(() => {
         setFormData({
@@ -124,6 +151,95 @@ const Reflections = () => {
         setActiveTab('write');
         setCurrentStage(0);
     }, []);
+
+    const getDraftKey = useCallback(() => (
+        profile?.id ? `fap_reflection_draft_${profile.id}` : null
+    ), [profile?.id]);
+
+    const hasDraftContent = useCallback((draft) => {
+        if (!draft) return false;
+        const gibbs = draft.formData?.gibbs || {};
+        return Boolean(
+            draft.selectedFile ||
+            draft.uploadText?.trim() ||
+            Object.values(gibbs).some((value) => String(value || '').trim())
+        );
+    }, []);
+
+    const saveCurrentDraft = useCallback(async (extra = {}) => {
+        const draftKey = getDraftKey();
+        if (!draftKey || !isWriting) return;
+
+        const draft = {
+            timestamp: Date.now(),
+            activeTab,
+            currentStage,
+            formData,
+            selectedFile,
+            selectedFileMeta: selectedFile
+                ? {
+                    name: selectedFile.name,
+                    size: selectedFile.size,
+                    type: selectedFile.type,
+                    lastModified: selectedFile.lastModified
+                }
+                : null,
+            uploadText,
+            aiExtractionMeta,
+            documentParseError,
+            uploadCache: lastUploadedFile.current,
+            ...extra
+        };
+
+        try {
+            if (!hasDraftContent(draft)) {
+                await del(draftKey);
+                setDraftAvailable(false);
+                return;
+            }
+
+            await set(draftKey, draft);
+            setDraftAvailable(true);
+        } catch (err) {
+            console.warn('Reflection draft autosave failed:', err);
+        }
+    }, [activeTab, aiExtractionMeta, currentStage, documentParseError, formData, getDraftKey, hasDraftContent, isWriting, selectedFile, uploadText]);
+
+    const clearCurrentDraft = useCallback(async () => {
+        const draftKey = getDraftKey();
+        if (draftKey) await del(draftKey);
+        setDraftAvailable(false);
+    }, [getDraftKey]);
+
+    const restoreDraft = useCallback(async () => {
+        const draftKey = getDraftKey();
+        if (!draftKey) return;
+        const draft = await get(draftKey);
+        if (!hasDraftContent(draft)) {
+            setDraftAvailable(false);
+            return;
+        }
+
+        setFormData(draft.formData || {
+            familyId: '',
+            phase: 'Phase I',
+            gibbs: { description: '', feelings: '', evaluation: '', analysis: '', conclusion: '', actionPlan: '' }
+        });
+        setActiveTab(draft.activeTab || 'write');
+        setCurrentStage(Number.isFinite(draft.currentStage) ? draft.currentStage : 0);
+        setSelectedFile(draft.selectedFile || null);
+        setUploadText(draft.uploadText || '');
+        setAiExtractionMeta(draft.aiExtractionMeta || null);
+        setDocumentParseError(draft.documentParseError || null);
+        lastUploadedFile.current = draft.uploadCache || { id: null, data: null };
+        setDraftAvailable(false);
+        setIsWriting(true);
+    }, [getDraftKey, hasDraftContent]);
+
+    const discardDraft = useCallback(async () => {
+        await clearCurrentDraft();
+        resetReflectionForm();
+    }, [clearCurrentDraft, resetReflectionForm]);
 
     const mapDocumentParseError = useCallback((err) => {
         const code = err?.code;
@@ -259,6 +375,7 @@ const Reflections = () => {
 
             if (forceRefresh || !loading) setLoading(true);
 
+            await ensureActiveSession({ minValiditySeconds: 180 });
             const { data: fams } = await supabase.from('families').select('id, head_name').eq('student_id', profile.id);
             const { data: refs } = await supabase.from('reflections').select('*').eq('student_id', profile.id).order('created_at', { ascending: false });
 
@@ -279,6 +396,32 @@ const Reflections = () => {
     }, [profile?.id]);
 
     useEffect(() => { if (profile) loadData(); }, [profile, loadData]);
+
+    useEffect(() => {
+        const checkDraft = async () => {
+            const draftKey = getDraftKey();
+            if (!draftKey) return;
+            const draft = await get(draftKey);
+            const ageMs = Date.now() - Number(draft?.timestamp || 0);
+            if (draft && ageMs > 7 * 24 * 60 * 60 * 1000) {
+                await del(draftKey);
+                setDraftAvailable(false);
+                return;
+            }
+            setDraftAvailable(hasDraftContent(draft));
+        };
+        checkDraft();
+    }, [getDraftKey, hasDraftContent]);
+
+    useEffect(() => {
+        if (!isWriting) return undefined;
+        clearTimeout(draftSaveTimer.current);
+        draftSaveTimer.current = setTimeout(() => {
+            saveCurrentDraft().catch((err) => console.warn('Reflection draft autosave failed:', err));
+        }, 700);
+
+        return () => clearTimeout(draftSaveTimer.current);
+    }, [activeTab, aiExtractionMeta, currentStage, documentParseError, formData, isWriting, saveCurrentDraft, selectedFile, uploadText]);
 
     const parseDocumentFromFile = useCallback(async (file, { preserveExistingText = false } = {}) => {
         if (!file) return;
@@ -317,6 +460,7 @@ const Reflections = () => {
             const dummyBlob = new Blob(['test connection'], { type: 'text/plain' });
             const testPath = `${profile.id}/diagnostic_test_${Date.now()}.txt`;
 
+            await ensureActiveSession({ minValiditySeconds: 300 });
             const { error: testErr } = await supabase.storage.from('reflection-files').upload(testPath, dummyBlob, { upsert: false });
             if (testErr) throw testErr;
 
@@ -622,14 +766,22 @@ const Reflections = () => {
                 }
 
                 // CHECK CACHE: Did we already upload this exact file in a previous attempt?
-                const fileId = `${selectedFile.name}-${selectedFile.size}`;
+                const fileId = selectedFile
+                    ? `${selectedFile.name}-${selectedFile.size}`
+                    : lastUploadedFile.current.id;
                 if (lastUploadedFile.current.id === fileId && lastUploadedFile.current.data) {
                     console.log("📱 [UPLOAD] Using cached file metadata from previous successful upload.");
                     fileData = lastUploadedFile.current.data;
                 } else {
+                    if (!selectedFile) {
+                        throw new Error("Please select the file again. The draft was restored, but the browser did not preserve the file attachment.");
+                    }
                     setSubmissionStatus('uploading');
 
-                    const safeName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+                    await ensureActiveSession({ minValiditySeconds: 300 });
+
+                    const uploadName = fileToUpload?.name || selectedFile?.name || `reflection_${Date.now()}`;
+                    const safeName = uploadName.replace(/[^a-zA-Z0-9.-]/g, '_');
                     const path = `${profile.id}/${Date.now()}_${safeName}`;
 
                     console.log("%c[Upload Debug]", "color:orange;font-weight:bold");
@@ -649,7 +801,8 @@ const Reflections = () => {
                         .from('reflection-files')
                         .upload(path, fileToUpload, {
                             cacheControl: '3600',
-                            upsert: false
+                            upsert: false,
+                            contentType: fileToUpload?.type || selectedFile?.type || 'application/octet-stream'
                         });
 
                     const uploadTimeoutPromise = new Promise((_, reject) => {
@@ -698,6 +851,7 @@ const Reflections = () => {
 
                     // Cache it so we don't re-upload if DB save hangs
                     lastUploadedFile.current = { id: fileId, data: fileData };
+                    await saveCurrentDraft({ uploadCache: lastUploadedFile.current });
                     console.log("📱 [UPLOAD] Metadata cached.");
                 }
             }
@@ -709,7 +863,7 @@ const Reflections = () => {
             // 2. Prepare Payload
             const legacyContent = activeTab === 'write'
                 ? Object.entries(formData.gibbs).map(([k, v]) => `[${k.toUpperCase()}]: ${v}`).join('\n\n')
-                : `[FILE UPLOAD]: ${selectedFile?.name}`;
+                : `[FILE UPLOAD]: ${fileData?.name || selectedFile?.name || 'Uploaded file'}`;
 
             const payload = {
                 student_id: profile.id,
@@ -762,6 +916,7 @@ const Reflections = () => {
                     setSubmissionStatus(null);
                     resetReflectionForm();
                 }, 1500);
+                await clearCurrentDraft();
                 return;
             }
 
@@ -778,6 +933,7 @@ const Reflections = () => {
             const attemptInsert = async (attemptNum, timeoutMs) => {
                 console.log(`📱 [DB ATTEMPT ${attemptNum}/${MAX_RETRIES}] Timeout: ${timeoutMs}ms`);
 
+                await ensureActiveSession({ minValiditySeconds: 180 });
                 const insertPromise = supabase.from('reflections').insert([payload]).select('id').single();
                 const timeoutPromise = new Promise((_, reject) => 
                     setTimeout(() => reject(new Error('DATABASE_TIMEOUT')), timeoutMs)
@@ -848,6 +1004,7 @@ const Reflections = () => {
 
             // Success cleanup
             lastUploadedFile.current = { id: null, data: null };
+            await clearCurrentDraft();
 
             setTimeout(() => {
                 setIsWriting(false);
@@ -858,6 +1015,10 @@ const Reflections = () => {
 
         } catch (e) {
             console.error("Full Submission Error:", e);
+            await saveCurrentDraft({
+                lastError: e?.message || 'Submission failed',
+                uploadCache: lastUploadedFile.current
+            });
             setUploadError(mapSubmissionError(e));
             setSubmissionStatus('error');
         } finally {
@@ -871,6 +1032,14 @@ const Reflections = () => {
         setSubmissionStatus(null);
         setUploadError("Cancelled by user.");
     }
+
+    const openNewEntry = async () => {
+        if (draftAvailable) {
+            await restoreDraft();
+            return;
+        }
+        setIsWriting(true);
+    };
 
     const filteredReflections = reflections.filter(ref => {
         const query = searchQuery.toLowerCase();
@@ -929,11 +1098,38 @@ const Reflections = () => {
                             />
                         </div>
 
-                        <button onClick={() => setIsWriting(true)} className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', borderRadius: '30px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <button onClick={openNewEntry} className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', borderRadius: '30px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <Plus size={20} /> New Entry
                         </button>
                     </div>
                 </div>
+
+                {draftAvailable && !isWriting && (
+                    <div style={{
+                        marginBottom: '1rem',
+                        padding: '0.85rem 1rem',
+                        borderRadius: '10px',
+                        border: '1px solid #BFDBFE',
+                        background: '#EFF6FF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '1rem',
+                        flexWrap: 'wrap'
+                    }}>
+                        <div style={{ color: '#1E3A8A', fontSize: '0.9rem', fontWeight: 600 }}>
+                            Unsaved reflection draft available.
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button onClick={restoreDraft} className="btn btn-primary" style={{ padding: '0.45rem 0.9rem' }}>
+                                Restore
+                            </button>
+                            <button onClick={discardDraft} className="btn btn-outline" style={{ padding: '0.45rem 0.9rem' }}>
+                                Discard
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 <div className="stats-grid">
                     <div className="stat-card">
@@ -994,7 +1190,7 @@ const Reflections = () => {
                                 <h3>{searchQuery ? "No matching entries" : "Canvas is Empty"}</h3>
                                 <button onClick={() => {
                                     if(searchQuery) setSearchQuery('');
-                                    else setIsWriting(true);
+                                    else openNewEntry();
                                 }} className="btn btn-outline" style={{ marginTop: '1rem' }}>
                                     {searchQuery ? "Clear search" : "Create your first reflection"}
                                 </button>
@@ -1285,7 +1481,7 @@ const Reflections = () => {
                                                     <input
                                                         type="file"
                                                         onChange={handleFileSelect}
-                                                        accept="image/*,application/pdf,.doc,.docx,.txt"
+                                                        accept="image/*,.heic,.heif,application/pdf,.doc,.docx,.txt"
                                                         style={{ width: '100%' }}
                                                     />
                                                     <p style={{ marginTop: '1rem', color: '#94A3B8', fontSize: '0.875rem' }}>Supported: PDF, Doc, Image (Max 10MB) | OCR: English + Hindi + Kannada</p>

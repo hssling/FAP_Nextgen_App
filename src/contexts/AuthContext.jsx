@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { supabase } from '../services/supabaseClient';
+import { ensureActiveSession, supabase } from '../services/supabaseClient';
 import { get, set, del } from 'idb-keyval';
 import { getCurrentStudyYear } from '../utils/studentIdentity';
 
@@ -25,6 +25,7 @@ export const AuthProvider = ({ children }) => {
         const cacheKey = `fap_profile_persistent_${userId}`;
         try {
             // 1. Try fetching fresh data from Supabase
+            await ensureActiveSession({ minValiditySeconds: 180 });
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*')
@@ -88,13 +89,13 @@ export const AuthProvider = ({ children }) => {
             try {
                 // Set a safety timeout to force loading to false
                 const safetyTimeout = setTimeout(() => {
-                    if (mounted && loading) {
+                    if (mounted) {
                         console.warn("Auth check timed out - forcing app load");
                         setLoading(false);
                     }
                 }, 5000);
 
-                const { data: { session: currentSession } } = await supabase.auth.getSession();
+                const currentSession = await ensureActiveSession({ minValiditySeconds: 300 });
 
                 if (!mounted) {
                     clearTimeout(safetyTimeout);
@@ -143,6 +144,11 @@ export const AuthProvider = ({ children }) => {
 
                 if (session?.user) {
                     await loadUserProfile(session.user.id);
+                    await set('fap_cached_session', {
+                        user: session.user,
+                        expires_at: session.expires_at,
+                        timestamp: Date.now()
+                    });
                 } else {
                     setProfile(null);
                 }
@@ -199,6 +205,7 @@ export const AuthProvider = ({ children }) => {
         });
 
         if (error) throw error;
+        await ensureActiveSession({ minValiditySeconds: 300 });
 
         return { data, profile };
     };
