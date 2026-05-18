@@ -14,6 +14,7 @@ const LOCALIZATION = {
         confidentiality: 'ಅಧಿಕೃತ ಬಳಕೆಗೆ ಮಾತ್ರ',
         summary: 'ಸಂಕ್ಷಿಪ್ತ ವಿವರ',
         topStudents: 'ಉತ್ತಮ ವಿದ್ಯಾರ್ಥಿಗಳ ಪಟ್ಟಿ',
+        registeredStudents: 'ನೋಂದಾಯಿತ ವಿದ್ಯಾರ್ಥಿಗಳ ಪಟ್ಟಿ',
         metric: 'ಮಾಪಕ',
         count: 'ಸಂಖ್ಯೆ',
         totalStudents: 'ಒಟ್ಟು ವಿದ್ಯಾರ್ಥಿಗಳು',
@@ -39,6 +40,7 @@ const LOCALIZATION = {
         confidentiality: 'केवल आधिकारिक उपयोग हेतु',
         summary: 'संक्षिप्त सार',
         topStudents: 'शीर्ष छात्र सूची',
+        registeredStudents: 'पंजीकृत छात्र सूची',
         metric: 'मापदंड',
         count: 'संख्या',
         totalStudents: 'कुल छात्र',
@@ -70,7 +72,7 @@ const downloadTextFile = (filename, content) => {
     URL.revokeObjectURL(url);
 };
 
-export const generateAdminReport = (stats, topStudents) => {
+export const generateAdminReport = (stats, students) => {
     const doc = new jsPDF();
 
     doc.setFontSize(20);
@@ -105,21 +107,24 @@ export const generateAdminReport = (stats, topStudents) => {
     });
 
     const finalY = doc.lastAutoTable.finalY + 20;
-    doc.text('2. Top Performing Students', 14, finalY);
+    doc.text('2. Registered Students Work Summary', 14, finalY);
 
-    const studentData = topStudents.map((s, index) => [
+    const studentData = students.map((s, index) => [
         index + 1,
         s.full_name,
         s.registration_number || 'N/A',
         s.familyCount,
         s.reflectionCount,
+        s.gradedCount || 0,
         s.avgScore
     ]);
 
     autoTable(doc, {
         startY: finalY + 5,
-        head: [['Rank', 'Student Name', 'Reg. No', 'Families', 'Reflections', 'Avg Score']],
-        body: studentData,
+        head: [['Rank', 'Student Name', 'Reg. No', 'Families', 'Submitted', 'Mentor Verified', 'Avg Score']],
+        body: studentData.length > 0
+            ? studentData
+            : [['-', 'No active students found', '-', '-', '-', '-', '-']],
         theme: 'grid',
         headStyles: { fillColor: [59, 130, 246] }
     });
@@ -177,7 +182,7 @@ export const generateClassReport = (students, className = 'Assigned Class') => {
     doc.save(`FAP_Class_Report_${className.replace(/\s+/g, '_')}.pdf`);
 };
 
-export const generateAdminLocalStaffReport = (stats, topStudents, language = 'kn') => {
+export const generateAdminLocalStaffReport = (stats, students, language = 'kn') => {
     const t = LOCALIZATION[language] || LOCALIZATION.kn;
     const lines = [
         t.headingAdmin,
@@ -192,12 +197,12 @@ export const generateAdminLocalStaffReport = (stats, topStudents, language = 'kn
         `- ${t.reflectionsGraded}: ${stats.gradedReflections}`,
         `- ${t.pendingReview}: ${stats.pendingReflections}`,
         '',
-        `${t.topStudents}:`
+        `${t.registeredStudents}:`
     ];
 
-    topStudents.forEach((s, idx) => {
+    students.forEach((s, idx) => {
         lines.push(
-            `${idx + 1}. ${t.studentName}: ${s.full_name || '-'} | ${t.regNo}: ${s.registration_number || '-'} | ${t.families}: ${s.familyCount || 0} | ${t.reflections}: ${s.reflectionCount || 0} | ${t.score}: ${s.avgScore || '-'}`
+            `${idx + 1}. ${t.studentName}: ${s.full_name || '-'} | ${t.regNo}: ${s.registration_number || '-'} | ${t.families}: ${s.familyCount || 0} | ${t.reflections}: ${s.reflectionCount || 0} | ${t.graded}: ${s.gradedCount || 0} | ${t.score}: ${s.avgScore || '-'}`
         );
     });
 
