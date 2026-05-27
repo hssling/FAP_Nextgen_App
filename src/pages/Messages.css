@@ -368,6 +368,43 @@
   background: white;
 }
 
+.message-audit-footer {
+  border-top: 1px solid #FED7AA;
+  padding: 1rem;
+  background: #FFF7ED;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.message-audit-footer strong {
+  color: #9A3412;
+}
+
+.message-audit-footer p {
+  color: #9A3412;
+  font-size: 0.86rem;
+  margin-top: 0.15rem;
+}
+
+.audit-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.audit-actions button {
+  border: 1px solid #FDBA74;
+  background: white;
+  color: #9A3412;
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .composer-toolbar {
   display: flex;
   align-items: center;
@@ -468,5 +505,15 @@
 
   .composer-row button {
     height: 44px;
+  }
+
+  .message-audit-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .audit-actions,
+  .audit-actions button {
+    width: 100%;
   }
 }

@@ -17,6 +17,14 @@ export const getOtherParticipant = (thread, currentUserId) => {
   return thread.participant_two || thread.participant_one || null;
 };
 
+export const isThreadParticipant = (thread, currentUserId) => {
+  return Boolean(
+    thread
+    && currentUserId
+    && (thread.participant_one_id === currentUserId || thread.participant_two_id === currentUserId)
+  );
+};
+
 export const formatThreadTitle = (thread, currentUserId) => {
   return getDisplayName(getOtherParticipant(thread, currentUserId));
 };

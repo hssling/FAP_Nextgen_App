@@ -6,6 +6,7 @@ import {
   formatRelativeMessageTime,
   formatThreadTitle,
   getRecipientRoleLabel,
+  isThreadParticipant,
   normalizeMessagePayload
 } from './messagingRules.js';
 
@@ -38,6 +39,17 @@ test('formatThreadTitle falls back to usernames and generic text', () => {
 
   assert.equal(formatThreadTitle(thread, 'student-1'), 'admin');
   assert.equal(formatThreadTitle(thread, 'admin-1'), 'Conversation');
+});
+
+test('isThreadParticipant detects whether the current user belongs to the thread', () => {
+  const thread = {
+    participant_one_id: 'mentor-1',
+    participant_two_id: 'student-1'
+  };
+
+  assert.equal(isThreadParticipant(thread, 'mentor-1'), true);
+  assert.equal(isThreadParticipant(thread, 'student-1'), true);
+  assert.equal(isThreadParticipant(thread, 'admin-1'), false);
 });
 
 test('countUnreadMessages counts only unread messages received by current user', () => {

@@ -25,7 +25,8 @@ import {
   formatRelativeMessageTime,
   formatThreadTitle,
   getOtherParticipant,
-  getRecipientRoleLabel
+  getRecipientRoleLabel,
+  isThreadParticipant
 } from '../services/messagingRules';
 import './Messages.css';
 
@@ -67,6 +68,10 @@ const Messages = () => {
   const activeRecipient = useMemo(() => (
     activeThread ? getOtherParticipant(activeThread, profile?.id) : selectedRecipient
   ), [activeThread, profile?.id, selectedRecipient]);
+
+  const activeThreadIsWritable = useMemo(() => (
+    !activeThread || isThreadParticipant(activeThread, profile?.id)
+  ), [activeThread, profile?.id]);
 
   const loadThreads = useCallback(async () => {
     if (!profile?.id) return [];
@@ -145,6 +150,14 @@ const Messages = () => {
     setComposer(emptyComposer);
   };
 
+  const startAdminConversationWith = (participant) => {
+    if (!participant?.id) return;
+    setActiveThread(null);
+    setMessages([]);
+    setSelectedRecipientId(participant.id);
+    setComposer(emptyComposer);
+  };
+
   const handleSend = async (event) => {
     event.preventDefault();
     if (!profile?.id) return;
@@ -152,6 +165,11 @@ const Messages = () => {
     const recipientId = activeThread
       ? getOtherParticipant(activeThread, profile.id)?.id
       : selectedRecipientId;
+
+    if (activeThread && !isThreadParticipant(activeThread, profile.id)) {
+      toast.error('Open a separate admin conversation to send this message.');
+      return;
+    }
 
     if (!recipientId) {
       toast.error('Select a recipient first.');
@@ -367,59 +385,76 @@ const Messages = () => {
             )}
           </div>
 
-          <form className="message-composer" onSubmit={handleSend}>
-            <div className="composer-toolbar">
-              <select
-                value={composer.messageType}
-                onChange={(event) => setComposer((current) => ({
-                  ...current,
-                  messageType: event.target.value,
-                  dueDate: event.target.value === 'reminder' ? current.dueDate : ''
-                }))}
-              >
-                <option value="message">Message</option>
-                <option value="reminder">Reminder</option>
-              </select>
-              <select
-                value={composer.priority}
-                onChange={(event) => setComposer((current) => ({
-                  ...current,
-                  priority: event.target.value
-                }))}
-              >
-                <option value="normal">Normal</option>
-                <option value="important">Important</option>
-              </select>
-              {composer.messageType === 'reminder' && (
-                <input
-                  type="date"
-                  value={composer.dueDate}
+          {!activeThreadIsWritable ? (
+            <div className="message-audit-footer">
+              <div>
+                <strong>Admin view only</strong>
+                <p>This is a mentor-student conversation. Start a separate admin conversation to send a message or reminder.</p>
+              </div>
+              <div className="audit-actions">
+                <button type="button" onClick={() => startAdminConversationWith(activeThread?.participant_one)}>
+                  Message {activeThread?.participant_one?.full_name || 'Participant 1'}
+                </button>
+                <button type="button" onClick={() => startAdminConversationWith(activeThread?.participant_two)}>
+                  Message {activeThread?.participant_two?.full_name || 'Participant 2'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form className="message-composer" onSubmit={handleSend}>
+              <div className="composer-toolbar">
+                <select
+                  value={composer.messageType}
                   onChange={(event) => setComposer((current) => ({
                     ...current,
-                    dueDate: event.target.value
+                    messageType: event.target.value,
+                    dueDate: event.target.value === 'reminder' ? current.dueDate : ''
                   }))}
+                >
+                  <option value="message">Message</option>
+                  <option value="reminder">Reminder</option>
+                </select>
+                <select
+                  value={composer.priority}
+                  onChange={(event) => setComposer((current) => ({
+                    ...current,
+                    priority: event.target.value
+                  }))}
+                >
+                  <option value="normal">Normal</option>
+                  <option value="important">Important</option>
+                </select>
+                {composer.messageType === 'reminder' && (
+                  <input
+                    type="date"
+                    value={composer.dueDate}
+                    onChange={(event) => setComposer((current) => ({
+                      ...current,
+                      dueDate: event.target.value
+                    }))}
+                  />
+                )}
+              </div>
+              <div className="composer-row">
+                <textarea
+                  value={composer.body}
+                  onChange={(event) => setComposer((current) => ({
+                    ...current,
+                    body: event.target.value
+                  }))}
+                  placeholder="Type your instruction, reminder, or reply..."
+                  rows={3}
                 />
-              )}
-            </div>
-            <div className="composer-row">
-              <textarea
-                value={composer.body}
-                onChange={(event) => setComposer((current) => ({
-                  ...current,
-                  body: event.target.value
-                }))}
-                placeholder="Type your instruction, reminder, or reply..."
-                rows={3}
-              />
-              <button
-                type="submit"
-                disabled={sending || (!activeThread && !selectedRecipientId)}
-                title="Send message"
-              >
-                {sending ? <Loader2 size={20} className="spin" /> : <Send size={20} />}
-              </button>
-            </div>
-          </form>
+                <button
+                  type="submit"
+                  disabled={sending || (!activeThread && !selectedRecipientId)}
+                  title="Send message"
+                >
+                  {sending ? <Loader2 size={20} className="spin" /> : <Send size={20} />}
+                </button>
+              </div>
+            </form>
+          )}
         </section>
       </div>
     </div>
