@@ -60,6 +60,27 @@
     transition: all 0.2s;
 }
 
+.navLabel {
+    flex: 1;
+    min-width: 0;
+}
+
+.unreadBadge {
+    margin-left: auto;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: #F43F5E;
+    color: white;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
 .navItem:hover {
     background-color: var(--color-bg-root);
     color: var(--color-text-main);

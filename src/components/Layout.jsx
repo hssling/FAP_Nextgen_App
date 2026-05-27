@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Settings, Activity, Map, GraduationCap, LogOut, BookOpen, BookmarkCheck, Target, Calculator, Menu, X, Shield, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, Activity, Map, GraduationCap, LogOut, BookOpen, BookmarkCheck, Target, Calculator, Menu, X, Shield, Sparkles, MessageSquare } from 'lucide-react';
 import styles from './Layout.module.css';
 import ErrorBoundary from './ErrorBoundary';
 import { useAuth } from '../contexts/AuthContext';
 import { getCurrentStudyYear, getYearOfJoining } from '../utils/studentIdentity';
+import { useUnreadMessages } from '../hooks/useUnreadMessages';
 
 const Layout = () => {
     const { profile, signOut } = useAuth();
@@ -13,6 +14,7 @@ const Layout = () => {
 
     const isTeacher = profile?.role === 'teacher';
     const isAdmin = profile?.role === 'admin';
+    const { unreadCount } = useUnreadMessages(profile?.id);
 
     const handleLogout = async () => {
         try {
@@ -96,17 +98,29 @@ const Layout = () => {
                                 <FileText size={20} />
                                 Logbook Reports
                             </NavLink>
+                            <NavLink to="/messages" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                                <MessageSquare size={20} />
+                                <span className={styles.navLabel}>Messages</span>
+                                {unreadCount > 0 && <span className={styles.unreadBadge}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
+                            </NavLink>
                         </>
                     ) : isTeacher ? (
                         // Teacher Menu
-                        <NavLink to="/teacher-dashboard" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
-                            <Users size={20} />
-                            My Mentees
-                        </NavLink>
+                        <>
+                            <NavLink to="/teacher-dashboard" end onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                                <Users size={20} />
+                                <span className={styles.navLabel}>My Mentees</span>
+                            </NavLink>
+                            <NavLink to="/teacher-dashboard/messages" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                                <MessageSquare size={20} />
+                                <span className={styles.navLabel}>Messages</span>
+                                {unreadCount > 0 && <span className={styles.unreadBadge}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
+                            </NavLink>
+                        </>
                     ) : (
                         // Admin Menu
                         <>
-                            <NavLink to="/admin-dashboard" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                            <NavLink to="/admin-dashboard" end onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <GraduationCap size={20} />
                                 Admin Dashboard
                             </NavLink>
@@ -117,6 +131,11 @@ const Layout = () => {
                             <NavLink to="/admin-dashboard/users" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <Shield size={20} />
                                 User Management
+                            </NavLink>
+                            <NavLink to="/admin-dashboard/messages" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+                                <MessageSquare size={20} />
+                                <span className={styles.navLabel}>Messages</span>
+                                {unreadCount > 0 && <span className={styles.unreadBadge}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
                             </NavLink>
                         </>
                     )}

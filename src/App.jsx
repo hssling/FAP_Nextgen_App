@@ -12,6 +12,7 @@ const Reports = React.lazy(() => import('./pages/Reports'));
 import Resources from './pages/Resources';
 import Tools from './pages/Tools';
 import Settings from './pages/Settings';
+const Messages = React.lazy(() => import('./pages/Messages'));
 import Login from './pages/Login';
 import Register from './pages/Register';
 import TeacherDashboard from './pages/TeacherDashboard';
@@ -141,12 +142,14 @@ const AppRoutes = () => {
         <Route path="tools" element={<Tools />} />
         <Route path="resources" element={<Resources />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="messages" element={<Messages />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 
       {/* Teacher Routes */}
       <Route path="/teacher-dashboard" element={<ProtectedRoute allowedRoles={['teacher']}><Layout /></ProtectedRoute>}>
         <Route index element={<TeacherDashboard />} />
+        <Route path="messages" element={<Messages />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 
@@ -155,6 +158,7 @@ const AppRoutes = () => {
         <Route index element={<AdminDashboard />} />
         <Route path="assignments" element={<TeacherStudentAssignment />} />
         <Route path="users" element={<UserManagement />} />
+        <Route path="messages" element={<Messages />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 
