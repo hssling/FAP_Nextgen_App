@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
 import { Activity, User, Lock, Mail, AlertCircle, Eye, EyeOff, GraduationCap, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
+import ConsentNoticeModal from '../components/ConsentNoticeModal';
+import { CONSENT_NOTICE, recordConsentAcceptance } from '../services/consentService';
 
 const Register = () => {
     const navigate = useNavigate();
@@ -22,6 +24,8 @@ const Register = () => {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [consentAccepted, setConsentAccepted] = useState(false);
+    const [consentModalOpen, setConsentModalOpen] = useState(false);
 
     const handleChange = (e) => {
         setFormData({
@@ -64,6 +68,11 @@ const Register = () => {
 
             if (formData.role === 'teacher' && (!formData.department || !formData.employeeId)) {
                 throw new Error('Department and Employee ID are required for teachers');
+            }
+
+            if (!consentAccepted) {
+                setConsentModalOpen(true);
+                throw new Error('Please review and accept the FAP NextGen digital consent and privacy notice before creating an account.');
             }
 
             // Step 1: Create user in Supabase Auth
@@ -116,6 +125,21 @@ const Register = () => {
                 // If profile creation fails, we should delete the auth user
                 // But Supabase doesn't allow this from client, so we'll just show error
                 throw new Error('Failed to create profile. Please contact administrator.');
+            }
+
+            try {
+                await recordConsentAcceptance(supabase, {
+                    userId: authData.user.id,
+                    source: 'signup',
+                    metadata: {
+                        role: formData.role,
+                        username: formData.username.toLowerCase(),
+                        consent_title: CONSENT_NOTICE.title,
+                    },
+                });
+            } catch (consentError) {
+                console.warn('Profile created, but consent ledger write failed. Check compliance_consent_acceptance.sql migration.', consentError);
+                alert('Registration succeeded, but the digital consent ledger could not be updated. Please contact the administrator to confirm the consent database patch is applied.');
             }
 
             // Success! Redirect to login
@@ -541,6 +565,51 @@ const Register = () => {
                         </div>
                     </div>
 
+                    <div
+                        style={{
+                            marginBottom: '1.5rem',
+                            padding: '1rem',
+                            border: consentAccepted ? '1px solid #99F6E4' : '1px solid #FCD34D',
+                            borderRadius: '10px',
+                            background: consentAccepted ? '#F0FDFA' : '#FFFBEB'
+                        }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '0.95rem', color: '#111827' }}>
+                                    Digital consent, privacy and responsible use
+                                </h3>
+                                <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: '#6B7280', lineHeight: 1.45 }}>
+                                    Required before account creation for DPDP-aligned data processing, health-data confidentiality and AI-support disclosure.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                className="btn btn-outline"
+                                onClick={() => setConsentModalOpen(true)}
+                                style={{ color: '#0F766E', borderColor: '#99F6E4' }}
+                            >
+                                {consentAccepted ? 'Review accepted notice' : 'Review and accept'}
+                            </button>
+                        </div>
+                        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', marginTop: '0.9rem', fontSize: '0.86rem', color: '#374151' }}>
+                            <input
+                                type="checkbox"
+                                checked={consentAccepted}
+                                onChange={(e) => {
+                                    if (e.target.checked) setConsentModalOpen(true);
+                                    else setConsentAccepted(false);
+                                }}
+                                style={{ marginTop: '0.2rem' }}
+                            />
+                            <span>
+                                {consentAccepted
+                                    ? `Accepted for version ${CONSENT_NOTICE.version}.`
+                                    : 'I will review the notice and accept before creating my account.'}
+                            </span>
+                        </label>
+                    </div>
+
                     {/* Submit Button */}
                     <button
                         type="submit"
@@ -570,6 +639,15 @@ const Register = () => {
                     </p>
                 </form>
             </motion.div>
+            <ConsentNoticeModal
+                open={consentModalOpen}
+                onClose={() => setConsentModalOpen(false)}
+                onAccept={() => {
+                    setConsentAccepted(true);
+                    setConsentModalOpen(false);
+                    setError('');
+                }}
+            />
         </div>
     );
 };

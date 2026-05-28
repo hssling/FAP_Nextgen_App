@@ -1,11 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { User, Download, Database, KeyRound, ExternalLink, Save, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { User, Download, Database, KeyRound, ExternalLink, Save, Eye, EyeOff, Trash2, ShieldCheck, FileDown } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import NotificationManager from '../components/NotificationManager';
+import ConsentNoticeModal from '../components/ConsentNoticeModal';
 import { AI_PROVIDERS } from '../services/aiProviders';
 import { getAllSavedAiKeys, saveAiProviderKey, clearAiProviderKey } from '../services/aiKeyStore';
+import {
+    CONSENT_DOCUMENT_VERSION,
+    CONSENT_NOTICE,
+    consentNoticeToPlainText,
+    downloadTextFile,
+    getCurrentConsentAcceptance,
+    listConsentAcceptances,
+    recordConsentAcceptance
+} from '../services/consentService';
 import { clearClientCaches } from '../utils/cacheUtils';
 import {
     AI_FALLBACK_MODES,
@@ -41,6 +51,12 @@ const Settings = () => {
     const [passwordForm, setPasswordForm] = useState({ newPassword: '', confirmPassword: '' });
     const [passwordSaving, setPasswordSaving] = useState(false);
     const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' });
+    const [consentModalOpen, setConsentModalOpen] = useState(false);
+    const [consentRecord, setConsentRecord] = useState(null);
+    const [consentLoading, setConsentLoading] = useState(false);
+    const [consentAccepting, setConsentAccepting] = useState(false);
+    const [consentRegister, setConsentRegister] = useState([]);
+    const [consentRegisterLoading, setConsentRegisterLoading] = useState(false);
 
     const providerEntries = useMemo(() => Object.entries(AI_PROVIDERS), []);
 
@@ -73,6 +89,38 @@ const Settings = () => {
             yearOfJoining: profile.year_of_joining ? String(profile.year_of_joining) : ''
         });
     }, [profile]);
+
+    useEffect(() => {
+        const loadConsent = async () => {
+            if (!profile?.id) return;
+            setConsentLoading(true);
+            try {
+                const record = await getCurrentConsentAcceptance(supabase, profile.id);
+                setConsentRecord(record);
+            } catch (error) {
+                console.warn('Could not load consent status:', error);
+            } finally {
+                setConsentLoading(false);
+            }
+        };
+        loadConsent();
+    }, [profile?.id]);
+
+    useEffect(() => {
+        const loadAdminConsentRegister = async () => {
+            if (profile?.role !== 'admin') return;
+            setConsentRegisterLoading(true);
+            try {
+                const records = await listConsentAcceptances(supabase);
+                setConsentRegister(records);
+            } catch (error) {
+                console.warn('Could not load consent register:', error);
+            } finally {
+                setConsentRegisterLoading(false);
+            }
+        };
+        loadAdminConsentRegister();
+    }, [profile?.role]);
 
     const handleLogout = async () => {
         try {
@@ -245,6 +293,68 @@ const Settings = () => {
         } finally {
             setPasswordSaving(false);
         }
+    };
+
+    const handleAcceptConsentFromSettings = async () => {
+        if (!profile?.id) return;
+        setConsentAccepting(true);
+        try {
+            const record = await recordConsentAcceptance(supabase, {
+                userId: profile.id,
+                source: 'settings',
+                metadata: {
+                    role: profile.role,
+                    username: profile.username,
+                    consent_title: CONSENT_NOTICE.title,
+                },
+            });
+            setConsentRecord(record);
+            setConsentModalOpen(false);
+            toast.success('Digital consent accepted and recorded.');
+        } catch (error) {
+            console.error('Failed to record consent:', error);
+            toast.error('Could not record consent. Confirm the consent SQL patch is applied.');
+        } finally {
+            setConsentAccepting(false);
+        }
+    };
+
+    const downloadConsentRegisterCsv = () => {
+        const headers = ['id', 'user_id', 'consent_version', 'accepted_at', 'acceptance_source', 'user_agent'];
+        if (consentRegister.length === 0) {
+            toast.error('No consent records loaded yet.');
+            return;
+        }
+        const rows = consentRegister.map((record) => headers.map((key) => {
+            const value = record[key] ?? '';
+            return `"${String(value).replaceAll('"', '""')}"`;
+        }).join(','));
+        downloadTextFile(
+            `FAP_NextGen_Consent_Register_${new Date().toISOString().split('T')[0]}.csv`,
+            [headers.join(','), ...rows].join('\n'),
+            'text/csv'
+        );
+    };
+
+    const downloadConsentEvidenceJson = () => {
+        if (consentRegister.length === 0) {
+            toast.error('No consent records loaded yet.');
+            return;
+        }
+        downloadTextFile(
+            `FAP_NextGen_Digital_Consent_Evidence_${new Date().toISOString().split('T')[0]}.json`,
+            JSON.stringify({
+                exported_at: new Date().toISOString(),
+                consent_document: {
+                    version: CONSENT_DOCUMENT_VERSION,
+                    title: CONSENT_NOTICE.title,
+                    effective_date: CONSENT_NOTICE.effectiveDate,
+                    full_text: consentNoticeToPlainText(),
+                },
+                acceptance_records: consentRegister,
+            }, null, 2),
+            'application/json'
+        );
     };
 
     return (
@@ -430,6 +540,62 @@ const Settings = () => {
                 </div>
             </div>
 
+            <div className="card" style={{ padding: '2rem', marginBottom: '2rem' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <ShieldCheck size={20} className="text-primary" /> Digital Consent & Compliance
+                </h2>
+                <p style={{ color: 'var(--color-text-muted)', marginBottom: '1rem', lineHeight: '1.6' }}>
+                    Review the DPDP-aligned consent, privacy, data-security, storage, AI-use and responsible-use notice for FAP NextGen.
+                </p>
+                <div style={{
+                    display: 'grid',
+                    gap: '0.75rem',
+                    padding: '1rem',
+                    borderRadius: '10px',
+                    border: '1px solid #D1FAE5',
+                    background: '#F0FDFA',
+                    marginBottom: '1rem'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                        <div>
+                            <strong style={{ color: '#065F46' }}>
+                                {consentRecord ? 'Accepted / provided' : consentLoading ? 'Checking consent status...' : 'Acceptance not yet recorded on this device'}
+                            </strong>
+                            <p style={{ margin: '0.25rem 0 0', color: '#047857', fontSize: '0.85rem' }}>
+                                Version {CONSENT_DOCUMENT_VERSION}
+                                {consentRecord?.accepted_at ? ` | ${new Date(consentRecord.accepted_at).toLocaleString()} | ${consentRecord.acceptance_source}` : ''}
+                            </p>
+                        </div>
+                        <button className="btn btn-outline" onClick={() => setConsentModalOpen(true)} style={{ color: '#0F766E', borderColor: '#99F6E4' }}>
+                            Review consent notice
+                        </button>
+                    </div>
+                </div>
+
+                {profile?.role === 'admin' && (
+                    <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '1rem', marginTop: '1rem' }}>
+                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Admin Consent Register</h3>
+                        <p style={{ margin: '0.35rem 0 0.9rem', color: '#6B7280', fontSize: '0.85rem' }}>
+                            Download the digital consent form and acceptance evidence for audit, IEC/SRC, certification or institutional compliance review.
+                        </p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                            <button className="btn btn-outline" onClick={() => downloadTextFile(`FAP_NextGen_Digital_Consent_${CONSENT_NOTICE.version}.txt`, consentNoticeToPlainText())}>
+                                <FileDown size={16} /> Download consent form
+                            </button>
+                            <button className="btn btn-outline" onClick={downloadConsentRegisterCsv} disabled={consentRegisterLoading}>
+                                <Download size={16} /> Download acceptance CSV
+                            </button>
+                            <button className="btn btn-outline" onClick={downloadConsentEvidenceJson} disabled={consentRegisterLoading}>
+                                <Download size={16} /> Download evidence JSON
+                            </button>
+                        </div>
+                        <p style={{ margin: 0, color: '#6B7280', fontSize: '0.8rem' }}>
+                            Loaded records: {consentRegisterLoading ? 'Loading...' : consentRegister.length}
+                        </p>
+                    </div>
+                )}
+            </div>
+
             <section style={{ marginBottom: '2rem' }}>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem' }}>Notifications</h2>
                 <NotificationManager />
@@ -608,6 +774,13 @@ const Settings = () => {
                     Professor, Community Medicine, SIMS & RH, Tumkur
                 </p>
             </div>
+            <ConsentNoticeModal
+                open={consentModalOpen}
+                onClose={() => setConsentModalOpen(false)}
+                onAccept={handleAcceptConsentFromSettings}
+                acceptedRecord={consentRecord}
+                accepting={consentAccepting}
+            />
         </div>
     );
 };
