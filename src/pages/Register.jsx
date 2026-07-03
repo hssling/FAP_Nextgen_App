@@ -110,11 +110,16 @@ const Register = () => {
 
             const { error: profileError } = await supabase
                 .from('profiles')
-                .insert([profileData]);
+                // The database signup trigger creates a minimal profile first.
+                // Merge the complete registration data into that row instead of
+                // attempting a second insert with the same primary key.
+                .upsert([profileData], { onConflict: 'id' });
 
             if (profileError) {
-                // If profile creation fails, we should delete the auth user
-                // But Supabase doesn't allow this from client, so we'll just show error
+                console.error('Profile upsert error:', profileError);
+                if (profileError.code === '23505') {
+                    throw new Error('Username, registration number, or employee ID is already registered.');
+                }
                 throw new Error('Failed to create profile. Please contact administrator.');
             }
 
