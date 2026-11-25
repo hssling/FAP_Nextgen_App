@@ -3,14 +3,14 @@ import { Bell, BellOff, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const NotificationManager = () => {
-    const [permission, setPermission] = useState(Notification.permission);
+    const [permission, setPermission] = useState(() => typeof Notification === 'undefined' ? 'unsupported' : Notification.permission);
 
     const requestPermission = async () => {
         try {
             const result = await Notification.requestPermission();
             setPermission(result);
             if (result === 'granted') {
-                toast.success('Notifications enabled!');
+                toast.success('Browser notification permission granted.');
                 // Here we would normally subscribe to PushManager
             } else {
                 toast.error('Notifications blocked.');
@@ -46,13 +46,17 @@ const NotificationManager = () => {
         }
     };
 
+    if (permission === 'unsupported') {
+        return <div className="card" style={{ padding: '1rem' }}>In-app alerts appear while you use FAP NextGen. Background push notifications are not yet available. On iPhone or iPad, add the app to your Home Screen for browser notification support.</div>;
+    }
+
     if (permission === 'denied') {
         return (
             <div className="card" style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', backgroundColor: '#FEF2F2', border: '1px solid #FECACA' }}>
                 <BellOff size={24} color="#EF4444" />
                 <div>
                     <h4 style={{ margin: 0, color: '#991B1B' }}>Notifications Blocked</h4>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#B91C1C' }}>Enable in browser settings to receive reminders.</p>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#B91C1C' }}>Browser notifications are blocked. In-app message and review alerts remain available.</p>
                 </div>
             </div>
         );
@@ -64,8 +68,8 @@ const NotificationManager = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <Bell size={24} color="#0284C7" />
                     <div>
-                        <h4 style={{ margin: 0, color: '#075985' }}>Enable Reminders</h4>
-                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#0369A1' }}>Get notified about upcoming visits.</p>
+                        <h4 style={{ margin: 0, color: '#075985' }}>Browser Notification Permission</h4>
+                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#0369A1' }}>Permission allows a local test. Background push alerts are not yet available.</p>
                     </div>
                 </div>
                 <button
@@ -84,8 +88,8 @@ const NotificationManager = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <Bell size={24} color="#059669" />
                 <div>
-                    <h4 style={{ margin: 0 }}>Notifications Active</h4>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>You will receive alerts for visits.</p>
+                    <h4 style={{ margin: 0 }}>Browser Permission Granted</h4>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>In-app alerts are available. Background push alerts are not yet available.</p>
                 </div>
             </div>
             <button

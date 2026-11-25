@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const InstallPrompt = () => {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
-    const [showPrompt, setShowPrompt] = useState(false);
-    const [isStandalone] = useState(() => window.matchMedia('(display-mode: standalone)').matches);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const [isStandalone] = useState(() => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone);
+    const [showPrompt, setShowPrompt] = useState(() => isIOS && !isStandalone);
 
     useEffect(() => {
         const handler = (e) => {
@@ -22,7 +23,7 @@ const InstallPrompt = () => {
         window.addEventListener('beforeinstallprompt', handler);
 
         return () => window.removeEventListener('beforeinstallprompt', handler);
-    }, [isStandalone]);
+    }, [isStandalone, isIOS]);
 
     const handleInstallClick = async () => {
         if (!deferredPrompt) return;
@@ -104,7 +105,7 @@ const InstallPrompt = () => {
                         </div>
                         <div>
                             <h4 style={{ fontSize: '0.875rem', fontWeight: '600' }}>Install App</h4>
-                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Get faster access & offline mode</p>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{isIOS ? 'Use Share, then Add to Home Screen.' : 'Get faster access & offline mode'}</p>
                         </div>
                     </div>
 
@@ -126,7 +127,7 @@ const InstallPrompt = () => {
                         >
                             <Share2 size={18} />
                         </button>
-                        <button
+                        {!isIOS && <button
                             onClick={handleInstallClick}
                             style={{
                                 backgroundColor: '#0F766E',
@@ -140,7 +141,7 @@ const InstallPrompt = () => {
                             }}
                         >
                             Install
-                        </button>
+                        </button>}
                         <button
                             onClick={() => setShowPrompt(false)}
                             style={{

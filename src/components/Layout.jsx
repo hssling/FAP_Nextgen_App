@@ -6,6 +6,7 @@ import ErrorBoundary from './ErrorBoundary';
 import { useAuth } from '../contexts/AuthContext';
 import { getCurrentStudyYear, getYearOfJoining } from '../utils/studentIdentity';
 import { useUnreadMessages } from '../hooks/useUnreadMessages';
+import { usePendingReflections } from '../hooks/usePendingReflections';
 
 const Layout = () => {
     const { profile, signOut } = useAuth();
@@ -15,6 +16,7 @@ const Layout = () => {
     const isTeacher = profile?.role === 'teacher';
     const isAdmin = profile?.role === 'admin';
     const { unreadCount } = useUnreadMessages(profile?.id);
+    const pendingReflections = usePendingReflections(isTeacher ? profile?.id : null);
 
     const handleLogout = async () => {
         try {
@@ -46,8 +48,9 @@ const Layout = () => {
             />
 
             {/* Mobile Toggle Button */}
-            <button className={styles.mobileToggle} onClick={toggleSidebar}>
+            <button className={styles.mobileToggle} onClick={toggleSidebar} aria-label={`Open navigation${unreadCount || pendingReflections ? `, ${unreadCount} unread messages and ${pendingReflections} pending reflections` : ''}`}>
                 {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+                {!isSidebarOpen && (unreadCount > 0 || pendingReflections > 0) && <span className={styles.unreadBadge}>{Math.min(unreadCount + pendingReflections, 99)}</span>}
             </button>
 
             <aside className={`${styles.sidebar} ${isSidebarOpen ? styles.sidebarOpen : ''}`}>
@@ -110,6 +113,7 @@ const Layout = () => {
                             <NavLink to="/teacher-dashboard" end onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <Users size={20} />
                                 <span className={styles.navLabel}>My Mentees</span>
+                                {pendingReflections > 0 && <span className={styles.unreadBadge} aria-label={`${pendingReflections} reflections awaiting review`}>{pendingReflections > 99 ? '99+' : pendingReflections}</span>}
                             </NavLink>
                             <NavLink to="/teacher-dashboard/messages" onClick={closeSidebar} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
                                 <MessageSquare size={20} />

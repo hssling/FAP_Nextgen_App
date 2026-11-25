@@ -236,7 +236,11 @@ const TeacherDashboard = () => {
         }
     }, [profile?.id]);
 
-    useEffect(() => { fetchClassroomData(); }, [fetchClassroomData]);
+    useEffect(() => {
+        fetchClassroomData();
+        window.addEventListener('fap-reflections-changed', fetchClassroomData);
+        return () => window.removeEventListener('fap-reflections-changed', fetchClassroomData);
+    }, [fetchClassroomData]);
 
     const openStudent = async (student) => {
         setActiveStudent(student);
@@ -380,6 +384,7 @@ const TeacherDashboard = () => {
 
             if (error) throw error;
 
+            window.dispatchEvent(new Event('fap-reflection-graded'));
             setStudentReflections(prev => prev.map(r => r.id === gradingTarget.id ? {
                 ...r, ...scores, teacher_feedback: gradeFeedback, grade, total_score: total, status: 'Graded'
             } : r));
