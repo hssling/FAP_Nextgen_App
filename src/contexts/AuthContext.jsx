@@ -3,6 +3,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import { ensureActiveSession, supabase } from '../services/supabaseClient';
 import { get, set, del } from 'idb-keyval';
 import { getCurrentStudyYear } from '../utils/studentIdentity';
+import { unsubscribeDevice } from '../services/pushSubscription';
 
 const AuthContext = createContext({});
 
@@ -218,6 +219,17 @@ export const AuthProvider = ({ children }) => {
     // Sign out
     const signOut = async () => {
         const userId = user?.id;
+        if (userId && 'serviceWorker' in navigator) {
+            try {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration?.pushManager) {
+                    await Promise.race([
+                        unsubscribeDevice({ registration, client: supabase, userId }),
+                        new Promise(resolve => setTimeout(resolve, 3000))
+                    ]);
+                }
+            } catch (error) { console.warn('Could not remove device notification subscription:', error); }
+        }
         setProfile(null);
         setUser(null);
         setSession(null);

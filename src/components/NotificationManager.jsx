@@ -1,104 +1,77 @@
-import React, { useState } from 'react';
-import { Bell, BellOff, Send } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Bell } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../services/supabaseClient';
+import { subscribeDevice } from '../services/pushSubscription';
 
 const NotificationManager = () => {
+    const { profile } = useAuth();
+    const [working, setWorking] = useState(false);
+    const [enabled, setEnabled] = useState(false);
     const [permission, setPermission] = useState(() => typeof Notification === 'undefined' ? 'unsupported' : Notification.permission);
+    const [publicKey, setPublicKey] = useState('');
+    useEffect(() => {
+        const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+        if (profile?.role !== 'teacher' || !baseUrl) return undefined;
+        const controller = new AbortController();
+        fetch(`${baseUrl}/functions/v1/mentor-push`, { signal: controller.signal })
+            .then(response => response.ok ? response.json() : null)
+            .then(data => { if (data?.publicKey) setPublicKey(data.publicKey); })
+            .catch(error => { if (error.name !== 'AbortError') console.warn('Push configuration unavailable.'); });
+        return () => controller.abort();
+    }, [profile?.role]);
+    const supported = typeof window !== 'undefined' && window.isSecureContext && 'serviceWorker' in navigator && 'PushManager' in window && permission !== 'unsupported';
 
-    const requestPermission = async () => {
+    const enable = async () => {
+        if (permission === 'unsupported') return;
+        if (profile?.role === 'teacher' && (!supported || !publicKey || !supabase || !profile?.id)) return;
+        setWorking(true);
         try {
             const result = await Notification.requestPermission();
             setPermission(result);
-            if (result === 'granted') {
-                toast.success('Browser notification permission granted.');
-                // Here we would normally subscribe to PushManager
-            } else {
-                toast.error('Notifications blocked.');
-            }
+            if (result !== 'granted') throw new Error('Notification permission was not granted.');
+            if (profile?.role === 'teacher') {
+                const registration = await navigator.serviceWorker.ready;
+                await subscribeDevice({ registration, client: supabase, userId: profile.id, publicKey });
+                setEnabled(true);
+                toast.success('Device notifications enabled.');
+            } else toast.success('Browser notification permission granted.');
         } catch (error) {
-            console.error('Error requesting permission', error);
-        }
+            console.error('Could not enable device notifications:', error);
+            toast.error(error.message || 'Could not enable notifications on this device.');
+        } finally { setWorking(false); }
     };
 
-    const sendTestNotification = () => {
-        if (permission === 'granted') {
-            // Check if SW is ready to show specific service worker notification (for mobile mostly)
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                navigator.serviceWorker.ready.then(registration => {
-                    registration.showNotification('FAP NextGen', {
-                        body: 'This is a test notification from the FAP App! 🔔',
-                        icon: '/pwa-192x192.png',
-                        vibrate: [200, 100, 200],
-                        actions: [
-                            { action: 'open', title: 'Open App' }
-                        ]
-                    });
-                });
-            } else {
-                // Fallback for desktop testing without SW sometimes
-                new Notification('FAP NextGen', {
-                    body: 'This is a test notification! 🔔',
-                    icon: '/pwa-192x192.png'
-                });
-            }
-        } else {
-            toast.error('Please enable notifications first.');
-        }
+    const testNotification = async () => {
+        try {
+            if (permission !== 'granted') throw new Error('Allow browser notifications first.');
+            const registration = await navigator.serviceWorker.ready;
+            await registration.showNotification('FAP NextGen', { body: 'This is a local test notification.', icon: '/pwa-192x192.png' });
+        } catch (error) { toast.error(error.message || 'Unable to show the test notification.'); }
     };
-
-    if (permission === 'unsupported') {
-        return <div className="card" style={{ padding: '1rem' }}>In-app alerts appear while you use FAP NextGen. Background push notifications are not yet available. On iPhone or iPad, add the app to your Home Screen for browser notification support.</div>;
-    }
-
-    if (permission === 'denied') {
-        return (
-            <div className="card" style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', backgroundColor: '#FEF2F2', border: '1px solid #FECACA' }}>
-                <BellOff size={24} color="#EF4444" />
-                <div>
-                    <h4 style={{ margin: 0, color: '#991B1B' }}>Notifications Blocked</h4>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#B91C1C' }}>Browser notifications are blocked. In-app message and review alerts remain available.</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (permission === 'default') {
-        return (
-            <div className="card" style={{ padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F0F9FF', border: '1px solid #BAE6FD' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <Bell size={24} color="#0284C7" />
-                    <div>
-                        <h4 style={{ margin: 0, color: '#075985' }}>Browser Notification Permission</h4>
-                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#0369A1' }}>Permission allows a local test. Background push alerts are not yet available.</p>
-                    </div>
-                </div>
-                <button
-                    onClick={requestPermission}
-                    className="btn btn-primary"
-                    style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
-                >
-                    Enable
-                </button>
-            </div>
-        );
-    }
 
     return (
-        <div className="card" style={{ padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <Bell size={24} color="#059669" />
-                <div>
-                    <h4 style={{ margin: 0 }}>Browser Permission Granted</h4>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>In-app alerts are available. Background push alerts are not yet available.</p>
-                </div>
+        <div className="card" style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <Bell size={24} color="#0F766E" />
+            <div style={{ flex: 1 }}>
+                <h4 style={{ margin: 0 }}>Device notifications</h4>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                    {profile?.role !== 'teacher' ? 'Message alerts appear while you use the app.' :
+                        !supported ? 'On iPhone or iPad, add the app to your Home Screen and open it there to enable notifications.' :
+                        !publicKey ? 'Device notifications are not configured yet.' :
+                        permission === 'denied' ? 'Allow notifications for FAP NextGen in your device settings.' :
+                        enabled ? 'This device is registered for mentor alerts.' : 'Enable alerts for new messages and reflections on this device.'}
+                </p>
             </div>
-            <button
-                onClick={sendTestNotification}
-                className="btn btn-outline"
-                style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', gap: '0.5rem' }}
-            >
-                <Send size={16} /> Test
-            </button>
+            {permission === 'granted' && 'serviceWorker' in navigator && (
+                <button type="button" onClick={testNotification} className="btn btn-outline">Test</button>
+            )}
+            {((profile?.role === 'teacher' && supported && publicKey) || (profile?.role !== 'teacher' && permission === 'default')) && permission !== 'denied' && (
+                <button type="button" onClick={enable} disabled={working} className="btn btn-primary">
+                    {working ? 'Enabling…' : enabled ? 'Enable again' : 'Enable'}
+                </button>
+            )}
         </div>
     );
 };

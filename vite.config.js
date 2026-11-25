@@ -37,6 +37,7 @@ export default defineConfig({
         ]
       },
       workbox: {
+        importScripts: ['push-worker.js'],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
