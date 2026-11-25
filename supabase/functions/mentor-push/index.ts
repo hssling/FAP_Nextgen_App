@@ -12,7 +12,7 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL');
 type Subscription = { id: string; endpoint: string; keys: { p256dh: string; auth: string } };
 
 Deno.serve(async (request) => {
-  if (request.method === 'OPTIONS') return new Response(null, { headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': 'content-type' } });
+  if (request.method === 'OPTIONS') return new Response(null, { headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': 'authorization, apikey, x-client-info, content-type' } });
   if (request.method === 'GET') return Response.json({ publicKey: vapidPublic || null }, { headers: { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } });
   if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
   if (!workerSecret || request.headers.get('x-push-worker-secret') !== workerSecret) {

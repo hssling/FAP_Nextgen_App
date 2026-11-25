@@ -12,14 +12,15 @@ const NotificationManager = () => {
     const [permission, setPermission] = useState(() => typeof Notification === 'undefined' ? 'unsupported' : Notification.permission);
     const [publicKey, setPublicKey] = useState('');
     useEffect(() => {
-        const baseUrl = import.meta.env.VITE_SUPABASE_URL;
-        if (profile?.role !== 'teacher' || !baseUrl) return undefined;
-        const controller = new AbortController();
-        fetch(`${baseUrl}/functions/v1/mentor-push`, { signal: controller.signal })
-            .then(response => response.ok ? response.json() : null)
-            .then(data => { if (data?.publicKey) setPublicKey(data.publicKey); })
-            .catch(error => { if (error.name !== 'AbortError') console.warn('Push configuration unavailable.'); });
-        return () => controller.abort();
+        if (profile?.role !== 'teacher' || !supabase) return undefined;
+        let active = true;
+        supabase.functions.invoke('mentor-push', { method: 'GET' })
+            .then(({ data, error }) => {
+                if (error) throw error;
+                if (active && data?.publicKey) setPublicKey(data.publicKey);
+            })
+            .catch(() => { if (active) console.warn('Push configuration unavailable.'); });
+        return () => { active = false; };
     }, [profile?.role]);
     const supported = typeof window !== 'undefined' && window.isSecureContext && 'serviceWorker' in navigator && 'PushManager' in window && permission !== 'unsupported';
 

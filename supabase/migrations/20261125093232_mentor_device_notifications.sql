@@ -84,13 +84,16 @@ create extension if not exists pg_net with schema extensions;
 select cron.schedule('fap-mentor-push-dispatch', '* * * * *', $job$
   select net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name = 'fap_mentor_push_project_url' limit 1) || '/functions/v1/mentor-push',
-    headers := jsonb_build_object('Content-Type', 'application/json', 'x-push-worker-secret',
+    headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization',
+      'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'fap_mentor_push_anon_key' limit 1),
+      'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'fap_mentor_push_anon_key' limit 1), 'x-push-worker-secret',
       (select decrypted_secret from vault.decrypted_secrets where name = 'fap_mentor_push_worker_secret' limit 1)),
     body := '{}'::jsonb
   )
   where exists (select 1 from private.mentor_push_outbox where completed_at is null and available_at <= now() and attempts < 8)
     and exists (select 1 from vault.decrypted_secrets where name = 'fap_mentor_push_worker_secret')
-    and exists (select 1 from vault.decrypted_secrets where name = 'fap_mentor_push_project_url');
+    and exists (select 1 from vault.decrypted_secrets where name = 'fap_mentor_push_project_url')
+    and exists (select 1 from vault.decrypted_secrets where name = 'fap_mentor_push_anon_key');
 $job$);
 select cron.schedule('fap-mentor-push-cleanup', '15 3 * * *', $job$
   delete from private.mentor_push_outbox where completed_at < now() - interval '7 days';
