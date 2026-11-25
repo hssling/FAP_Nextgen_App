@@ -26,20 +26,28 @@ const transport = isConfigured
 
 const emailFor = ({ kind, site }) => {
   const isMessage = kind === 'message';
+  const isPendingGrading = kind === 'pending_grading';
   return {
-    subject: isMessage
-      ? 'New student message in FAP NextGen'
-      : 'New student reflection in FAP NextGen',
-    text: isMessage
-      ? `A student assigned to you sent a new message. Sign in to view it: ${site}/teacher-dashboard/messages`
-      : `A student assigned to you submitted a new reflection. Sign in to review it: ${site}/teacher-dashboard`,
+    subject: isPendingGrading
+      ? 'Pending grading reminder in FAP NextGen'
+      : isMessage
+        ? 'New student message in FAP NextGen'
+        : 'New student reflection in FAP NextGen',
+    text: isPendingGrading
+      ? `You have a pending student grading task in FAP NextGen. Sign in to review it: ${site}/teacher-dashboard`
+      : isMessage
+        ? `A student assigned to you sent a new message. Sign in to view it: ${site}/teacher-dashboard/messages`
+        : `A student assigned to you submitted a new reflection. Sign in to review it: ${site}/teacher-dashboard`,
   };
 };
 
-const sendEmail = async ({ to, kind }) => {
+const sendEmail = async ({ to, kind, pendingCount }) => {
   if (!transport || !smtpFrom) throw new Error('Email service is not configured');
   const content = emailFor({ kind, site: siteUrl });
-  await transport.sendMail({ from: smtpFrom, to, subject: content.subject, text: content.text });
+  const text = kind === 'pending_grading'
+    ? `You currently have ${pendingCount} student reflection${pendingCount === 1 ? '' : 's'} awaiting grading.\n\n${content.text}`
+    : content.text;
+  await transport.sendMail({ from: smtpFrom, to, subject: content.subject, text });
 };
 
 Deno.serve(async (request) => {
@@ -57,6 +65,27 @@ Deno.serve(async (request) => {
 
   for (const job of jobs || []) {
     try {
+      if (job.event_kind === 'pending_grading') {
+        const pendingCount = Number(job.pending_count || 0);
+        if (pendingCount <= 0) {
+          await client.rpc('finish_mentor_email_job', { job_id: job.id, retry: false });
+          continue;
+        }
+
+        const mentor = await client.from('profiles').select('email').eq('id', job.mentor_id).eq('role', 'teacher').eq('is_active', true).maybeSingle();
+        if (mentor.error) throw mentor.error;
+        const recipient = mentor.data?.email?.trim();
+        if (!recipient) {
+          await client.rpc('finish_mentor_email_job', { job_id: job.id, retry: false });
+          continue;
+        }
+
+        await sendEmail({ to: recipient, kind: job.event_kind, pendingCount });
+        const { error: finishError } = await client.rpc('finish_mentor_email_job', { job_id: job.id, retry: false });
+        if (finishError) throw finishError;
+        continue;
+      }
+
       const source = job.event_kind === 'message'
         ? await client.from('messages').select('sender_id,recipient_id,deleted_at').eq('id', job.source_id).maybeSingle()
         : await client.from('reflections').select('student_id').eq('id', job.source_id).maybeSingle();
