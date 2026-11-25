@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import { ensureActiveSession, supabase } from '../services/supabaseClient';
 import { get, set, del } from 'idb-keyval';
 import { getCurrentStudyYear } from '../utils/studentIdentity';
@@ -20,6 +20,7 @@ export const AuthProvider = ({ children }) => {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [session, setSession] = useState(null);
+    const pendingProfileLoads = useRef(0);
 
     // Load user profile from database
     const loadUserProfile = async (userId) => {
@@ -126,10 +127,18 @@ export const AuthProvider = ({ children }) => {
                 }
 
                 clearTimeout(safetyTimeout);
-                setLoading(false);
+                // An auth event may have queued a profile load while the initial
+                // session check was in flight. Keep the loading state active until
+                // that profile has been resolved so ProtectedRoute never sees a
+                // user without its profile.
+                if (pendingProfileLoads.current === 0) {
+                    setLoading(false);
+                }
             } catch (error) {
                 console.error('Auth check failed:', error);
-                if (mounted) setLoading(false);
+                if (mounted && pendingProfileLoads.current === 0) {
+                    setLoading(false);
+                }
             }
         };
 
@@ -144,22 +153,37 @@ export const AuthProvider = ({ children }) => {
                 setUser(session?.user ?? null);
 
                 if (session?.user) {
+                    // INITIAL_SESSION and SIGNED_IN can arrive before the
+                    // deferred profile request completes. Keep routes gated
+                    // until the matching profile is available.
+                    if (_event === 'INITIAL_SESSION' || _event === 'SIGNED_IN') {
+                        setLoading(true);
+                    }
+
+                    pendingProfileLoads.current += 1;
                     // Supabase warns against awaiting other Supabase calls inside
                     // onAuthStateChange; doing so can block sign-in on some clients.
                     setTimeout(async () => {
-                        if (!mounted) return;
-                        await loadUserProfile(session.user.id);
-                        await set('fap_cached_session', {
-                            user: session.user,
-                            expires_at: session.expires_at,
-                            timestamp: Date.now()
-                        });
+                        try {
+                            if (!mounted) return;
+                            await loadUserProfile(session.user.id);
+                            await set('fap_cached_session', {
+                                user: session.user,
+                                expires_at: session.expires_at,
+                                timestamp: Date.now()
+                            });
+                        } finally {
+                            pendingProfileLoads.current = Math.max(0, pendingProfileLoads.current - 1);
+                            if (mounted && pendingProfileLoads.current === 0) {
+                                setLoading(false);
+                            }
+                        }
                     }, 0);
                 } else {
                     setProfile(null);
+                    pendingProfileLoads.current = 0;
+                    setLoading(false);
                 }
-
-                setLoading(false);
             }
         );
 
